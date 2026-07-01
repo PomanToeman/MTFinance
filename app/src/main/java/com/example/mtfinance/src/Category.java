@@ -5,7 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Category {
-
+    public static final Category ROOT_CATEGORY = new Category("General category", "The root of all categories, meant for general tracking", BigDecimal.ONE);
 
     // instance field
     private final String name;
@@ -24,6 +24,9 @@ public class Category {
         this.transactions = new HashSet<>();
         this.children = new HashSet<>();
 
+        if (!this.equals(ROOT_CATEGORY)) {
+            this.parent = ROOT_CATEGORY;
+        }
     }
 
     public Category getParent() {
@@ -31,8 +34,24 @@ public class Category {
     }
 
     public void setParent(Category parent) {
+        if (this.equals(ROOT_CATEGORY)) {
+            return;
+        }
         if (parent != null && !parent.isDescendentOf(this)) {
+            parent.addChild(this);
             this.parent = parent;
+
+        }
+
+    }
+
+
+    private void addChild(Category child) {
+        // private to disallow infinite loop.
+
+        // Child must not already be a descendant or ancestor.
+        if (!child.isDescendentOf(this) && !this.isDescendentOf(child)) {
+            children.add(child);
         }
 
     }
@@ -45,19 +64,22 @@ public class Category {
         }
     }
 
-    public Set<Transaction> getTransactions() {
-        return transactions;
-    }
-
-    public BigDecimal findTotal(boolean excludeSub) {
-        BigDecimal total = new BigDecimal("0");
+    public Set<Transaction> getTransactions(boolean includesub) {
         Set<Transaction> totalTransactions = new HashSet<>(transactions);
-        if (!excludeSub) {
+        if (includesub) {
             for (Category child : children) {
-                totalTransactions.addAll(child.getTransactions());
+                totalTransactions.addAll(child.getTransactions(true));
             }
 
         }
+
+        return totalTransactions;
+    }
+
+    public BigDecimal findTotal(boolean includeSub) {
+        // find total of the transactions within a category.
+        BigDecimal total = new BigDecimal("0");
+        Set<Transaction> totalTransactions = getTransactions(includeSub);
 
         // sum total
         for (Transaction transaction : totalTransactions) {
@@ -81,7 +103,7 @@ public class Category {
         }
 
 
-        return this.getParent().isDescendentOf(category);
+        return this.getParent().isDescendentOf(category); // recursive.
     }
 
 }
