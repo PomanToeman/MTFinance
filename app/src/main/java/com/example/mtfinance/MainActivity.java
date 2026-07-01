@@ -11,6 +11,8 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import android.widget.TextView;
 import com.example.mtfinance.src.Transaction;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class MainActivity extends AppCompatActivity {
@@ -20,10 +22,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Transaction transaction = new Transaction(123, "Hello world", LocalDateTime.of(2007, 12, 1, 5, 30), 1);
+        Transaction transaction = new Transaction.Builder("Groceries", BigDecimal.valueOf(1.0)).description("Shopping for bananas").build();
 
         TextView textview = findViewById(R.id.textView);
-        textview.setText(transaction.toString());
+        textview.setText(transaction.getDetails());
 
 
     }
