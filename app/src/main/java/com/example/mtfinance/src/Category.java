@@ -67,15 +67,38 @@ public class Category implements Details {
 
     }
 
+    public void removeTransaction(Transaction transaction) {
+        if (transaction != null) {
+            transactions.remove(transaction);
+        }
+    }
+
+    public void makeChildrenCongruent() {
+        // this makes children at the same level as the parent.
+        if (parent != null) {
+            for (Category child : children) {
+                children.remove(child);
+                child.setParentInternal(parent);
+            }
+
+        }
+    }
+
+    private void setParentInternal(Category parent) {
+        // this for makeChildrenCongruent (bypasses checks)
+        if (this.equals(parent)) {
+            return;
+        }
+        this.parent = parent;
+        parent.addChild(this);
+
+    }
+
+
 
     private void addChild(@NonNull Category child) {
-        // private to disallow infinite loop.
-
-        // Child must not already be a descendant nor ancestor.
-        if (!child.isDescendantOf(this) && !this.isDescendantOf(child)) {
-            children.add(child);
-        }
-
+        // private as your suppose to set parent first.
+        children.add(child);
         // checks if budget is above
         determineMinimumBudget();
 
@@ -85,6 +108,8 @@ public class Category implements Details {
             transactions.add(transaction);
         }
     }
+
+
 
     public void setBudget(BigDecimal budget) {
         TrackingUtlis.checkAmount(budget);

@@ -512,4 +512,48 @@ public class ExampleUnitTest {
         assertEquals(BigDecimal.valueOf(100.0), root.findTotal(false));
         assertEquals(BigDecimal.valueOf(125.0), level1.findTotal(true));
     }
+
+    // ========================================
+    // CONGRUENCY / DELETION TESTS
+    // ========================================
+
+    @Test
+    public void testing_makeChildrenCongruent_basic() {
+        Category grandparent = new Category("Grandparent", "", DEFAULT_BUDGET);
+        Category parent = new Category("Parent", "", DEFAULT_BUDGET);
+        Category child = new Category("Child", "", DEFAULT_BUDGET);
+
+        parent.setParent(grandparent);
+        child.setParent(parent);
+
+        // Pre-condition
+        assertEquals(parent, child.getParent());
+        assertTrue(parent.getChildren(false).contains(child));
+
+        parent.makeChildrenCongruent();
+
+        // Post-condition: child's parent should now be grandparent
+        assertEquals(grandparent, child.getParent());
+        assertTrue(grandparent.getChildren(false).contains(child));
+        assertFalse(parent.getChildren(false).contains(child));
+    }
+
+    @Test
+    public void testing_deleteCategory_logic() {
+        // Since CategoryRepository.deleteCategory calls makeChildrenCongruent,
+        // we can test the logic flow here.
+        Category root = new Category("Root", "", DEFAULT_BUDGET);
+        Category toDelete = new Category("ToDelete", "", DEFAULT_BUDGET);
+        Category child = new Category("Child", "", DEFAULT_BUDGET);
+
+        toDelete.setParent(root);
+        child.setParent(toDelete);
+
+        // Simulate Repository.deleteCategory logic
+        toDelete.makeChildrenCongruent();
+        // (In repository, categoryDao.delete(toDelete) would follow)
+
+        assertEquals(root, child.getParent());
+        assertTrue(root.getChildren(false).contains(child));
+    }
 }

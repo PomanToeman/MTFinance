@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class CategoryRepository {
 
@@ -29,7 +30,7 @@ public class CategoryRepository {
         if (category.getParent() == null) {
             category.setParent(getGeneralCategory()); // ensures the greatest parent is the general category
         }
-        else if (getAllCategories().contains(category.getParent())) {
+        else if (!getAllCategories().contains(category.getParent())) {
             insert(category.getParent()); // automatically inserts parent if not already in database.
         }
         return categoryDao.insert(category);
@@ -41,6 +42,31 @@ public class CategoryRepository {
 
     public List<Category> getAllCategories() {
         return categoryDao.getAll();
+    }
+
+    public Category getCategoryById(long id) {
+        return categoryDao.getById(id);
+    }
+
+    public void deleteCategory(@NonNull Category category) {
+        if (category.equals(getGeneralCategory())) {
+            return; // cannot delete general category
+        }
+
+        Set<Category> children = category.getChildren(false);
+
+
+        category.makeChildrenCongruent(); // makes children independent of category.
+        // update necessary children
+        categoryDao.updateAll(children);
+        categoryDao.update(category.getParent());
+
+
+        categoryDao.delete(category);
+
+
+
+
     }
 
 
