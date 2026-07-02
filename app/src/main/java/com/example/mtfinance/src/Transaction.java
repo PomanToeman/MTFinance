@@ -5,9 +5,10 @@ import androidx.annotation.NonNull;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public class Transaction implements details {
+public class Transaction implements Details {
     // instance fields
-    private final Integer Id;
+    private Long id; // placeholder for now
+    @NonNull
     private final String name;
     private final String description;
     private final BigDecimal amount;
@@ -15,7 +16,7 @@ public class Transaction implements details {
 
     // constructor
     private Transaction(Builder build) {
-        this.Id = build.Id;
+        this.id = null;
         this.description = build.description;
         this.date = build.date;
         this.amount = build.amount;
@@ -23,42 +24,60 @@ public class Transaction implements details {
 
     }
 
-    public Integer getId() {
-        return Id;
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    // getters
+    public Long getId() {
+        return id;
     }
 
 
+    public LocalDateTime getDate() {
+        return date;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+    public BigDecimal getAmount() {
+        return amount;
+    }
 
     @Override
     public String getDetails() {
         return String.format("Name: %s\n Amount: %s\n desc: %s \n date: %s", name, amount, description, date);
     }
 
-    public BigDecimal getAmount() {
-        return amount;
-    }
+
 
 
     public static class Builder {
-        private  Integer Id = 1;
+
         private String description = "No description";
-        private BigDecimal amount; // required
-        private String name; // required
+        private final BigDecimal amount; // required
+        private final String name; // required
         private LocalDateTime date = LocalDateTime.now();
 
         public Builder(String name, BigDecimal amount) {
+            TrackingUtlis.checkAmount(amount); // cannot be zero or below
             this.amount = amount;
             this.name = name;
+
+            // TODO add functionality that considers transactions like transfers and income (which would be negative).
         }
 
         public Transaction build() {
             return new Transaction(this);
         }
 
-        public Builder Id(Integer Id) {
-            this.Id = Id;
-            return this;
-        }
+
 
         public Builder description(String description) {
             this.description = description;

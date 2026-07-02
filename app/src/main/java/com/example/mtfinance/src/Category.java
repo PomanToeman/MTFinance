@@ -1,17 +1,20 @@
 package com.example.mtfinance.src;
 
+import androidx.annotation.NonNull;
+
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Category {
+public class Category implements Details {
 
 
-    // instance field
+    // instance fields
+    private long id;
     private final String name;
     private final String description;
     private final Set<Transaction> transactions;
-    private BigDecimal budget;
+    private BigDecimal budget; // assume monthly budget
 
     private final Set<Category> children;
     private  Category parent = null;
@@ -27,21 +30,14 @@ public class Category {
 
     }
 
-    public Category getParent() {
-        return parent;
-    }
-
-    public BigDecimal getBudget() {
-        return budget;
-    }
-
-    public void setParent(Category parent) {
+    // setters/adders
+    public void setParent(@NonNull Category parent) {
         if (this.equals(parent)) {
             return;
         }
 
         // parent can not already be a descendant nor an ancestor.
-        if (parent != null && !parent.isDescendantOf(this) && !this.isDescendantOf(parent)) {
+        if (!parent.isDescendantOf(this) && !this.isDescendantOf(parent)) {
             parent.addChild(this);
             this.parent = parent;
 
@@ -50,7 +46,7 @@ public class Category {
     }
 
 
-    private void addChild(Category child) {
+    private void addChild(@NonNull Category child) {
         // private to disallow infinite loop.
 
         // Child must not already be a descendant nor ancestor.
@@ -62,6 +58,39 @@ public class Category {
         determineMinimumBudget();
 
     }
+    public void addTransaction(Transaction transaction) {
+        if (transaction != null) {
+            transactions.add(transaction);
+        }
+    }
+
+    public void setBudget(BigDecimal budget) {
+        TrackingUtlis.checkAmount(budget);
+        BigDecimal minimum = determineMinimumBudget();
+
+        if (budget.compareTo(minimum) > 0) {
+            this.budget = budget;
+
+            // recheck if parent budget is now below minimum.
+            if (parent != null) {
+                parent.determineMinimumBudget();
+            }
+        }
+
+    }
+
+
+    // getters
+
+    public Category getParent() {
+        return parent;
+    }
+
+    public BigDecimal getBudget() {
+        return budget;
+    }
+
+
 
     public Set<Category> getChildren(boolean includeGrand) {
         Set<Category> copy = new HashSet<>(children); // fresh copy
@@ -95,16 +124,9 @@ public class Category {
     }
 
 
-
-    public void addTransaction(Transaction transaction) {
-        if (transaction != null) {
-            transactions.add(transaction);
-        }
-    }
-
-    public Set<Transaction> getTransactions(boolean includesub) {
+    public Set<Transaction> getTransactions(boolean includeSub) {
         Set<Transaction> totalTransactions = new HashSet<>(transactions);
-        if (includesub) {
+        if (includeSub) {
             for (Category child : children) {
                 totalTransactions.addAll(child.getTransactions(true));
             }
@@ -127,20 +149,7 @@ public class Category {
     }
 
 
-    public void setBudget(BigDecimal budget) {
-        TrackingUtlis.checkAmount(budget);
-        BigDecimal minimum = determineMinimumBudget();
 
-        if (budget.compareTo(minimum) > 0) {
-            this.budget = budget;
-
-            // recheck if parent budget is now below minimum.
-            if (parent != null) {
-                parent.determineMinimumBudget();
-            }
-        }
-
-    }
 
     public boolean isDescendantOf(Category category) {
         if (this.getParent() == null || category.equals(this)) {
@@ -152,6 +161,18 @@ public class Category {
 
 
         return this.getParent().isDescendantOf(category); // recursive.
+    }
+
+    @Override
+    public String getDetails() {
+        return String.format("Name: %s\nDescription: %s\nSub Categories: %s", name, description, children);
+    }
+
+
+    @NonNull
+    @Override
+    public String toString() {
+        return name;
     }
 
 }

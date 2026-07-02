@@ -19,7 +19,8 @@ import java.math.BigDecimal;
  */
 public class ExampleUnitTest {
 
-    public static final BigDecimal DEFAULT_BUDGET = BigDecimal.valueOf(0.1);
+    public static final BigDecimal DEFAULT_BUDGET = BigDecimal.valueOf(2);
+
 
     @Before
     public void before() {
@@ -187,20 +188,7 @@ public class ExampleUnitTest {
         assertEquals(BigDecimal.valueOf(25.50), main.findTotal(true));
     }
 
-    @Test
-    public void testing_total_with_negative_and_zero_transactions() {
-        Category cat = new Category("Test", "", BigDecimal.ZERO);
 
-        Transaction positive = new Transaction.Builder("Pos", BigDecimal.valueOf(10.00)).build();
-        Transaction negative = new Transaction.Builder("Refund", BigDecimal.valueOf(-3.50)).build();
-        Transaction zero = new Transaction.Builder("Free", BigDecimal.ZERO).build();
-
-        cat.addTransaction(positive);
-        cat.addTransaction(negative);
-        cat.addTransaction(zero);
-
-        assertEquals(BigDecimal.valueOf(6.50), cat.findTotal(false));
-    }
 
     @Test
     public void testing_total_deep_nesting() {
@@ -327,6 +315,57 @@ public class ExampleUnitTest {
 
         assertEquals(BigDecimal.valueOf(42.50), alone.getBudget());
         assertEquals(BigDecimal.ZERO, alone.determineMinimumBudget());
+    }
+
+    @Test
+    public void testing_getDetails_noChildren() {
+        Category category = new Category("Netflix", "Streaming subscription", BigDecimal.valueOf(15.99));
+
+        String details = category.getDetails();
+
+        assertTrue(details.contains("Name: Netflix"));
+        assertTrue(details.contains("Description: Streaming subscription"));
+        assertTrue(details.contains("Sub Categories: []"));   // empty set
+    }
+
+    @Test
+    public void testing_getDetails_withChildren() {
+        Category parent = new Category("Subscriptions", "All subs", BigDecimal.ZERO);
+        Category netflix = new Category("Netflix", "Video", BigDecimal.valueOf(15.99));
+        Category spotify = new Category("Spotify", "Music", BigDecimal.valueOf(10.99));
+
+        netflix.setParent(parent);
+        spotify.setParent(parent);
+
+        String details = parent.getDetails();
+
+        assertTrue(details.contains("Name: Subscriptions"));
+        assertTrue(details.contains("Description: All subs"));
+        assertTrue(details.contains("Sub Categories:"));
+
+        // Should contain child names (order may vary)
+        assertTrue(details.contains("Netflix") || details.contains("Spotify"));
+    }
+
+    @Test
+    public void testing_getDetails_emptyDescription() {
+        Category cat = new Category("EmptyDesc", "", BigDecimal.ZERO);
+
+        String details = cat.getDetails();
+
+        assertTrue(details.contains("Name: EmptyDesc"));
+        assertTrue(details.contains("Description: "));   // empty
+        assertTrue(details.contains("Sub Categories: []"));
+    }
+
+    @Test
+    public void testing_getDetails_nullSafety() {
+        // If description can be null
+        Category cat = new Category("Test", null, BigDecimal.ZERO);
+
+        String details = cat.getDetails();
+        assertNotNull(details);
+        assertTrue(details.contains("Name: Test"));
     }
 
 
