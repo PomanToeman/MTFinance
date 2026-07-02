@@ -1,30 +1,36 @@
 package com.example.mtfinance.src;
 
 import androidx.annotation.NonNull;
+import androidx.room.Entity;
+import androidx.room.Ignore;
+import androidx.room.PrimaryKey;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
-
+@Entity(tableName = "categories")
 public class Category implements Details {
 
 
     // instance fields
+    @PrimaryKey (autoGenerate = true)
     private long id;
     private final String name;
     private final String description;
+    @Ignore
     private final Set<Transaction> transactions;
     private BigDecimal budget; // assume monthly budget
 
+    @Ignore
     private final Set<Category> children;
-    private  Category parent = null;
+    @Ignore
+    private  Category parent = null; // default
 
     // constructor
     public Category(String name, String description, BigDecimal budget) {
         TrackingUtlis.checkAmount(budget);
 
         this.name = name;
-
         this.description = TrackingUtlis.determineDescription(description);
         this.budget = budget;
         this.transactions = new HashSet<>();

@@ -22,20 +22,42 @@ public class ExampleUnitTest {
 
     @Before
     public void before() {
-
     }
+
+    // ========================================
+    // TRANSACTION TESTS
+    // ========================================
 
     @Test
     public void test_transaction() {
         Transaction transaction = new Transaction.Builder("Lollies", BigDecimal.valueOf(1.0)).build();
-        System.out.println(transaction.toString());
         assertEquals(BigDecimal.valueOf(1.0), transaction.getAmount());
     }
 
     @Test
+    public void testing_checkAmount_negative_throwsException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> TrackingUtlis.checkAmount(BigDecimal.valueOf(-5.99)));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> TrackingUtlis.checkAmount(BigDecimal.valueOf(-0.01)));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> TrackingUtlis.checkAmount(BigDecimal.ZERO));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new Transaction.Builder("Negative transaction", BigDecimal.valueOf(-88)).build());
+    }
+
+    // ========================================
+    // CATEGORY HIERARCHY TESTS
+    // ========================================
+
+    @Test
     public void testing_categories_hierarchy() {
-        Category categoryOne = new Category("Subcriptions", "Test 3", BigDecimal.valueOf(20));
-        Category categoryTwo = new Category("Netflix", "Sub category of subcriptions", BigDecimal.TEN);
+        Category categoryOne = new Category("Subscriptions", "Test 3", DEFAULT_BUDGET);
+        Category categoryTwo = new Category("Netflix", "Sub category of subscriptions", DEFAULT_BUDGET);
+
         categoryTwo.setParent(categoryOne);
         categoryOne.setParent(categoryTwo); // cycle prevention check
 
@@ -48,7 +70,7 @@ public class ExampleUnitTest {
     @Test
     public void testing_categories_hierarchy_basic() {
         Category parent = new Category("Subscriptions", "Main category", DEFAULT_BUDGET);
-        Category child = new Category("Netflix", "Streaming sub", BigDecimal.TEN);
+        Category child = new Category("Netflix", "Streaming sub", DEFAULT_BUDGET);
 
         child.setParent(parent);
 
@@ -113,7 +135,7 @@ public class ExampleUnitTest {
         Category child = new Category("Child", "", DEFAULT_BUDGET);
 
         child.setParent(oldParent);
-        child.setParent(newParent); // re-parenting
+        child.setParent(newParent);
 
         assertEquals(newParent, child.getParent());
         assertFalse(child.isDescendantOf(oldParent));
@@ -131,10 +153,14 @@ public class ExampleUnitTest {
     @Test
     public void testing_categories_selfParent_prevention() {
         Category cat = new Category("Self", "", DEFAULT_BUDGET);
-        cat.setParent(cat); // should not allow self-parent
+        cat.setParent(cat);
 
         assertNull(cat.getParent());
     }
+
+    // ========================================
+    // MIXED: TRANSACTIONS + CATEGORIES
+    // ========================================
 
     @Test
     public void testing_total_with_sub_of_sub() {
@@ -194,6 +220,10 @@ public class ExampleUnitTest {
         assertEquals(BigDecimal.ZERO, root.findTotal(false));
     }
 
+    // ========================================
+    // BUDGET TESTS
+    // ========================================
+
     @Test
     public void testing_minimum_budget_handling() {
         Category root = new Category("Root", "", DEFAULT_BUDGET);
@@ -203,8 +233,6 @@ public class ExampleUnitTest {
         assertEquals(BigDecimal.ONE, root.getBudget());
         assertEquals(BigDecimal.ONE, root.determineMinimumBudget());
     }
-
-    // ... (the rest of your budget tests updated similarly)
 
     @Test
     public void testing_minimum_budget_with_multiple_children() {
@@ -224,8 +252,71 @@ public class ExampleUnitTest {
     }
 
     @Test
+    public void testing_minimum_budget_deep_hierarchy() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET);
+        Category l1 = new Category("L1", "", BigDecimal.valueOf(5));
+        Category l2 = new Category("L2", "", BigDecimal.valueOf(10));
+        Category l3 = new Category("L3", "", BigDecimal.valueOf(15));
+
+        l1.setParent(root);
+        l2.setParent(l1);
+        l3.setParent(l2);
+
+        BigDecimal expected = BigDecimal.valueOf(15);
+
+        assertEquals(expected, root.getBudget());
+        assertEquals(expected, root.determineMinimumBudget());
+    }
+
+    @Test
+    public void testing_setBudget_respectsMinimum() {
+        Category parent = new Category("Parent", "", DEFAULT_BUDGET);
+        Category child = new Category("Child", "", BigDecimal.valueOf(25.50));
+        child.setParent(parent);
+
+        parent.setBudget(BigDecimal.valueOf(10));
+
+        assertEquals(BigDecimal.valueOf(25.50), parent.getBudget());
+    }
+
+    @Test
+    public void testing_setBudget_aboveMinimum() {
+        Category parent = new Category("Parent", "", DEFAULT_BUDGET);
+        Category child = new Category("Child", "", BigDecimal.valueOf(20));
+        child.setParent(parent);
+
+        parent.setBudget(BigDecimal.valueOf(50));
+
+        assertEquals(BigDecimal.valueOf(50), parent.getBudget());
+    }
+
+    @Test
+    public void testing_minimumBudget_afterAddingNewChild() {
+        Category root = new Category("Root", "", BigDecimal.valueOf(100));
+        Category child1 = new Category("Child1", "", BigDecimal.valueOf(30));
+        child1.setParent(root);
+
+        Category child2 = new Category("Child2", "", BigDecimal.valueOf(80));
+        child2.setParent(root);
+
+        assertEquals(BigDecimal.valueOf(110), root.getBudget());
+    }
+
+    @Test
+    public void testing_minimumBudget_noChildren() {
+        Category alone = new Category("Alone", "", DEFAULT_BUDGET);
+
+        assertEquals(DEFAULT_BUDGET, alone.getBudget());
+        assertEquals(BigDecimal.ZERO, alone.determineMinimumBudget());
+    }
+
+    // ========================================
+    // GET DETAILS TESTS
+    // ========================================
+
+    @Test
     public void testing_getDetails_noChildren() {
-        Category category = new Category("Netflix", "Streaming subscription", BigDecimal.valueOf(15.99));
+        Category category = new Category("Netflix", "Streaming subscription", DEFAULT_BUDGET);
 
         String details = category.getDetails();
 
@@ -234,5 +325,76 @@ public class ExampleUnitTest {
         assertTrue(details.contains("Sub Categories: []"));
     }
 
-    // ... (other getDetails tests remain the same)
+    @Test
+    public void testing_getDetails_withChildren() {
+        Category parent = new Category("Subscriptions", "All subs", DEFAULT_BUDGET);
+        Category netflix = new Category("Netflix", "Video", DEFAULT_BUDGET);
+        Category spotify = new Category("Spotify", "Music", DEFAULT_BUDGET);
+
+        netflix.setParent(parent);
+        spotify.setParent(parent);
+
+        String details = parent.getDetails();
+
+        assertTrue(details.contains("Name: Subscriptions"));
+        assertTrue(details.contains("Description: All subs"));
+        assertTrue(details.contains("Sub Categories:"));
+        assertTrue(details.contains("Netflix") || details.contains("Spotify"));
+    }
+
+    @Test
+    public void testing_getDetails_emptyDescription() {
+        Category cat = new Category("EmptyDesc", "", DEFAULT_BUDGET);
+
+        String details = cat.getDetails();
+
+        assertTrue(details.contains("Name: EmptyDesc"));
+        assertTrue(details.contains("Description: "));
+        assertTrue(details.contains("Sub Categories: []"));
+    }
+
+    @Test
+    public void testing_getDetails_nullSafety() {
+        Category cat = new Category("Test", null, DEFAULT_BUDGET);
+
+        String details = cat.getDetails();
+        assertNotNull(details);
+        assertTrue(details.contains("Name: Test"));
+    }
+
+
+    @Test
+    public void testing_category_budget_validation_rejectsInvalidAmounts() {
+        // Test 1: Creating category with negative budget
+        assertThrows(IllegalArgumentException.class, () -> {
+            new Category("Invalid Negative", "Test", BigDecimal.valueOf(-10.50));
+        });
+
+        // Test 2: Creating category with zero budget
+        assertThrows(IllegalArgumentException.class, () -> {
+            new Category("Invalid Zero", "Test", BigDecimal.ZERO);
+        });
+
+        // Test 3: Setting negative budget on existing category
+        Category validCategory = new Category("Valid Category", "Test", DEFAULT_BUDGET);
+        assertThrows(IllegalArgumentException.class, () -> {
+            validCategory.setBudget(BigDecimal.valueOf(-5.00));
+        });
+
+        // Test 4: Setting zero budget on existing category
+        assertThrows(IllegalArgumentException.class, () -> {
+            validCategory.setBudget(BigDecimal.ZERO);
+        });
+
+        // Test 5: Creating child with invalid budget should also fail
+        assertThrows(IllegalArgumentException.class, () -> {
+            Category parent = new Category("Parent", "", DEFAULT_BUDGET);
+            Category invalidChild = new Category("Bad Child", "", BigDecimal.valueOf(-1));
+            invalidChild.setParent(parent);
+        });
+
+        // Verify valid category still works normally
+        Category goodCategory = new Category("Good Category", "Test", DEFAULT_BUDGET);
+        assertEquals(DEFAULT_BUDGET, goodCategory.getBudget());
+    }
 }

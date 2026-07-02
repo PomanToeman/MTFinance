@@ -1,19 +1,31 @@
 package com.example.mtfinance.src;
 
 import androidx.annotation.NonNull;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Entity(tableName = "transactions")
 public class Transaction implements Details {
     // instance fields
-    private Long id; // placeholder for now
+    @PrimaryKey(autoGenerate = true)
+    private Long id;
     @NonNull
     private final String name;
     private final String description;
     private final BigDecimal amount;
     @NonNull
     private final LocalDateTime date;
+
+    // for room database
+    public Transaction(@NonNull String name, String description, BigDecimal amount, @NonNull LocalDateTime date) {
+        this.name = name;
+        this.description = description;
+        this.amount = amount;
+        this.date = date;
+    }
 
     // constructor
     private Transaction(Builder build) {
