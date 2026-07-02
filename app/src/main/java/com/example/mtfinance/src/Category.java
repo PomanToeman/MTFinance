@@ -27,7 +27,7 @@ public class Category implements Details {
     private  Category parent = null; // default
 
     // constructor
-    public Category(String name, String description, BigDecimal budget) {
+    public Category(@NonNull String name,  String description, @NonNull BigDecimal budget) {
         TrackingUtlis.checkAmount(budget);
 
         this.name = name;

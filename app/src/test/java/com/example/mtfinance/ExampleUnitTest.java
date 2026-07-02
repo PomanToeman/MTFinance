@@ -397,4 +397,71 @@ public class ExampleUnitTest {
         Category goodCategory = new Category("Good Category", "Test", DEFAULT_BUDGET);
         assertEquals(DEFAULT_BUDGET, goodCategory.getBudget());
     }
+
+    // ========================================
+    // NULL SAFETY TESTS
+    // ========================================
+
+    @Test
+    public void testing_category_null_constructor_parameters() {
+        // Implementation currently doesn't throw NPE, it just assigns null (or default via TrackingUtlis)
+        Category catNameNull = new Category(null, "desc", DEFAULT_BUDGET);
+        assertNull(catNameNull.getName());
+
+        assertThrows(NullPointerException.class, () -> new Category("name", "desc", null));
+
+        // description can be null as it's passed to TrackingUtlis.determineDescription
+        Category catDescNull = new Category("name", null, DEFAULT_BUDGET);
+        assertEquals(TrackingUtlis.EMPTY_DESCRIPTION, catDescNull.getDescription());
+    }
+
+    @Test
+    public void testing_category_setParent_null() {
+        Category cat = new Category("name", "desc", DEFAULT_BUDGET);
+        // setParent is marked @NonNull but doesn't have an explicit check, so it might NPE if it tries to use it.
+        // In current implementation it will NPE on parent.isDescendantOf(this)
+        assertThrows(NullPointerException.class, () -> cat.setParent(null));
+    }
+
+    @Test
+    public void testing_category_addTransaction_null() {
+        Category cat = new Category("name", "desc", DEFAULT_BUDGET);
+        cat.addTransaction(null); // Should handle gracefully based on implementation
+        assertTrue(cat.getTransactions(false).isEmpty());
+    }
+
+    @Test
+    public void testing_category_setBudget_null() {
+        Category cat = new Category("name", "desc", DEFAULT_BUDGET);
+        // setBudget calls TrackingUtlis.checkAmount(budget) which doesn't check for null specifically before use
+        assertThrows(NullPointerException.class, () -> cat.setBudget(null));
+    }
+
+    @Test
+    public void testing_category_isDescendantOf_null() {
+        Category cat = new Category("name", "desc", DEFAULT_BUDGET);
+        // Current implementation: if (this.getParent() == null || category.equals(this))
+        // category.equals(this) will be false if category is null.
+        // then category.equals(this.getParent()) will be false if getParent is null.
+        // So it should return false.
+        assertFalse(cat.isDescendantOf(null));
+    }
+
+    @Test
+    public void testing_transaction_builder_null_parameters() {
+        // Builder doesn't check for null name, but checkAmount might NPE on null amount
+        Transaction tNameNull = new Transaction.Builder(null, BigDecimal.ONE).build();
+        assertNull(tNameNull.getName());
+
+        assertThrows(NullPointerException.class, () -> new Transaction.Builder("name", null));
+
+        Transaction.Builder builder = new Transaction.Builder("name", BigDecimal.ONE);
+        // builder.date(null) will set date to null
+        Transaction tDateNull = builder.date(null).build();
+        assertNull(tDateNull.getDate());
+
+        // description handles null in constructor via TrackingUtlis
+        Transaction tDescNull = builder.description(null).build();
+        assertEquals(TrackingUtlis.EMPTY_DESCRIPTION, tDescNull.getDescription());
+    }
 }

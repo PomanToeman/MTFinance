@@ -15,14 +15,16 @@ public class Transaction implements Details {
     @NonNull
     private final String name;
     private final String description;
+    @NonNull
     private final BigDecimal amount;
     @NonNull
     private final LocalDateTime date;
 
     // for room database
-    public Transaction(@NonNull String name, String description, BigDecimal amount, @NonNull LocalDateTime date) {
+    public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date) {
+        TrackingUtlis.checkAmount(amount);
         this.name = name;
-        this.description = description;
+        this.description = TrackingUtlis.determineDescription(description);
         this.amount = amount;
         this.date = date;
     }
@@ -74,11 +76,13 @@ public class Transaction implements Details {
     public static class Builder {
 
         private String description = TrackingUtlis.EMPTY_DESCRIPTION;
+        @NonNull
         private final BigDecimal amount; // required
+        @NonNull
         private final String name; // required
         private LocalDateTime date = LocalDateTime.now();
 
-        public Builder(String name, BigDecimal amount) {
+        public Builder(@NonNull String name, @NonNull BigDecimal amount) {
             TrackingUtlis.checkAmount(amount); // cannot be zero or below
             this.amount = amount;
             this.name = name;
