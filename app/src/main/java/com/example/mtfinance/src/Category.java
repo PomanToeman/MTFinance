@@ -5,7 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Category {
-    public static final Category ROOT_CATEGORY = new Category("General category", "The root of all categories, meant for general tracking", BigDecimal.ONE);
+
 
     // instance field
     private final String name;
@@ -24,20 +24,24 @@ public class Category {
         this.transactions = new HashSet<>();
         this.children = new HashSet<>();
 
-        if (!this.equals(ROOT_CATEGORY)) {
-            this.parent = ROOT_CATEGORY;
-        }
+
     }
 
     public Category getParent() {
         return parent;
     }
 
+    public BigDecimal getBudget() {
+        return budget;
+    }
+
     public void setParent(Category parent) {
-        if (this.equals(ROOT_CATEGORY)) {
+        if (this.equals(parent)) {
             return;
         }
-        if (parent != null && !parent.isDescendentOf(this)) {
+
+        // parent can not already be a descendant nor an ancestor.
+        if (parent != null && !parent.isDescendantOf(this) && !this.isDescendantOf(parent)) {
             parent.addChild(this);
             this.parent = parent;
 
@@ -49,11 +53,45 @@ public class Category {
     private void addChild(Category child) {
         // private to disallow infinite loop.
 
-        // Child must not already be a descendant or ancestor.
-        if (!child.isDescendentOf(this) && !this.isDescendentOf(child)) {
+        // Child must not already be a descendant nor ancestor.
+        if (!child.isDescendantOf(this) && !this.isDescendantOf(child)) {
             children.add(child);
         }
 
+        // checks if budget is above
+        determineMinimumBudget();
+
+    }
+
+    public Set<Category> getChildren(boolean includeGrand) {
+        Set<Category> copy = new HashSet<>(children); // fresh copy
+
+        if (includeGrand) {
+            for (Category child : children) {
+                copy.addAll(child.getChildren(true));
+            }
+        }
+        return copy;
+    }
+
+    public BigDecimal determineMinimumBudget() {
+        // determine the absolute minimum budget considering sub categories' budgets, will set to that budget if current is below.
+        BigDecimal total = BigDecimal.valueOf(0);
+        for (Category child : getChildren(false)) { // this assumes children budgets are already at minimum budget
+            total = total.add(child.getBudget());
+        }
+
+        // will automatically set budget if current budget is below minimum
+        if (budget.compareTo(total) < 0) {
+            this.budget = total;
+            // since this budget has changed
+            if (parent != null) {
+                parent.determineMinimumBudget();
+            }
+        }
+
+
+        return total;
     }
 
 
@@ -91,10 +129,20 @@ public class Category {
 
     public void setBudget(BigDecimal budget) {
         TrackingUtlis.checkAmount(budget);
-        this.budget = budget;
+        BigDecimal minimum = determineMinimumBudget();
+
+        if (budget.compareTo(minimum) > 0) {
+            this.budget = budget;
+
+            // recheck if parent budget is now below minimum.
+            if (parent != null) {
+                parent.determineMinimumBudget();
+            }
+        }
+
     }
 
-    public boolean isDescendentOf(Category category) {
+    public boolean isDescendantOf(Category category) {
         if (this.getParent() == null || category.equals(this)) {
             return false;
         }
@@ -103,7 +151,7 @@ public class Category {
         }
 
 
-        return this.getParent().isDescendentOf(category); // recursive.
+        return this.getParent().isDescendantOf(category); // recursive.
     }
 
 }
