@@ -8,7 +8,7 @@ import java.util.List;
 
 public class CategoryRepository {
 
-    public static final List<Category> defaultCategories = new ArrayList<>();
+    public final List<Category> defaultCategories = new ArrayList<>();
 
     private final CategoryDao categoryDao;
 

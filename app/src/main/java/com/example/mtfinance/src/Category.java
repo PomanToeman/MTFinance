@@ -3,18 +3,25 @@ package com.example.mtfinance.src;
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.Ignore;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
+import androidx.room.ColumnInfo;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
-@Entity(tableName = "categories")
+@Entity(
+        tableName = "categories",
+        indices = {@Index(value = {"name"}, unique = true)} )
 public class Category implements Details {
 
 
     // instance fields
     @PrimaryKey (autoGenerate = true)
     private long id;
+
+    @NonNull
+    @ColumnInfo(name = "name", collate = ColumnInfo.NOCASE)
     private final String name;
     private final String description;
     @Ignore
