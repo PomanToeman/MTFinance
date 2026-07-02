@@ -31,6 +31,12 @@ public class Category implements Details {
     }
 
     // setters/adders
+
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
     public void setParent(@NonNull Category parent) {
         if (this.equals(parent)) {
             return;
@@ -82,15 +88,26 @@ public class Category implements Details {
 
     // getters
 
+
+    public String getName() {
+        return name;
+    }
+
     public Category getParent() {
         return parent;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public BigDecimal getBudget() {
         return budget;
     }
 
-
+    public long getId() {
+        return id;
+    }
 
     public Set<Category> getChildren(boolean includeGrand) {
         Set<Category> copy = new HashSet<>(children); // fresh copy
@@ -172,7 +189,7 @@ public class Category implements Details {
     @NonNull
     @Override
     public String toString() {
-        return name;
+        return this.getName();
     }
 
 }
