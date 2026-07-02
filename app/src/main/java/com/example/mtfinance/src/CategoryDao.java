@@ -12,6 +12,7 @@ public interface CategoryDao {
     @Insert
     long insert(Category category);
 
+
     @Query("SELECT * FROM categories")
     List<Category> getAll();
 

@@ -27,7 +27,11 @@ public class MainActivity extends AppCompatActivity {
         Transaction transaction = new Transaction.Builder("Groceries", BigDecimal.valueOf(1.0)).description("Shopping for bananas").build();
         Category category = new Category("Groceries", "Grocery shopping", BigDecimal.TEN);
         Category categoryTwo = new Category("Bananas", "Grocery shopping", BigDecimal.TEN);
+
+
         categoryTwo.setParent(category);
+
+
 
         TextView textview = findViewById(R.id.textView);
         textview.setText(category.getDetails());

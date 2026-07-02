@@ -10,4 +10,7 @@ import java.util.List;
 public interface TransactionDao {
     @Insert
     long insert(Transaction transaction);
+
+    @Query("SELECT * FROM transactions")
+    List<Transaction> getAll();
 }
