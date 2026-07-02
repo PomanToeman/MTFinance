@@ -464,4 +464,52 @@ public class ExampleUnitTest {
         Transaction tDescNull = builder.description(null).build();
         assertEquals(TrackingUtlis.EMPTY_DESCRIPTION, tDescNull.getDescription());
     }
+    
+    
+    
+    // =======================================
+    // TRANSACTION DUPLICATES
+    // ========================================
+
+    @Test
+    public void testing_total_with_duplicate_transaction_in_root_and_child() {
+        Category root = new Category("Root", "Parent category", DEFAULT_BUDGET);
+        Category child = new Category("Child", "Sub category", DEFAULT_BUDGET);
+        child.setParent(root);
+
+        Transaction sharedTransaction = new Transaction.Builder("Shared", BigDecimal.valueOf(50.0)).build();
+
+        // Add the same transaction instance to both
+        root.addTransaction(sharedTransaction);
+        child.addTransaction(sharedTransaction);
+
+        // When includeSub is true, it should only count once because it's a Set internally
+        assertEquals(BigDecimal.valueOf(50.0), root.findTotal(true));
+        // Individually they should still have it
+        assertEquals(BigDecimal.valueOf(50.0), root.findTotal(false));
+        assertEquals(BigDecimal.valueOf(50.0), child.findTotal(false));
+    }
+
+    @Test
+    public void testing_total_with_duplicate_transaction_in_deep_hierarchy() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET);
+        Category level1 = new Category("L1", "", DEFAULT_BUDGET);
+        Category level2 = new Category("L2", "", DEFAULT_BUDGET);
+
+        level1.setParent(root);
+        level2.setParent(level1);
+
+        Transaction shared = new Transaction.Builder("Deep Shared", BigDecimal.valueOf(100.0)).build();
+        Transaction unique = new Transaction.Builder("Unique", BigDecimal.valueOf(25.0)).build();
+
+        root.addTransaction(shared);
+        level1.addTransaction(shared);
+        level2.addTransaction(shared);
+        level2.addTransaction(unique);
+
+        // Total should be 100 (shared once) + 25 (unique) = 125
+        assertEquals(BigDecimal.valueOf(125.0), root.findTotal(true));
+        assertEquals(BigDecimal.valueOf(100.0), root.findTotal(false));
+        assertEquals(BigDecimal.valueOf(125.0), level1.findTotal(true));
+    }
 }
