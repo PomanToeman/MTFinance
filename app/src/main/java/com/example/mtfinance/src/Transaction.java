@@ -12,12 +12,13 @@ public class Transaction implements Details {
     private final String name;
     private final String description;
     private final BigDecimal amount;
+    @NonNull
     private final LocalDateTime date;
 
     // constructor
     private Transaction(Builder build) {
         this.id = null;
-        this.description = build.description;
+        this.description = TrackingUtlis.determineDescription(build.description);
         this.date = build.date;
         this.amount = build.amount;
         this.name = build.name;
@@ -60,7 +61,7 @@ public class Transaction implements Details {
 
     public static class Builder {
 
-        private String description = "No description";
+        private String description = TrackingUtlis.EMPTY_DESCRIPTION;
         private final BigDecimal amount; // required
         private final String name; // required
         private LocalDateTime date = LocalDateTime.now();

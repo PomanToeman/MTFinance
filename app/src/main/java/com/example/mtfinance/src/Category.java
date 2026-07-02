@@ -21,8 +21,11 @@ public class Category implements Details {
 
     // constructor
     public Category(String name, String description, BigDecimal budget) {
+        TrackingUtlis.checkAmount(budget);
+
         this.name = name;
-        this.description = description;
+
+        this.description = TrackingUtlis.determineDescription(description);
         this.budget = budget;
         this.transactions = new HashSet<>();
         this.children = new HashSet<>();
@@ -112,11 +115,13 @@ public class Category implements Details {
     public Set<Category> getChildren(boolean includeGrand) {
         Set<Category> copy = new HashSet<>(children); // fresh copy
 
+        // adds ALL grandchildren and further.
         if (includeGrand) {
             for (Category child : children) {
                 copy.addAll(child.getChildren(true));
             }
         }
+
         return copy;
     }
 
@@ -137,12 +142,14 @@ public class Category implements Details {
         }
 
 
-        return total;
+        return total; // can be used for comparison
     }
 
 
     public Set<Transaction> getTransactions(boolean includeSub) {
         Set<Transaction> totalTransactions = new HashSet<>(transactions);
+
+        // include all children and further transactions (should ignore duplicates)
         if (includeSub) {
             for (Category child : children) {
                 totalTransactions.addAll(child.getTransactions(true));
