@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey;
 import androidx.room.ColumnInfo;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 @Entity(
@@ -138,6 +139,13 @@ public class Category implements Details {
             transactions.add(transaction);
             transactionIds.add(transaction.getId());
         }
+    }
+
+    public void addTransactions(@NonNull Collection<Transaction> transactions) {
+        if (transactions.contains(null)) {
+            throw new IllegalArgumentException("Transactions cannot be null");
+        }
+        this.transactions.addAll(transactions);
     }
 
 
@@ -275,5 +283,20 @@ public class Category implements Details {
     public String toString() {
         return this.getName();
     }
+
+    @Override
+    public int hashCode() {
+        return id.intValue();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof Category) {
+            Category other = (Category) o;
+            return other.getId().equals(this.getId());
+        }
+        return false;
+    }
+
 
 }

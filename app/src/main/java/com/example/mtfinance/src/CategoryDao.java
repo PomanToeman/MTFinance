@@ -30,4 +30,7 @@ public interface CategoryDao {
 
     @Update
     void updateAll(Collection<Category> categories);
+
+    @Query("SELECT * FROM categories WHERE parent_id = :id")
+    List<Category> getByParentId(Long id);
 }

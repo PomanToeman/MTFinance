@@ -71,8 +71,24 @@ public class Transaction implements Details {
         return String.format("Name: %s\n Amount: %s\n desc: %s \n date: %s", name, amount, description, date);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof Transaction) {
+            Transaction other = (Transaction) o;
+            return other.getId().equals(this.getId());
+        }
+        return false;
+    }
 
+    @Override
+    public String toString() {
+        return this.getName();
+    }
 
+    @Override
+    public int hashCode() {
+        return id.intValue();
+    }
 
     public static class Builder {
 
@@ -106,5 +122,8 @@ public class Transaction implements Details {
             this.date = date;
             return this;
         }
+
+
+
     }
 }

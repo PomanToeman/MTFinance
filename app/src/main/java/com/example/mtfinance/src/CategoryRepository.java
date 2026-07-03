@@ -4,6 +4,8 @@ import androidx.annotation.NonNull;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -41,14 +43,14 @@ public class CategoryRepository {
     }
 
     public Category getGeneralCategory() {
-        return categoryDao.getById(1L);
+        return getCategoryRestored(root); // general category.
     }
 
     public List<Category> getAllCategories() {
         return categoryDao.getAll();
     }
 
-    public Category getCategoryById(long id) {
+    public Category getCategoryById(Long id) {
         return categoryDao.getById(id);
     }
 
@@ -72,11 +74,8 @@ public class CategoryRepository {
         Long parentId = categoryInDb.getParentId();
         Set<Category> children = categoryToDelete.getChildren(false);
 
-
-        for (Category child : children) {
-            child.setParentId(1L);
-            categoryDao.update(child);         // save to DB//
-        }
+        categoryToDelete.makeChildrenCongruent(); // make children at same level as parent
+        updateAllCategories(children); // save new children to Db
 
         categoryDao.delete(categoryToDelete);
     }
@@ -92,6 +91,48 @@ public class CategoryRepository {
             }
         }
     }
+
+
+    public void updateCategory(@NonNull Category category) {
+        categoryDao.update(category);
+    }
+
+    public void updateAllCategories(@NonNull Collection<Category> categories) {
+        categoryDao.updateAll(categories);
+    }
+
+    public Category getCategoryByIdRestored(Long id) {
+        return getCategoryByIdRestoredInternal(id, new HashSet<>());
+    }
+
+    private Category getCategoryByIdRestoredInternal(Long id, Set<Long> visited) {
+        if (id == null || visited.contains(id)) return null;
+        visited.add(id);
+
+        Category category = categoryDao.getById(id);
+        if (category != null) {
+            Category parent = getCategoryByIdRestoredInternal(category.getParentId(), visited);
+            if (parent != null) {
+                category.setParent(parent);
+            }
+
+            // restore all children.
+            for (Category child : categoryDao.getByParentId(category.getId())) {
+                getCategoryByIdRestoredInternal(child.getId(), visited); // visited is passed to disallow stack overflow.
+            }
+        }
+
+        return category;
+    }
+
+    public Category getCategoryRestored(Category category) {
+        return getCategoryByIdRestored(category.getId()); // this will create a copy
+    }
+
+
+
+
+
 
 
 

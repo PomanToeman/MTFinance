@@ -3,6 +3,7 @@ package com.example.mtfinance.src;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -228,5 +229,41 @@ public class CategoryRepositoryTest {
         assertTrue(retrievedIds.contains(101L));
         assertTrue(retrievedIds.contains(202L));
         assertTrue(retrievedIds.contains(303L));
+    }
+
+    @Test
+    public void testGetCategoryByIdRestored() {
+        // Setup hierarchy: Root -> Parent -> Child
+        Category root = repository.getGeneralCategory();
+        Category parent = new Category("Parent", "Parent desc", BigDecimal.valueOf(200));
+        Category child = new Category("Child", "Child desc", BigDecimal.valueOf(50));
+
+        parent.setParent(root);
+        child.setParent(parent);
+
+        repository.insert(child); // Inserts parent recursively
+
+        // Fetch using the standard Room getById - parent/children will be null/empty in memory
+        Category flatChild = repository.getCategoryById(child.getId());
+        assertNotNull(flatChild);
+        assertNull("Standard Room fetch should not have parent object", flatChild.getParent());
+        assertTrue("Standard Room fetch should not have children", flatChild.getChildren(false).isEmpty());
+
+        // Fetch using Restored method
+        Category restoredChild = repository.getCategoryByIdRestored(child.getId());
+        assertNotNull(restoredChild);
+        
+        // Verify Parent is restored
+        assertNotNull("Restored fetch should have parent object", restoredChild.getParent());
+        assertEquals("Parent name should match", "Parent", restoredChild.getParent().getName());
+        
+        // Verify Grandparent (Root) is restored
+        assertNotNull("Restored fetch should have grandparent object", restoredChild.getParent().getParent());
+        assertEquals("Grandparent should be General Category", root.getName(), restoredChild.getParent().getParent().getName());
+
+        // Verify Children restoration (check Parent's children)
+        Category restoredParent = restoredChild.getParent();
+        assertFalse("Restored parent should have children", restoredParent.getChildren(false).isEmpty());
+        assertTrue("Restored parent should contain the child", restoredParent.getChildren(false).contains(restoredChild));
     }
 }
