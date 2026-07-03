@@ -26,6 +26,7 @@ public class Category implements Details {
     private final String description;
     @Ignore
     private final Set<Transaction> transactions;
+    private Set<Long> transactionIds = null;
     private BigDecimal budget; // assume monthly budget
     @ColumnInfo(name = "parent_id")
     private Long parentId = null; // foreign key
@@ -45,6 +46,7 @@ public class Category implements Details {
         this.description = TrackingUtlis.determineDescription(description);
         this.budget = budget;
         this.transactions = new HashSet<>();
+        this.transactionIds = new HashSet<>();
         this.children = new HashSet<>();
 
 
@@ -53,11 +55,15 @@ public class Category implements Details {
     // setters/adders
 
 
-    public void setId(Long id) {
+    public void setId(@NonNull Long id) {
         this.id = id;
     }
 
-    public void setParentId(Long parentId) {
+    public void setTransactionIds(@NonNull Set<Long> transactionIds) {
+        this.transactionIds = transactionIds;
+    }
+
+    public void setParentId(@NonNull Long parentId) {
         this.parentId = parentId;
     }
 
@@ -92,6 +98,7 @@ public class Category implements Details {
     public void removeTransaction(Transaction transaction) {
         if (transaction != null) {
             transactions.remove(transaction);
+            transactionIds.remove(transaction.getId());
         }
     }
 
@@ -129,6 +136,7 @@ public class Category implements Details {
     public void addTransaction(Transaction transaction) {
         if (transaction != null) {
             transactions.add(transaction);
+            transactionIds.add(transaction.getId());
         }
     }
 
@@ -175,6 +183,10 @@ public class Category implements Details {
 
     public Long getId() {
         return id;
+    }
+
+    public Set<Long> getTransactionIds() {
+        return new HashSet<>(transactionIds);
     }
 
     public Set<Category> getChildren(boolean includeGrand) {

@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Entity(tableName = "transactions")
 public class Transaction implements Details {
     // instance fields
-    @PrimaryKey(autoGenerate = true)
+    @PrimaryKey(autoGenerate = false)
     private Long id;
     @NonNull
     private final String name;
@@ -23,6 +23,7 @@ public class Transaction implements Details {
     // for room database
     public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date) {
         TrackingUtlis.checkAmount(amount);
+        this.id = TrackingUtlis.getNextTransactionCounterId();
         this.name = name;
         this.description = TrackingUtlis.determineDescription(description);
         this.amount = amount;
@@ -31,7 +32,7 @@ public class Transaction implements Details {
 
     // constructor
     private Transaction(Builder build) {
-        this.id = null;
+        this.id = TrackingUtlis.getNextTransactionCounterId();
         this.description = TrackingUtlis.determineDescription(build.description);
         this.date = build.date;
         this.amount = build.amount;

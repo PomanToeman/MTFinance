@@ -17,8 +17,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @RunWith(AndroidJUnit4.class)
 public class CategoryRepositoryTest {
@@ -200,5 +202,31 @@ public class CategoryRepositoryTest {
         assertEquals(repository.getGeneralCategory().getId().longValue(),  child.getParentId().longValue());
 
 
+    }
+
+    @Test
+    public void testTransactionIdSetConversion() {
+        Category cat = new Category("ConversionTest", "Desc", BigDecimal.valueOf(100));
+
+        HashSet<Long> ids = new HashSet<>();
+        ids.add(101L);
+        ids.add(202L);
+        ids.add(303L);
+        cat.setTransactionIds(ids);
+
+        repository.insert(cat);
+
+        // Retrieve from database
+        Category retrieved = null;
+        for (Category c : repository.getAllCategories()) {
+            if (c.getName().equals("ConversionTest")) retrieved = c;
+        }
+
+        assertNotNull(retrieved);
+        Set<Long> retrievedIds = retrieved.getTransactionIds();
+        assertEquals(3, retrievedIds.size());
+        assertTrue(retrievedIds.contains(101L));
+        assertTrue(retrievedIds.contains(202L));
+        assertTrue(retrievedIds.contains(303L));
     }
 }
