@@ -9,6 +9,9 @@ import java.time.LocalDateTime;
 
 @Entity(tableName = "transactions")
 public class Transaction implements Details {
+    public enum TransactionType {
+        EXPENSE, INCOME;
+    }
     // instance fields
     @PrimaryKey(autoGenerate = false)
     private Long id;
@@ -19,15 +22,18 @@ public class Transaction implements Details {
     private final BigDecimal amount;
     @NonNull
     private final LocalDateTime date;
+    @NonNull
+    private final TransactionType type;
 
     // for room database
-    public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date) {
+    public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date, @NonNull TransactionType type) {
         TrackingUtlis.checkAmount(amount);
         this.id = TrackingUtlis.getNextTransactionCounterId();
         this.name = name;
         this.description = TrackingUtlis.determineDescription(description);
         this.amount = amount;
         this.date = date;
+        this.type = type;
     }
 
     // constructor
@@ -37,6 +43,7 @@ public class Transaction implements Details {
         this.date = build.date;
         this.amount = build.amount;
         this.name = build.name;
+        this.type = build.type;
 
     }
 
@@ -51,10 +58,12 @@ public class Transaction implements Details {
     }
 
 
+    @NonNull
     public LocalDateTime getDate() {
         return date;
     }
 
+    @NonNull
     public String getName() {
         return name;
     }
@@ -62,13 +71,18 @@ public class Transaction implements Details {
     public String getDescription() {
         return description;
     }
+    @NonNull
     public BigDecimal getAmount() {
         return amount;
+    }
+    @NonNull
+    public TransactionType getType() {
+        return type;
     }
 
     @Override
     public String getDetails() {
-        return String.format("Name: %s\n Amount: %s\n desc: %s \n date: %s", name, amount, description, date);
+        return String.format("Name: %s (%s)\n Amount: %s\n desc: %s \n date: %s", name, type, amount, description, date);
     }
 
     @Override
@@ -80,6 +94,7 @@ public class Transaction implements Details {
         return false;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return this.getName();
@@ -98,13 +113,14 @@ public class Transaction implements Details {
         @NonNull
         private final String name; // required
         private LocalDateTime date = LocalDateTime.now();
+        private TransactionType type = TransactionType.EXPENSE;
 
         public Builder(@NonNull String name, @NonNull BigDecimal amount) {
             TrackingUtlis.checkAmount(amount); // cannot be zero or below
             this.amount = amount;
             this.name = name;
 
-            // TODO add functionality that considers transactions like transfers and income (which would be negative).
+
         }
 
         public Transaction build() {
@@ -122,6 +138,12 @@ public class Transaction implements Details {
             this.date = date;
             return this;
         }
+
+        public Builder type(TransactionType type) {
+            this.type = type;
+            return this;
+        }
+
 
 
 

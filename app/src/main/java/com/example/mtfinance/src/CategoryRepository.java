@@ -101,15 +101,17 @@ public class CategoryRepository {
         categoryDao.updateAll(categories);
     }
 
-    public Category getCategoryByIdRestored(Long id) {
+    public Category getCategoryByIdRestored(@NonNull Long id) {
         return getCategoryByIdRestoredInternal(id, new HashSet<>());
     }
 
     private Category getCategoryByIdRestoredInternal(Long id, Set<Long> visited) {
         if (id == null || visited.contains(id)) return null;
-        visited.add(id);
+        visited.add(id); // to track if categories has already been restored.
+
 
         Category category = categoryDao.getById(id);
+        // restore all parents
         if (category != null) {
             Category parent = getCategoryByIdRestoredInternal(category.getParentId(), visited);
             if (parent != null) {
@@ -118,14 +120,14 @@ public class CategoryRepository {
 
             // restore all children.
             for (Category child : categoryDao.getByParentId(category.getId())) {
-                getCategoryByIdRestoredInternal(child.getId(), visited); // visited is passed to disallow stack overflow.
+                getCategoryByIdRestoredInternal(child.getId(), visited);
             }
         }
 
         return category;
     }
 
-    public Category getCategoryRestored(Category category) {
+    public Category getCategoryRestored(@NonNull Category category) {
         return getCategoryByIdRestored(category.getId()); // this will create a copy
     }
 
