@@ -20,4 +20,12 @@ public class TransactionRepository {
     public Transaction getById(Long id) {
         return transactionDao.getById(id);
     }
+
+    public List<Transaction> getByIds(java.util.Collection<Long> ids) {
+        return transactionDao.getByIds(ids);
+    }
+
+    public void update(Transaction transaction) {
+        transactionDao.update(transaction);
+    }
 }

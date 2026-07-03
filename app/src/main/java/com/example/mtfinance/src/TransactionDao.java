@@ -3,6 +3,7 @@ package com.example.mtfinance.src;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Update;
 
 import java.util.List;
 
@@ -19,4 +20,7 @@ public interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE id IN (:ids)")
     List<Transaction> getByIds(java.util.Collection<Long> ids);
+
+    @Update
+    void update(Transaction transaction);
 }
