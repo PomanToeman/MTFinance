@@ -17,8 +17,8 @@ public class Category implements Details {
 
 
     // instance fields
-    @PrimaryKey (autoGenerate = true)
-    private long id;
+    @PrimaryKey (autoGenerate = false)
+    private Long id;
 
     @NonNull
     @ColumnInfo(name = "name", collate = ColumnInfo.NOCASE)
@@ -27,6 +27,8 @@ public class Category implements Details {
     @Ignore
     private final Set<Transaction> transactions;
     private BigDecimal budget; // assume monthly budget
+    @ColumnInfo(name = "parent_id")
+    private Long parentId = null; // foreign key
 
     @Ignore
     private final Set<Category> children;
@@ -36,6 +38,8 @@ public class Category implements Details {
     // constructor
     public Category(@NonNull String name,  String description, @NonNull BigDecimal budget) {
         TrackingUtlis.checkAmount(budget);
+
+        this.id = TrackingUtlis.getNextCategoryCounterId();
 
         this.name = name;
         this.description = TrackingUtlis.determineDescription(description);
@@ -49,9 +53,14 @@ public class Category implements Details {
     // setters/adders
 
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
+    }
+
 
     public void setParent(@NonNull Category parent) {
         if (this.equals(parent)) {
@@ -62,9 +71,22 @@ public class Category implements Details {
         if (!parent.isDescendantOf(this) && !this.isDescendantOf(parent)) {
             parent.addChild(this);
             this.parent = parent;
+            this.parentId = parent.getId();
+
+            return;
 
         }
 
+        if (this.isDescendantOf(parent)) {
+            this.getParent().removeChild(this);
+            this.setParentInternal(parent);
+        }
+
+    }
+
+    private void removeChild(@NonNull Category child) {
+
+        children.remove(child);
     }
 
     public void removeTransaction(Transaction transaction) {
@@ -90,6 +112,7 @@ public class Category implements Details {
             return;
         }
         this.parent = parent;
+        this.parentId = parent.getId();
         parent.addChild(this);
 
     }
@@ -129,6 +152,10 @@ public class Category implements Details {
 
     // getters
 
+    public Long getParentId() {
+        return parentId;
+    }
+
 
     public String getName() {
         return name;
@@ -146,7 +173,7 @@ public class Category implements Details {
         return budget;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 

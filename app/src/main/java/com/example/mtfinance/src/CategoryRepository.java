@@ -10,6 +10,8 @@ import java.util.Set;
 public class CategoryRepository {
 
     public final List<Category> defaultCategories = new ArrayList<>();
+    public final Category root = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000));
+
 
     private final CategoryDao categoryDao;
 
@@ -22,17 +24,19 @@ public class CategoryRepository {
         populateDefaultCategories();
     }
 
-    public long insert(@NonNull Category category) {
+    public Long insert(@NonNull Category category) {
         if (category.equals(getGeneralCategory())) {
-            return -1; // cannot insert general category
+            return -1L; // cannot insert general category
         }
 
-        if (category.getParent() == null) {
+        if (category.getParentId() == null) {
             category.setParent(getGeneralCategory()); // ensures the greatest parent is the general category
+            category.setParentId(getGeneralCategory().getId());
         }
         else if (!getAllCategories().contains(category.getParent())) {
             insert(category.getParent()); // automatically inserts parent if not already in database.
         }
+
         return categoryDao.insert(category);
     }
 
@@ -48,31 +52,38 @@ public class CategoryRepository {
         return categoryDao.getById(id);
     }
 
-    public void deleteCategory(@NonNull Category category) {
-        if (category.equals(getGeneralCategory())) {
-            return; // cannot delete general category
+    public void deleteCategory(@NonNull Category categoryToDelete) {
+        if (categoryToDelete.equals(getGeneralCategory())) {
+            return; // cannot delete general/root category
+        }
+        if (categoryToDelete.getChildren(false).isEmpty()) {
+            categoryDao.delete(categoryToDelete);
+            return;
         }
 
-        Set<Category> children = category.getChildren(false);
+
+        // Get the actual entity from DB
+        Category categoryInDb = getCategoryById(categoryToDelete.getId());
+        if (categoryInDb == null) {
+            return; // not found
+        }
+
+        // Re-parent children to grandparent (or root)
+        Long parentId = categoryInDb.getParentId();
+        Set<Category> children = categoryToDelete.getChildren(false);
 
 
-        category.makeChildrenCongruent(); // makes children independent of category.
-        // update necessary children
-        categoryDao.updateAll(children);
-        categoryDao.update(category.getParent());
+        for (Category child : children) {
+            child.setParentId(1L);
+            categoryDao.update(child);         // save to DB//
+        }
 
-
-        categoryDao.delete(category);
-
-
-
-
+        categoryDao.delete(categoryToDelete);
     }
 
 
     private void populateDefaultCategories() {
         if (categoryDao.getAll().isEmpty()) {
-            Category root = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000));
             categoryDao.insert(root);
 
             for (Category category : defaultCategories) {

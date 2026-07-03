@@ -13,7 +13,7 @@ import java.util.List;
 @Dao
 public interface CategoryDao {
     @Insert
-    long insert(Category category);
+    Long insert(Category category);
 
 
     @Query("SELECT * FROM categories")
