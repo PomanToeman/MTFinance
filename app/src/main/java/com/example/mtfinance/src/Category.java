@@ -25,27 +25,28 @@ public class Category implements Details {
     @ColumnInfo(name = "name", collate = ColumnInfo.NOCASE)
     private final String name;
     private final String description;
-    @Ignore
-    private final Set<Transaction> transactions;
     private Set<Long> transactionIds = null;
-    private BigDecimal budget; // assume monthly budget
+    private BigDecimal monthlyBudget;
     @ColumnInfo(name = "parent_id")
     private Long parentId = null; // foreign key
 
+    // cache fields (need to be restored once extracted from room)
     @Ignore
     private final Set<Category> children;
     @Ignore
-    private  Category parent = null; // default
+    private  Category parent = null;
+    @Ignore
+    private final Set<Transaction> transactions;
 
     // constructor
-    public Category(@NonNull String name,  String description, @NonNull BigDecimal budget) {
-        TrackingUtlis.checkAmount(budget);
+    public Category(@NonNull String name,  String description, @NonNull BigDecimal monthlyBudget) {
+        TrackingUtlis.checkAmount(monthlyBudget);
 
         this.id = TrackingUtlis.getNextCategoryCounterId();
 
         this.name = name;
         this.description = TrackingUtlis.determineDescription(description);
-        this.budget = budget;
+        this.monthlyBudget = monthlyBudget;
         this.transactions = new HashSet<>();
         this.transactionIds = new HashSet<>();
         this.children = new HashSet<>();
@@ -68,13 +69,18 @@ public class Category implements Details {
         this.parentId = parentId;
     }
 
-
+    /**
+     * To set this category as the sub category (child) of a given category (parent) to allow dependence and more accurate tracking.
+     * This is through a tree structure (one parent to many children).
+     * The parent cannot be already be descendant of this category as would break the structure.
+     * if given category is a grandparent or above, this category will move up until it is a child to preserve the structure.
+     * @param parent - the parent to be set for this category (if possible)
+     */
     public void setParent(@NonNull Category parent) {
         if (this.equals(parent)) {
             return;
         }
 
-        // parent can not already be a descendant nor an ancestor.
         if (!parent.isDescendantOf(this) && !this.isDescendantOf(parent)) {
             parent.addChild(this);
             this.parent = parent;
@@ -91,20 +97,27 @@ public class Category implements Details {
 
     }
 
+    /**
+     * Helper method.
+     * @param child
+     */
     private void removeChild(@NonNull Category child) {
-
         children.remove(child);
     }
 
-    public void removeTransaction(Transaction transaction) {
-        if (transaction != null) {
-            transactions.remove(transaction);
-            transactionIds.remove(transaction.getId());
-        }
+    public void removeTransaction(@NonNull Transaction transaction) {
+        transactions.remove(transaction);
+        transactionIds.remove(transaction.getId());
     }
 
+    /**
+     * Meant to make Children (sub-categories) the same level of the parent in the tree structure, so the parent can be safely modified/deleted without
+     * affecting their previous children.
+     * Warning: This should be only be done mainly for deletion. Cannot be undone (without advance moves).
+     *
+     */
     public void makeChildrenCongruent() {
-        // this makes children at the same level as the parent.
+
         if (parent != null) {
             for (Category child : children) {
                 children.remove(child);
@@ -114,8 +127,12 @@ public class Category implements Details {
         }
     }
 
+    /**
+     * This helper method is to set parent while bypassing checks.
+     * @param parent
+     */
     private void setParentInternal(Category parent) {
-        // this for makeChildrenCongruent (bypasses checks)
+
         if (this.equals(parent)) {
             return;
         }
@@ -126,36 +143,43 @@ public class Category implements Details {
     }
 
 
-
+    /**
+     * Helper method. Automatically checks this category's budget as the minimum budget changed.
+     * @param child - the child Category to be added.
+     */
     private void addChild(@NonNull Category child) {
-        // private as your suppose to set parent first.
         children.add(child);
-        // checks if budget is above
         determineMinimumBudget();
 
     }
     public void addTransaction(Transaction transaction) {
         if (transaction != null) {
+
             transactions.add(transaction);
             transactionIds.add(transaction.getId());
+
         }
+
+
     }
 
     public void addTransactions(@NonNull Collection<Transaction> transactions) {
-        if (transactions.contains(null)) {
-            throw new IllegalArgumentException("Transactions cannot be null");
-        }
+        transactions.remove(null);
         this.transactions.addAll(transactions);
     }
 
+    /**
+     * Warning: The budget should be at least above the minimum budget, otherwise it will be ignored.
+     * @param monthlyBudget - the given budget to be set (if above minimum).
+     * @throws IllegalArgumentException if the given budget is invalid amount.
+     */
 
-
-    public void setBudget(BigDecimal budget) {
-        TrackingUtlis.checkAmount(budget);
+    public void setMonthlyBudget(BigDecimal monthlyBudget) throws IllegalArgumentException {
+        TrackingUtlis.checkAmount(monthlyBudget);
         BigDecimal minimum = determineMinimumBudget();
 
-        if (budget.compareTo(minimum) > 0) {
-            this.budget = budget;
+        if (monthlyBudget.compareTo(minimum) > 0) {
+            this.monthlyBudget = monthlyBudget;
 
             // recheck if parent budget is now below minimum.
             if (parent != null) {
@@ -185,8 +209,8 @@ public class Category implements Details {
         return description;
     }
 
-    public BigDecimal getBudget() {
-        return budget;
+    public BigDecimal getMonthlyBudget() {
+        return monthlyBudget;
     }
 
     public Long getId() {
@@ -197,6 +221,13 @@ public class Category implements Details {
         return new HashSet<>(transactionIds);
     }
 
+    /**
+     * Produces a defensive copy of children to ensure immutability.
+     * Warning: You must cache the children first before calling this method if extracted from room.
+     *
+     * @param includeGrand - include the grand children and below if true.
+     * @return returns the children of the category as a set.
+     */
     public Set<Category> getChildren(boolean includeGrand) {
         Set<Category> copy = new HashSet<>(children); // fresh copy
 
@@ -210,31 +241,41 @@ public class Category implements Details {
         return copy;
     }
 
+    /**
+     * determine the absolute minimum budget considering the sum of the sub categories' budgets.
+     * It only considers the immediate children's budgets (as we assume they are already at minimum).
+     * It will also automatically update the parent's budget if below minimum.
+     *
+     * @return the absolute minimum budget. Can be used for comparison
+     */
     public BigDecimal determineMinimumBudget() {
-        // determine the absolute minimum budget considering sub categories' budgets, will set to that budget if current is below.
+
         BigDecimal total = BigDecimal.valueOf(0);
-        for (Category child : getChildren(false)) { // this assumes children budgets are already at minimum budget
-            total = total.add(child.getBudget());
+        for (Category child : getChildren(false)) {
+            total = total.add(child.getMonthlyBudget());
         }
 
-        // will automatically set budget if current budget is below minimum
-        if (budget.compareTo(total) < 0) {
-            this.budget = total;
-            // since this budget has changed
+
+        if (monthlyBudget.compareTo(total) < 0) {
+            this.monthlyBudget = total;
+
             if (parent != null) {
                 parent.determineMinimumBudget();
             }
         }
 
 
-        return total; // can be used for comparison
+        return total;
     }
 
-
+    /**
+     * This produces a defensive copy of transactions to ensure immutability.
+     * @param includeSub adds the transactions of all sub-categories if true. Ignores duplicates.
+     * @return returns the transactions of the category.
+     */
     public Set<Transaction> getTransactions(boolean includeSub) {
         Set<Transaction> totalTransactions = new HashSet<>(transactions);
 
-        // include all children and further transactions (should ignore duplicates)
         if (includeSub) {
             for (Category child : children) {
                 totalTransactions.addAll(child.getTransactions(true));
@@ -245,8 +286,13 @@ public class Category implements Details {
         return totalTransactions;
     }
 
+    /**
+     *
+     * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
+     * @return returns the total amount of the category.
+     */
     public BigDecimal findTotal(boolean includeSub) {
-        // find total of the transactions within a category.
+
         BigDecimal total = new BigDecimal("0");
         Set<Transaction> totalTransactions = getTransactions(includeSub);
 
@@ -257,9 +303,15 @@ public class Category implements Details {
         return total;
     }
 
-
-
-
+    /**
+     * This is to check whether this category is a descendant of a given category via recursion.
+     *
+     * Warning: if extracted from room, ensure intial parents are cached/restored before calling this method.
+     *
+     *
+     * @param category - the given category to check against this category (aka potential ancestor).
+     * @return returns true if the category is a descendant of this category. false otherwise
+     */
     public boolean isDescendantOf(Category category) {
         if (this.getParent() == null || category.equals(this)) {
             return false;

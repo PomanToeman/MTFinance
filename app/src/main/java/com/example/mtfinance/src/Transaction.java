@@ -9,6 +9,10 @@ import java.time.LocalDateTime;
 
 @Entity(tableName = "transactions")
 public class Transaction implements Details {
+
+    /**
+     * Differentiate between expense and income transactions for more accurate tracking.
+     */
     public enum TransactionType {
         EXPENSE, INCOME;
     }
@@ -25,7 +29,10 @@ public class Transaction implements Details {
     @NonNull
     private final TransactionType type;
 
-    // for room database
+    /**
+     * This is for the room database. Use the builder instead when creating new instances.
+     *
+     */
     public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date, @NonNull TransactionType type) {
         TrackingUtlis.checkAmount(amount);
         this.id = TrackingUtlis.getNextTransactionCounterId();
@@ -47,7 +54,10 @@ public class Transaction implements Details {
 
     }
 
-
+    /**
+     * For room database. DO NOT USE.
+     *
+     */
     public void setId(Long id) {
         this.id = id;
     }
@@ -109,14 +119,19 @@ public class Transaction implements Details {
 
         private String description = TrackingUtlis.EMPTY_DESCRIPTION;
         @NonNull
-        private final BigDecimal amount; // required
+        private final BigDecimal amount;
         @NonNull
-        private final String name; // required
+        private final String name;
         private LocalDateTime date = LocalDateTime.now();
         private TransactionType type = TransactionType.EXPENSE;
 
+        /**
+         * Constructor of the builder. Must have the required fields.
+         * @param name - The name of the transaction.
+         * @param amount - The dollar amount of the transaction.
+         */
         public Builder(@NonNull String name, @NonNull BigDecimal amount) {
-            TrackingUtlis.checkAmount(amount); // cannot be zero or below
+            TrackingUtlis.checkAmount(amount);
             this.amount = amount;
             this.name = name;
 

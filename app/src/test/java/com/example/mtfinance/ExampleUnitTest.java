@@ -230,7 +230,7 @@ public class ExampleUnitTest {
         Category level1 = new Category("L1", "", BigDecimal.ONE);
         level1.setParent(root);
 
-        assertEquals(BigDecimal.ONE, root.getBudget());
+        assertEquals(BigDecimal.ONE, root.getMonthlyBudget());
         assertEquals(BigDecimal.ONE, root.determineMinimumBudget());
     }
 
@@ -247,7 +247,7 @@ public class ExampleUnitTest {
 
         BigDecimal expectedMin = BigDecimal.valueOf(40.97);
 
-        assertEquals(expectedMin, subscriptions.getBudget());
+        assertEquals(expectedMin, subscriptions.getMonthlyBudget());
         assertEquals(expectedMin, subscriptions.determineMinimumBudget());
     }
 
@@ -264,7 +264,7 @@ public class ExampleUnitTest {
 
         BigDecimal expected = BigDecimal.valueOf(15);
 
-        assertEquals(expected, root.getBudget());
+        assertEquals(expected, root.getMonthlyBudget());
         assertEquals(expected, root.determineMinimumBudget());
     }
 
@@ -274,9 +274,9 @@ public class ExampleUnitTest {
         Category child = new Category("Child", "", BigDecimal.valueOf(25.50));
         child.setParent(parent);
 
-        parent.setBudget(BigDecimal.valueOf(10));
+        parent.setMonthlyBudget(BigDecimal.valueOf(10));
 
-        assertEquals(BigDecimal.valueOf(25.50), parent.getBudget());
+        assertEquals(BigDecimal.valueOf(25.50), parent.getMonthlyBudget());
     }
 
     @Test
@@ -285,9 +285,9 @@ public class ExampleUnitTest {
         Category child = new Category("Child", "", BigDecimal.valueOf(20));
         child.setParent(parent);
 
-        parent.setBudget(BigDecimal.valueOf(50));
+        parent.setMonthlyBudget(BigDecimal.valueOf(50));
 
-        assertEquals(BigDecimal.valueOf(50), parent.getBudget());
+        assertEquals(BigDecimal.valueOf(50), parent.getMonthlyBudget());
     }
 
     @Test
@@ -299,14 +299,14 @@ public class ExampleUnitTest {
         Category child2 = new Category("Child2", "", BigDecimal.valueOf(80));
         child2.setParent(root);
 
-        assertEquals(BigDecimal.valueOf(110), root.getBudget());
+        assertEquals(BigDecimal.valueOf(110), root.getMonthlyBudget());
     }
 
     @Test
     public void testing_minimumBudget_noChildren() {
         Category alone = new Category("Alone", "", DEFAULT_BUDGET);
 
-        assertEquals(DEFAULT_BUDGET, alone.getBudget());
+        assertEquals(DEFAULT_BUDGET, alone.getMonthlyBudget());
         assertEquals(BigDecimal.ZERO, alone.determineMinimumBudget());
     }
 
@@ -378,12 +378,12 @@ public class ExampleUnitTest {
         // Test 3: Setting negative budget on existing category
         Category validCategory = new Category("Valid Category", "Test", DEFAULT_BUDGET);
         assertThrows(IllegalArgumentException.class, () -> {
-            validCategory.setBudget(BigDecimal.valueOf(-5.00));
+            validCategory.setMonthlyBudget(BigDecimal.valueOf(-5.00));
         });
 
         // Test 4: Setting zero budget on existing category
         assertThrows(IllegalArgumentException.class, () -> {
-            validCategory.setBudget(BigDecimal.ZERO);
+            validCategory.setMonthlyBudget(BigDecimal.ZERO);
         });
 
         // Test 5: Creating child with invalid budget should also fail
@@ -395,7 +395,7 @@ public class ExampleUnitTest {
 
         // Verify valid category still works normally
         Category goodCategory = new Category("Good Category", "Test", DEFAULT_BUDGET);
-        assertEquals(DEFAULT_BUDGET, goodCategory.getBudget());
+        assertEquals(DEFAULT_BUDGET, goodCategory.getMonthlyBudget());
     }
 
     // ========================================
@@ -434,7 +434,7 @@ public class ExampleUnitTest {
     public void testing_category_setBudget_null() {
         Category cat = new Category("name", "desc", DEFAULT_BUDGET);
         // setBudget calls TrackingUtlis.checkAmount(budget) which doesn't check for null specifically before use
-        assertThrows(NullPointerException.class, () -> cat.setBudget(null));
+        assertThrows(NullPointerException.class, () -> cat.setMonthlyBudget(null));
     }
 
     @Test
