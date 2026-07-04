@@ -30,7 +30,7 @@ public class Category implements Details {
     @ColumnInfo(name = "parent_id")
     private Long parentId = null; // foreign key
 
-    // cache fields (need to be restored once extracted from room)
+    // cache fields (need to be restored/updated once extracted from room)
     @Ignore
     private final Set<Category> children;
     @Ignore
@@ -201,6 +201,9 @@ public class Category implements Details {
         return name;
     }
 
+    /**
+    * Warning: Ensure the parent is cached before calling this method.
+     */
     public Category getParent() {
         return parent;
     }
@@ -225,7 +228,7 @@ public class Category implements Details {
      * Produces a defensive copy of children to ensure immutability.
      * Warning: You must cache the children first before calling this method if extracted from room.
      *
-     * @param includeGrand - include the grand children and below if true.
+     * @param includeGrand - include the grand children and below if true. (ensure cached is up to date)
      * @return returns the children of the category as a set.
      */
     public Set<Category> getChildren(boolean includeGrand) {
@@ -245,6 +248,8 @@ public class Category implements Details {
      * determine the absolute minimum budget considering the sum of the sub categories' budgets.
      * It only considers the immediate children's budgets (as we assume they are already at minimum).
      * It will also automatically update the parent's budget if below minimum.
+     *
+     * Warning: Ensure the children are cached before calling this method.
      *
      * @return the absolute minimum budget. Can be used for comparison
      */
@@ -287,7 +292,7 @@ public class Category implements Details {
     }
 
     /**
-     *
+     * Warning: Ensure the children are cached before calling this method.
      * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
      * @return returns the total amount of the category.
      */
