@@ -54,6 +54,7 @@ public class TrackingRepository {
 
     /**
      * If you just want to insert a transaction with no specific category, use this method.
+     * This method will put it under the general category.
      * @param transaction - The transaction to be inserted.
      */
     public void insertTransactionDefault(@NonNull Transaction transaction) {

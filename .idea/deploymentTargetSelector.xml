@@ -14,15 +14,15 @@
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="testAutomaticGrandparentInsertion()">
-        <option name="selectionMode" value="DROPDOWN" />
-        <DialogSelection />
-      </SelectionState>
       <SelectionState runConfigName="testInsertTransaction()">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="TransactionRepositoryTest">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName="TrackingRepositoryTest">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
