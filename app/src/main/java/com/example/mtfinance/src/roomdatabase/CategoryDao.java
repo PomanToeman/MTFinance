@@ -40,8 +40,7 @@ public interface CategoryDao {
     List<Category> getByIds(java.util.Collection<Long> ids);
 
 
-    @Query("SELECT * FROM categories WHERE transactionIds LIKE '%' || :id || '%'")
-    List<Category> getCategoriesByTransactionId(Long id);
+
 
 
 
