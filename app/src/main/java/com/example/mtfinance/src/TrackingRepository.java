@@ -3,9 +3,10 @@ package com.example.mtfinance.src;
 
 import androidx.annotation.NonNull;
 
+import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.Transaction;
+
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * This is the main Tracking repository class.

@@ -1,9 +1,11 @@
-package com.example.mtfinance.src;
+package com.example.mtfinance.src.roomdatabase;
 
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Update;
+
+import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.util.List;
 

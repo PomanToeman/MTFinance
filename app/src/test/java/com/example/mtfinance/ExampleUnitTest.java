@@ -5,9 +5,9 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-import com.example.mtfinance.src.Category;
-import com.example.mtfinance.src.TrackingUtlis;
-import com.example.mtfinance.src.Transaction;
+import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.TrackingUtlis;
+import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.math.BigDecimal;
 

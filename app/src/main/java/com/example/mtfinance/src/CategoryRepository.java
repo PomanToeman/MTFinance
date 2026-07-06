@@ -2,6 +2,9 @@ package com.example.mtfinance.src;
 
 import androidx.annotation.NonNull;
 
+import com.example.mtfinance.src.roomdatabase.CategoryDao;
+import com.example.mtfinance.src.trackingengine.Category;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;

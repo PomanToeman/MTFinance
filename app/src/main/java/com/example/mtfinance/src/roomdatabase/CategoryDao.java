@@ -1,4 +1,4 @@
-package com.example.mtfinance.src;
+package com.example.mtfinance.src.roomdatabase;
 
 import androidx.room.Dao;
 import androidx.room.Delete;
@@ -7,10 +7,10 @@ import androidx.room.Query;
 import androidx.room.Update;
 
 
-import java.math.BigDecimal;
+import com.example.mtfinance.src.trackingengine.Category;
+
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 @Dao
 public interface CategoryDao {

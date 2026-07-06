@@ -1,4 +1,4 @@
-package com.example.mtfinance.src;
+package com.example.mtfinance.src.trackingengine;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
