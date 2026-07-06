@@ -131,6 +131,10 @@ public class CategoryRepository {
         return getCategoryByIdRestored(category.getId()); // this will create a copy
     }
 
+    public List<Category> getCategoriesByTransactionId(Long id) {
+        return categoryDao.getCategoriesByTransactionId(id);
+    }
+
 
 
 
