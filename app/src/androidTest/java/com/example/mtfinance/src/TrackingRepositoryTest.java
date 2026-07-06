@@ -35,7 +35,8 @@ public class TrackingRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         categoryRepository = new CategoryRepository(database.categoryDao());
         transactionRepository = new TransactionRepository(database.transactionDao());
-        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository);
+
+        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao());
     }
 
     @After
@@ -68,7 +69,7 @@ public class TrackingRepositoryTest {
     public void testInsertTransactionWithCategoryId() {
         Category category = new Category("Dining", "Eating out", BigDecimal.valueOf(200));
         categoryRepository.insert(category);
-        Long catId = category.getId();
+        Long catId = category.getCategoryId();
 
         Transaction transaction = new Transaction.Builder("Pizza", BigDecimal.valueOf(25.0)).build();
         trackingRepository.insertTransaction(transaction, catId);
@@ -80,7 +81,7 @@ public class TrackingRepositoryTest {
 
         // Verify category has the transaction ID
         Category updatedCategory = categoryRepository.getCategoryById(catId);
-        assertTrue(updatedCategory.getTransactionIds().contains(allTransactions.get(0).getId()));
+        assertTrue(updatedCategory.getTransactionIds().contains(allTransactions.get(0).getTransactionId()));
     }
 
     @Test
@@ -94,7 +95,7 @@ public class TrackingRepositoryTest {
 
         // Verify it's under General Category
         Category general = categoryRepository.getGeneralCategory();
-        assertTrue(general.getTransactionIds().contains(allTransactions.get(0).getId()));
+        assertTrue(general.getTransactionIds().contains(allTransactions.get(0).getTransactionId()));
     }
 
     @Test
@@ -106,7 +107,7 @@ public class TrackingRepositoryTest {
 
         Transaction transaction = new Transaction.Builder("Shared Transaction", BigDecimal.valueOf(50.0)).build();
         transactionRepository.insert(transaction);
-        Long transId = transaction.getId();
+        Long transId = transaction.getTransactionId();
 
         cat1.addTransaction(transaction);
         cat2.addTransaction(transaction);

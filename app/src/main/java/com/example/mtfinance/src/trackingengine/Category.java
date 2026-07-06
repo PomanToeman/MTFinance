@@ -19,7 +19,7 @@ public class Category implements Details {
 
     // instance fields
     @PrimaryKey (autoGenerate = false)
-    private Long id;
+    private Long categoryId;
 
     @NonNull
     @ColumnInfo(name = "name", collate = ColumnInfo.NOCASE)
@@ -43,7 +43,7 @@ public class Category implements Details {
     public Category(@NonNull String name,  String description, @NonNull BigDecimal monthlyBudget) {
         TrackingUtlis.checkAmount(monthlyBudget);
 
-        this.id = TrackingUtlis.getNextCategoryCounterId();
+        this.categoryId = TrackingUtlis.getNextCategoryCounterId();
 
         this.name = name;
         this.description = TrackingUtlis.determineDescription(description);
@@ -58,8 +58,8 @@ public class Category implements Details {
     // setters/adders
 
 
-    public void setId(@NonNull Long id) {
-        this.id = id;
+    public void setCategoryId(@NonNull Long categoryId) {
+        this.categoryId = categoryId;
     }
 
     public void setTransactionIds(@NonNull Set<Long> transactionIds) {
@@ -85,7 +85,7 @@ public class Category implements Details {
         if (!parent.isDescendantOf(this) && !this.isDescendantOf(parent)) {
             parent.addChild(this);
             this.parent = parent;
-            this.parentId = parent.getId();
+            this.parentId = parent.getCategoryId();
 
             return;
 
@@ -108,7 +108,7 @@ public class Category implements Details {
 
     public void removeTransaction(@NonNull Transaction transaction) {
         transactions.remove(transaction);
-        transactionIds.remove(transaction.getId());
+        transactionIds.remove(transaction.getTransactionId());
     }
 
     /**
@@ -138,7 +138,7 @@ public class Category implements Details {
             return;
         }
         this.parent = parent;
-        this.parentId = parent.getId();
+        this.parentId = parent.getCategoryId();
         parent.addChild(this);
 
     }
@@ -157,7 +157,7 @@ public class Category implements Details {
         if (transaction != null) {
 
             transactions.add(transaction);
-            transactionIds.add(transaction.getId());
+            transactionIds.add(transaction.getTransactionId());
 
         }
 
@@ -217,8 +217,8 @@ public class Category implements Details {
         return monthlyBudget;
     }
 
-    public Long getId() {
-        return id;
+    public Long getCategoryId() {
+        return categoryId;
     }
 
 
@@ -345,14 +345,14 @@ public class Category implements Details {
 
     @Override
     public int hashCode() {
-        return id.intValue();
+        return categoryId.intValue();
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof Category) {
             Category other = (Category) o;
-            return other.getId().equals(this.getId());
+            return other.getCategoryId().equals(this.getCategoryId());
         }
         return false;
     }

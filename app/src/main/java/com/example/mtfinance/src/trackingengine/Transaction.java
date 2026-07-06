@@ -18,7 +18,7 @@ public class Transaction implements Details {
     }
     // instance fields
     @PrimaryKey(autoGenerate = false)
-    private Long id;
+    private Long transactionId;
     @NonNull
     private final String name;
     private final String description;
@@ -35,7 +35,7 @@ public class Transaction implements Details {
      */
     public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date, @NonNull TransactionType type) {
         TrackingUtlis.checkAmount(amount);
-        this.id = TrackingUtlis.getNextTransactionCounterId();
+        this.transactionId = TrackingUtlis.getNextTransactionCounterId();
         this.name = name;
         this.description = TrackingUtlis.determineDescription(description);
         this.amount = amount;
@@ -45,7 +45,7 @@ public class Transaction implements Details {
 
     // constructor
     private Transaction(Builder build) {
-        this.id = TrackingUtlis.getNextTransactionCounterId();
+        this.transactionId = TrackingUtlis.getNextTransactionCounterId();
         this.description = TrackingUtlis.determineDescription(build.description);
         this.date = build.date;
         this.amount = build.amount;
@@ -58,13 +58,13 @@ public class Transaction implements Details {
      * For room database. DO NOT USE.
      *
      */
-    public void setId(Long id) {
-        this.id = id;
+    public void setTransactionId(Long transactionId) {
+        this.transactionId = transactionId;
     }
 
     // getters
-    public Long getId() {
-        return id;
+    public Long getTransactionId() {
+        return transactionId;
     }
 
 
@@ -99,7 +99,7 @@ public class Transaction implements Details {
     public boolean equals(Object o) {
         if (o instanceof Transaction) {
             Transaction other = (Transaction) o;
-            return other.getId().equals(this.getId());
+            return other.getTransactionId().equals(this.getTransactionId());
         }
         return false;
     }
@@ -112,7 +112,7 @@ public class Transaction implements Details {
 
     @Override
     public int hashCode() {
-        return id.intValue();
+        return transactionId.intValue();
     }
 
     public static class Builder {

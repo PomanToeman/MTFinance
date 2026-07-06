@@ -17,7 +17,7 @@ public class CategoryWithTransactions {
     public Category category;
 
     @Relation(
-            parentColumn = "id",
+            parentColumn = "categoryId",
             entityColumn = "transactionId",
             associateBy = @Junction(CategoryTransactionCrossRef.class)
     )

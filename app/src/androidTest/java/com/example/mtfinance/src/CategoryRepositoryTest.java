@@ -186,7 +186,7 @@ public class CategoryRepositoryTest {
             if (c.getName().equals("ParentToDelete")) parentInDb = c;
         }
         assertNotNull(parentInDb);
-        assertEquals(repository.getGeneralCategory().getId().longValue(), parentInDb.getParentId().longValue());
+        assertEquals(repository.getGeneralCategory().getCategoryId().longValue(), parentInDb.getParentId().longValue());
 
         // Logic: deleteCategory calls makeChildrenCongruent()
         // which moves children of 'parent' to 'root'
@@ -204,7 +204,7 @@ public class CategoryRepositoryTest {
 
         // assertTrue("Root should now have the child", root.getChildren(false).contains(child));
         assertNotNull("Child should now be in DB", childInDb);
-        assertEquals(repository.getGeneralCategory().getId().longValue(),  child.getParentId().longValue());
+        assertEquals(repository.getGeneralCategory().getCategoryId().longValue(),  child.getParentId().longValue());
 
 
     }
@@ -248,13 +248,13 @@ public class CategoryRepositoryTest {
         repository.insert(child); // Inserts parent recursively
 
         // Fetch using the standard Room getById - parent/children will be null/empty in memory
-        Category flatChild = repository.getCategoryById(child.getId());
+        Category flatChild = repository.getCategoryById(child.getCategoryId());
         assertNotNull(flatChild);
         assertNull("Standard Room fetch should not have parent object", flatChild.getParent());
         assertTrue("Standard Room fetch should not have children", flatChild.getChildren(false).isEmpty());
 
         // Fetch using Restored method
-        Category restoredChild = repository.getCategoryByIdRestored(child.getId());
+        Category restoredChild = repository.getCategoryByIdRestored(child.getCategoryId());
         assertNotNull(restoredChild);
         
         // Verify Parent is restored

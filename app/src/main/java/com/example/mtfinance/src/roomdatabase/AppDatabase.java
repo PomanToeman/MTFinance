@@ -12,4 +12,6 @@ import com.example.mtfinance.src.trackingengine.Transaction;
 public abstract class AppDatabase extends RoomDatabase {
     public abstract CategoryDao categoryDao();
     public abstract TransactionDao transactionDao();
+
+    public abstract CategoryTransactionDao categoryTransactionDao();
 }

@@ -17,10 +17,10 @@ public interface TransactionDao {
     @Query("SELECT * FROM transactions")
     List<Transaction> getAll();
 
-    @Query("SELECT * FROM transactions WHERE id = :id")
+    @Query("SELECT * FROM transactions WHERE transactionId = :id")
     Transaction getById(Long id);
 
-    @Query("SELECT * FROM transactions WHERE id IN (:ids)")
+    @Query("SELECT * FROM transactions WHERE transactionId IN (:ids)")
     List<Transaction> getByIds(java.util.Collection<Long> ids);
 
     @Update

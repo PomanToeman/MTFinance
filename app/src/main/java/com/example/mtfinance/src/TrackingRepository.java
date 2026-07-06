@@ -3,6 +3,7 @@ package com.example.mtfinance.src;
 
 import androidx.annotation.NonNull;
 
+import com.example.mtfinance.src.roomdatabase.CategoryTransactionDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
@@ -17,11 +18,13 @@ import java.util.List;
 public class TrackingRepository {
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
+    private final CategoryTransactionDao categoryWithTransactionsDao;
 
     // constructor
-    public TrackingRepository(CategoryRepository categoryRepository, TransactionRepository transactionRepository) {
+    public TrackingRepository(CategoryRepository categoryRepository, TransactionRepository transactionRepository, CategoryTransactionDao categoryWithTransactionsDao) {
         this.categoryRepository = categoryRepository;
         this.transactionRepository = transactionRepository;
+        this.categoryWithTransactionsDao = categoryWithTransactionsDao;
     }
 
     /**

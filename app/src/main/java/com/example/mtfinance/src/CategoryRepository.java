@@ -36,7 +36,7 @@ public class CategoryRepository {
 
         if (category.getParentId() == null) {
             category.setParent(getGeneralCategory()); // ensures the greatest parent is the general category
-            category.setParentId(getGeneralCategory().getId());
+            category.setParentId(getGeneralCategory().getCategoryId());
         }
         else if (!getAllCategories().contains(category.getParent())) {
             insert(category.getParent()); // automatically inserts parent if not already in database.
@@ -68,7 +68,7 @@ public class CategoryRepository {
 
 
         // Get the actual entity from DB
-        Category categoryInDb = getCategoryById(categoryToDelete.getId());
+        Category categoryInDb = getCategoryById(categoryToDelete.getCategoryId());
         if (categoryInDb == null) {
             return; // not found
         }
@@ -122,8 +122,8 @@ public class CategoryRepository {
             }
 
             // restore all children.
-            for (Category child : categoryDao.getByParentId(category.getId())) {
-                getCategoryByIdRestoredInternal(child.getId(), visited);
+            for (Category child : categoryDao.getByParentId(category.getCategoryId())) {
+                getCategoryByIdRestoredInternal(child.getCategoryId(), visited);
             }
         }
 
@@ -131,7 +131,7 @@ public class CategoryRepository {
     }
 
     public Category getCategoryRestored(@NonNull Category category) {
-        return getCategoryByIdRestored(category.getId()); // this will create a copy
+        return getCategoryByIdRestored(category.getCategoryId()); // this will create a copy
     }
 
     public List<Category> getCategoriesByTransactionId(Long id) {

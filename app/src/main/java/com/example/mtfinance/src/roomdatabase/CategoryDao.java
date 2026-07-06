@@ -21,7 +21,7 @@ public interface CategoryDao {
     @Query("SELECT * FROM categories")
     List<Category> getAll();
 
-    @Query("SELECT * FROM categories WHERE id = :id")
+    @Query("SELECT * FROM categories WHERE categoryId = :id")
     Category getById(Long id);
 
     @Delete
