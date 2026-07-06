@@ -23,10 +23,10 @@ public class Category implements Details {
 
     @NonNull
     @ColumnInfo(name = "name", collate = ColumnInfo.NOCASE)
-    private final String name;
-    private final String description;
-    @ColumnInfo(name = "transactionIds")
-    private Set<Long> transactionIds = null;
+    private  String name;
+    private  String description;
+    @Ignore
+    private Set<Long> transactionIds = null; // to be deleted later
     private BigDecimal monthlyBudget;
     @ColumnInfo(name = "parent_id")
     private Long parentId = null; // foreign key
@@ -37,7 +37,7 @@ public class Category implements Details {
     @Ignore
     private  Category parent = null;
     @Ignore
-    private final Set<Transaction> transactions;
+    private final Set<Transaction> transactions; // to be deleted later once POJO is set up
 
     // constructor
     public Category(@NonNull String name,  String description, @NonNull BigDecimal monthlyBudget) {
@@ -60,6 +60,14 @@ public class Category implements Details {
 
     public void setCategoryId(@NonNull Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public void setDescription(@NonNull String description) {
+        this.description = TrackingUtlis.determineDescription(description);
+    }
+
+    public void setName(@NonNull String name) {
+        this.name = name;
     }
 
     public void setTransactionIds(@NonNull Set<Long> transactionIds) {
