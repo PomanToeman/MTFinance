@@ -7,8 +7,10 @@ import androidx.room.Query;
 import androidx.room.Update;
 
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 @Dao
 public interface CategoryDao {
@@ -34,6 +36,10 @@ public interface CategoryDao {
     @Query("SELECT * FROM categories WHERE parent_id = :id")
     List<Category> getByParentId(Long id);
 
-    @Query("SELECT * FROM categories WHERE transactionIds LIKE :id")
+    @Query("SELECT * FROM categories WHERE transactionIds LIKE '%' || :id || '%'")
     List<Category> getCategoriesByTransactionId(Long id);
+
+
+
+
 }

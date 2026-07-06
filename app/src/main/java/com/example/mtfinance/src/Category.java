@@ -25,6 +25,7 @@ public class Category implements Details {
     @ColumnInfo(name = "name", collate = ColumnInfo.NOCASE)
     private final String name;
     private final String description;
+    @ColumnInfo(name = "transactionIds")
     private Set<Long> transactionIds = null;
     private BigDecimal monthlyBudget;
     @ColumnInfo(name = "parent_id")
@@ -219,6 +220,7 @@ public class Category implements Details {
     public Long getId() {
         return id;
     }
+
 
     public Set<Long> getTransactionIds() {
         return new HashSet<>(transactionIds);

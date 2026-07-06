@@ -3,6 +3,7 @@ package com.example.mtfinance.src;
 
 import androidx.annotation.NonNull;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -71,11 +72,9 @@ public class TrackingRepository {
      * @param id - The given ID of the transaction
      * @return - returns a set of categories that has the given transaction ID.
      */
-     public Set<Category> findCategoriesByTransactionId(Long id) {
+     public List<Category> findCategoriesByTransactionId(Long id) {
 
-        return categoryRepository.getAllCategories().stream()
-                .filter(category -> category.getTransactionIds().contains(id))
-                .collect(Collectors.toSet());
+        return categoryRepository.getCategoriesByTransactionId(id);
     }
 
 }

@@ -28,7 +28,7 @@ public class Converters {
     }
 
     @TypeConverter
-    public static Set<Long> toTransactionIdSet(String value) {
+    public static Set<Long> toTransactionIdsSet(String value) {
         Set<Long> transactionIds = new HashSet<>();
         if (value == null || value.isEmpty()) return transactionIds; // empty set
         String[] ids = value.split(",");

@@ -109,7 +109,7 @@ public class TrackingRepositoryTest {
         categoryRepository.updateCategory(cat1);
         categoryRepository.updateCategory(cat2);
 
-        Set<Category> foundCategories = trackingRepository.findCategoriesByTransactionId(transId);
+        List<Category> foundCategories = trackingRepository.findCategoriesByTransactionId(transId);
         assertEquals(2, foundCategories.size());
 
         boolean found1 = false;
