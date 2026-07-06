@@ -2,12 +2,16 @@ package com.example.mtfinance.src;
 
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.LiveData;
 
+import com.example.mtfinance.src.roomdatabase.CategoryTransactionCrossRef;
 import com.example.mtfinance.src.roomdatabase.CategoryTransactionDao;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * This is the main Tracking repository class.
@@ -50,11 +54,11 @@ public class TrackingRepository {
         if (category == null) {
             return;
         }
-        category.addTransaction(transaction);
-        categoryRepository.updateCategory(category);
-
-
         transactionRepository.insert(transaction);
+
+        // to define relationship.
+        CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(CategoryId, transaction.getTransactionId());
+        categoryWithTransactionsDao.insertCrossRef(crossRef);
     }
 
     /**
@@ -64,9 +68,7 @@ public class TrackingRepository {
      */
     public void insertTransactionDefault(@NonNull Transaction transaction) {
         Category generalCategory = categoryRepository.getGeneralCategory();
-        generalCategory.addTransaction(transaction);
-        categoryRepository.updateCategory(generalCategory);
-        transactionRepository.insert(transaction);
+        insertTransaction(transaction, generalCategory.getCategoryId());
 
     }
 
@@ -77,8 +79,12 @@ public class TrackingRepository {
      * @return - returns a set of categories that has the given transaction ID.
      */
      public List<Category> findCategoriesByTransactionId(Long id) {
+         List<Long> categoryIds = categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
+         return categoryRepository.getCategoriesByIds(categoryIds);
+    }
 
-        return categoryRepository.getCategoriesByTransactionId(id);
+    public LiveData<List<CategoryWithTransactions>> getAllCategoriesWithTransactions() {
+         return categoryWithTransactionsDao.getAllCategoriesWithTransactions();
     }
 
 }

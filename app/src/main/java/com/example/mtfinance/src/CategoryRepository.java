@@ -138,6 +138,10 @@ public class CategoryRepository {
         return categoryDao.getCategoriesByTransactionId(id);
     }
 
+    public List<Category> getCategoriesByIds(Collection<Long> ids) {
+        return categoryDao.getByIds(ids);
+    }
+
 
 
 

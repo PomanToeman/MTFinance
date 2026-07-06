@@ -36,6 +36,10 @@ public interface CategoryDao {
     @Query("SELECT * FROM categories WHERE parent_id = :id")
     List<Category> getByParentId(Long id);
 
+    @Query("SELECT * FROM categories WHERE categoryId IN (:ids)")
+    List<Category> getByIds(java.util.Collection<Long> ids);
+
+
     @Query("SELECT * FROM categories WHERE transactionIds LIKE '%' || :id || '%'")
     List<Category> getCategoriesByTransactionId(Long id);
 
