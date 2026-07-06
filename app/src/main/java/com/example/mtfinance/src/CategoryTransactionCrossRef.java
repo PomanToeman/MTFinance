@@ -5,38 +5,38 @@ import androidx.room.Entity;
 import androidx.room.Index;
 
 @Entity(
-        tableName = "category_transaction_cross_ref",
-        primaryKeys = {"category_id", "transaction_id"},
-        indices = {@Index(value = {"category_id"}), @Index(value = {"transaction_id"})})
+        tableName = "categoryTransactionCrossRef",
+        primaryKeys = {"categoryId", "transactionId"},
+        indices = {@Index(value = {"categoryId"}), @Index(value = {"transactionId"})})
 public class CategoryTransactionCrossRef {
 
     @NonNull
-    private Long category_id;
+    private Long categoryId;
     @NonNull
-    private Long transaction_id;
+    private Long transactionId;
 
     // constructor
-    public CategoryTransactionCrossRef(@NonNull Long category_id,@NonNull Long transaction_id) {
-        this.category_id = category_id;
-        this.transaction_id = transaction_id;
+    public CategoryTransactionCrossRef(@NonNull Long categoryId,@NonNull Long transactionId) {
+        this.categoryId = categoryId;
+        this.transactionId = transactionId;
     }
 
     // getters
     @NonNull
-    public Long getCategory_id() {
-        return category_id;
+    public Long getCategoryId() {
+        return categoryId;
     }
     @NonNull
-    public Long getTransaction_id() {
-        return transaction_id;
+    public Long getTransactionId() {
+        return transactionId;
     }
 
     // setters
-    public void setCategory_id(@NonNull Long category_id) {
-        this.category_id = category_id;
+    public void setCategoryId(@NonNull Long categoryId) {
+        this.categoryId = categoryId;
     }
 
-    public void setTransaction_id(@NonNull Long transaction_id) {
-        this.transaction_id = transaction_id;
+    public void setTransactionId(@NonNull Long transactionId) {
+        this.transactionId = transactionId;
     }
 }
