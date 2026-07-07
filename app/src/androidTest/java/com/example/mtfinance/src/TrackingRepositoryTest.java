@@ -1,16 +1,19 @@
 package com.example.mtfinance.src;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Room;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.example.mtfinance.src.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
@@ -20,7 +23,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidJUnit4.class)
 public class TrackingRepositoryTest {
@@ -177,5 +183,87 @@ public class TrackingRepositoryTest {
         // Total for parent excluding subcategories
         BigDecimal totalWithoutSubs = trackingRepository.findTotalInCategory(parent, false);
         assertEquals(0, BigDecimal.valueOf(15.00).compareTo(totalWithoutSubs));
+    }
+
+    @Test
+    public void testGetCategoryWithTransactionsByCategoryId() {
+        Category category = new Category("TestCat", "", BigDecimal.valueOf(100));
+        categoryRepository.insert(category);
+        Transaction t = new Transaction.Builder("T1", BigDecimal.valueOf(10)).build();
+        trackingRepository.insertTransaction(t, category.getCategoryId());
+
+        CategoryWithTransactions result = trackingRepository.getCategoryWithTransactionsByCategoryId(category.getCategoryId());
+        assertNotNull(result);
+        assertEquals(category.getCategoryId(), result.category.getCategoryId());
+        assertEquals(1, result.transactions.size());
+    }
+
+    @Test
+    public void testGetCategoryWithTransactionsByParentId() {
+        Category parent = new Category("Parent", "", BigDecimal.valueOf(100));
+        categoryRepository.insert(parent);
+        Category child = new Category("Child", "", BigDecimal.valueOf(50));
+        child.setParent(parent);
+        categoryRepository.insert(child);
+
+        List<CategoryWithTransactions> results = trackingRepository.getCategoryWithTransactionsByParentId(parent.getCategoryId());
+        assertEquals(1, results.size());
+        assertEquals(child.getCategoryId(), results.get(0).category.getCategoryId());
+    }
+
+    @Test
+    public void testGetTransactionIdsForCategory() {
+        Category category = new Category("TestCat", "", BigDecimal.valueOf(100));
+        categoryRepository.insert(category);
+        Transaction t1 = new Transaction.Builder("T1", BigDecimal.valueOf(10)).build();
+        Transaction t2 = new Transaction.Builder("T2", BigDecimal.valueOf(20)).build();
+        trackingRepository.insertTransaction(t1, category.getCategoryId());
+        trackingRepository.insertTransaction(t2, category.getCategoryId());
+
+        List<Long> ids = trackingRepository.getTransactionIdsForCategory(category.getCategoryId());
+        assertEquals(2, ids.size());
+        assertTrue(ids.contains(t1.getTransactionId()));
+        assertTrue(ids.contains(t2.getTransactionId()));
+    }
+
+    @Test
+    public void testGetAllCategoriesWithTransactions() throws InterruptedException {
+        Category cat = new Category("Cat", "", BigDecimal.valueOf(100));
+        trackingRepository.insertCategory(cat);
+
+        List<CategoryWithTransactions> result = getValue(trackingRepository.getAllCategoriesWithTransactions());
+        assertNotNull(result);
+        // 3 default + 1 new = 4
+        assertEquals(4, result.size());
+    }
+
+    @Test
+    public void testGetCategoriesWithTransactionsByIds() throws InterruptedException {
+        Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100));
+        Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100));
+        categoryRepository.insert(cat1);
+        categoryRepository.insert(cat2);
+
+        List<Long> ids = Arrays.asList(cat1.getCategoryId(), cat2.getCategoryId());
+        List<CategoryWithTransactions> result = getValue(trackingRepository.getCategoriesWithTransactionsByIds(ids));
+        assertNotNull(result);
+        assertEquals(2, result.size());
+    }
+
+    private <T> T getValue(LiveData<T> liveData) throws InterruptedException {
+        final Object[] data = new Object[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+        final androidx.lifecycle.Observer<T> observer = new androidx.lifecycle.Observer<T>() {
+            @Override
+            public void onChanged(T t) {
+                data[0] = t;
+                latch.countDown();
+            }
+        };
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            liveData.observeForever(observer);
+        });
+        latch.await(2, TimeUnit.SECONDS);
+        return (T) data[0];
     }
 }

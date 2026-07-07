@@ -85,28 +85,40 @@ public class TrackingRepository {
          return categoryRepository.getCategoriesByIds(categoryIds);
     }
 
+    /**
+     * Live Data is to ensure these instances stay in sync with Room when one updates.
+     * @return
+     */
+
     public LiveData<List<CategoryWithTransactions>> getAllCategoriesWithTransactions() {
          return categoryWithTransactionsDao.getAllCategoriesWithTransactions();
     }
 
+    public CategoryWithTransactions getCategoryWithTransactionsByCategoryId(Long id) {
+         return categoryWithTransactionsDao.getCategoryById(id);
+
+    }
+
+    public List<CategoryWithTransactions> getCategoryWithTransactionsByParentId(Long parentId) {
+         return categoryWithTransactionsDao.getCategoriesWithTransactionsByParentId(parentId);
+    }
+
+    public List<Long> getTransactionIdsForCategory(Long categoryId) {
+         return categoryWithTransactionsDao.getTransactionIdsForCategory(categoryId);
+    }
+
+    public LiveData<List<CategoryWithTransactions>> getCategoriesWithTransactionsByIds(java.util.Collection<Long> ids) {
+         return categoryWithTransactionsDao.getCategoriesByIds(ids);
+    }
 
 
-//    public BigDecimal findTotal(boolean includeSub) {
-//
-//        BigDecimal total = new BigDecimal("0");
-//        Set<Transaction> totalTransactions = getTransactions(includeSub);
-//
-//        // sum total
-//        for (Transaction transaction : totalTransactions) {
-//            total = total.add(transaction.getAmount());
-//        }
-//        return total;
-//    }
 
 
-        /**
+
+
+    /**
      *
-         * @param category - the category to be searched.
+     * @param category - the category to find the total.
      * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
      * @return returns the total amount of the category.
      */
