@@ -1,6 +1,7 @@
 package com.example.mtfinance;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -16,6 +17,8 @@ import java.math.BigDecimal;
  *
  * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
  */
+
+
 public class ExampleUnitTest {
 
     public static final BigDecimal DEFAULT_BUDGET = BigDecimal.valueOf(0.1);
@@ -156,68 +159,6 @@ public class ExampleUnitTest {
         cat.setParent(cat);
 
         assertNull(cat.getParent());
-    }
-
-    // ========================================
-    // MIXED: TRANSACTIONS + CATEGORIES
-    // ========================================
-
-    @Test
-    public void testing_total_with_sub_of_sub() {
-        Category subscriptions = new Category("Subscriptions", "", DEFAULT_BUDGET);
-        Category streaming = new Category("Streaming", "", DEFAULT_BUDGET);
-        Category netflix = new Category("Netflix", "", DEFAULT_BUDGET);
-
-        streaming.setParent(subscriptions);
-        netflix.setParent(streaming);
-
-        Transaction t1 = new Transaction.Builder("Netflix", BigDecimal.valueOf(15.99)).build();
-        Transaction t2 = new Transaction.Builder("Disney+", BigDecimal.valueOf(13.99)).build();
-        Transaction t3 = new Transaction.Builder("Prime", BigDecimal.valueOf(8.99)).build();
-
-        netflix.addTransaction(t1);
-        streaming.addTransaction(t2);
-        subscriptions.addTransaction(t3);
-
-        assertEquals(BigDecimal.valueOf(38.97), subscriptions.findTotal(true));
-        assertEquals(BigDecimal.valueOf(8.99), subscriptions.findTotal(false));
-    }
-
-    @Test
-    public void testing_total_emptyCategory() {
-        Category empty = new Category("Empty", "", DEFAULT_BUDGET);
-        assertEquals(BigDecimal.ZERO, empty.findTotal(false));
-        assertEquals(BigDecimal.ZERO, empty.findTotal(true));
-    }
-
-    @Test
-    public void testing_total_with_only_subcategories() {
-        Category main = new Category("Main", "", DEFAULT_BUDGET);
-        Category sub = new Category("Sub", "", DEFAULT_BUDGET);
-        sub.setParent(main);
-
-        Transaction t = new Transaction.Builder("Only in sub", BigDecimal.valueOf(25.50)).build();
-        sub.addTransaction(t);
-
-        assertEquals(BigDecimal.ZERO, main.findTotal(false));
-        assertEquals(BigDecimal.valueOf(25.50), main.findTotal(true));
-    }
-
-    @Test
-    public void testing_total_deep_nesting() {
-        Category root = new Category("Root", "", DEFAULT_BUDGET);
-        Category level1 = new Category("L1", "", DEFAULT_BUDGET);
-        Category level2 = new Category("L2", "", DEFAULT_BUDGET);
-        Category level3 = new Category("L3", "", DEFAULT_BUDGET);
-
-        level1.setParent(root);
-        level2.setParent(level1);
-        level3.setParent(level2);
-
-        level3.addTransaction(new Transaction.Builder("Deep", BigDecimal.valueOf(100)).build());
-
-        assertEquals(BigDecimal.valueOf(100), root.findTotal(true));
-        assertEquals(BigDecimal.ZERO, root.findTotal(false));
     }
 
     // ========================================
@@ -416,21 +357,6 @@ public class ExampleUnitTest {
     }
 
     @Test
-    public void testing_category_setParent_null() {
-        Category cat = new Category("name", "desc", DEFAULT_BUDGET);
-        // setParent is marked @NonNull but doesn't have an explicit check, so it might NPE if it tries to use it.
-        // In current implementation it will NPE on parent.isDescendantOf(this)
-        assertThrows(NullPointerException.class, () -> cat.setParent(null));
-    }
-
-    @Test
-    public void testing_category_addTransaction_null() {
-        Category cat = new Category("name", "desc", DEFAULT_BUDGET);
-        cat.addTransaction(null); // Should handle gracefully based on implementation
-        assertTrue(cat.getTransactions(false).isEmpty());
-    }
-
-    @Test
     public void testing_category_setBudget_null() {
         Category cat = new Category("name", "desc", DEFAULT_BUDGET);
         // setBudget calls TrackingUtlis.checkAmount(budget) which doesn't check for null specifically before use
@@ -467,52 +393,6 @@ public class ExampleUnitTest {
     
     
     
-    // =======================================
-    // TRANSACTION DUPLICATES
-    // ========================================
-
-    @Test
-    public void testing_total_with_duplicate_transaction_in_root_and_child() {
-        Category root = new Category("Root", "Parent category", DEFAULT_BUDGET);
-        Category child = new Category("Child", "Sub category", DEFAULT_BUDGET);
-        child.setParent(root);
-
-        Transaction sharedTransaction = new Transaction.Builder("Shared", BigDecimal.valueOf(50.0)).build();
-
-        // Add the same transaction instance to both
-        root.addTransaction(sharedTransaction);
-        child.addTransaction(sharedTransaction);
-
-        // When includeSub is true, it should only count once because it's a Set internally
-        assertEquals(BigDecimal.valueOf(50.0), root.findTotal(true));
-        // Individually they should still have it
-        assertEquals(BigDecimal.valueOf(50.0), root.findTotal(false));
-        assertEquals(BigDecimal.valueOf(50.0), child.findTotal(false));
-    }
-
-    @Test
-    public void testing_total_with_duplicate_transaction_in_deep_hierarchy() {
-        Category root = new Category("Root", "", DEFAULT_BUDGET);
-        Category level1 = new Category("L1", "", DEFAULT_BUDGET);
-        Category level2 = new Category("L2", "", DEFAULT_BUDGET);
-
-        level1.setParent(root);
-        level2.setParent(level1);
-
-        Transaction shared = new Transaction.Builder("Deep Shared", BigDecimal.valueOf(100.0)).build();
-        Transaction unique = new Transaction.Builder("Unique", BigDecimal.valueOf(25.0)).build();
-
-        root.addTransaction(shared);
-        level1.addTransaction(shared);
-        level2.addTransaction(shared);
-        level2.addTransaction(unique);
-
-        // Total should be 100 (shared once) + 25 (unique) = 125
-        assertEquals(BigDecimal.valueOf(125.0), root.findTotal(true));
-        assertEquals(BigDecimal.valueOf(100.0), root.findTotal(false));
-        assertEquals(BigDecimal.valueOf(125.0), level1.findTotal(true));
-    }
-
     // ========================================
     // CONGRUENCY / DELETION TESTS
     // ========================================

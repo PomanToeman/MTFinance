@@ -79,9 +79,16 @@ public class TrackingRepositoryTest {
         assertEquals(1, allTransactions.size());
         assertEquals("Pizza", allTransactions.get(0).getName());
 
-        // Verify category has the transaction ID
-        Category updatedCategory = categoryRepository.getCategoryById(catId);
-        assertTrue(updatedCategory.getTransactionIds().contains(allTransactions.get(0).getTransactionId()));
+        // Verify it's under the category
+        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
+        boolean found = false;
+        for (Category c : associatedCategories) {
+            if (c.getCategoryId().equals(catId)) {
+                found = true;
+                break;
+            }
+        }
+        assertTrue(found);
     }
 
     @Test
@@ -95,7 +102,15 @@ public class TrackingRepositoryTest {
 
         // Verify it's under General Category
         Category general = categoryRepository.getGeneralCategory();
-        assertTrue(general.getTransactionIds().contains(allTransactions.get(0).getTransactionId()));
+        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
+        boolean found = false;
+        for (Category c : associatedCategories) {
+            if (c.getCategoryId().equals(general.getCategoryId())) {
+                found = true;
+                break;
+            }
+        }
+        assertTrue(found);
     }
 
     @Test
@@ -106,15 +121,14 @@ public class TrackingRepositoryTest {
         categoryRepository.insert(cat2);
 
         Transaction transaction = new Transaction.Builder("Shared Transaction", BigDecimal.valueOf(50.0)).build();
-        transactionRepository.insert(transaction);
-        Long transId = transaction.getTransactionId();
+        trackingRepository.insertTransaction(transaction, cat1.getCategoryId());
 
-        cat1.addTransaction(transaction);
-        cat2.addTransaction(transaction);
-        categoryRepository.updateCategory(cat1);
-        categoryRepository.updateCategory(cat2);
+        // Associate with second category
+        com.example.mtfinance.src.roomdatabase.CategoryTransactionCrossRef crossRef = 
+            new com.example.mtfinance.src.roomdatabase.CategoryTransactionCrossRef(cat2.getCategoryId(), transaction.getTransactionId());
+        database.categoryTransactionDao().insertCrossRef(crossRef);
 
-        List<Category> foundCategories = trackingRepository.findCategoriesByTransactionId(transId);
+        List<Category> foundCategories = trackingRepository.findCategoriesByTransactionId(transaction.getTransactionId());
         assertEquals(2, foundCategories.size());
 
         boolean found1 = false;

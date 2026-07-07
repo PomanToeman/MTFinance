@@ -25,8 +25,8 @@ public class Category implements Details {
     @ColumnInfo(name = "name", collate = ColumnInfo.NOCASE)
     private  String name;
     private  String description;
-    @Ignore
-    private Set<Long> transactionIds = null; // to be deleted later
+//    @Ignore
+//    private Set<Long> transactionIds = null; // to be deleted later
     private BigDecimal monthlyBudget;
     @ColumnInfo(name = "parent_id")
     private Long parentId = null; // foreign key
@@ -36,8 +36,8 @@ public class Category implements Details {
     private final Set<Category> children;
     @Ignore
     private  Category parent = null;
-    @Ignore
-    private final Set<Transaction> transactions; // to be deleted later once POJO is set up
+//    @Ignore
+//    private final Set<Transaction> transactions; // to be deleted later once POJO is set up
 
     // constructor
     public Category(@NonNull String name,  String description, @NonNull BigDecimal monthlyBudget) {
@@ -48,8 +48,8 @@ public class Category implements Details {
         this.name = name;
         this.description = TrackingUtlis.determineDescription(description);
         this.monthlyBudget = monthlyBudget;
-        this.transactions = new HashSet<>();
-        this.transactionIds = new HashSet<>();
+//        this.transactions = new HashSet<>();
+//        this.transactionIds = new HashSet<>();
         this.children = new HashSet<>();
 
 
@@ -70,9 +70,9 @@ public class Category implements Details {
         this.name = name;
     }
 
-    public void setTransactionIds(@NonNull Set<Long> transactionIds) {
-        this.transactionIds = transactionIds;
-    }
+//    public void setTransactionIds(@NonNull Set<Long> transactionIds) {
+//        this.transactionIds = transactionIds;
+//    }
 
     public void setParentId(@NonNull Long parentId) {
         this.parentId = parentId;
@@ -114,10 +114,10 @@ public class Category implements Details {
         children.remove(child);
     }
 
-    public void removeTransaction(@NonNull Transaction transaction) {
-        transactions.remove(transaction);
-        transactionIds.remove(transaction.getTransactionId());
-    }
+//    public void removeTransaction(@NonNull Transaction transaction) {
+//        transactions.remove(transaction);
+//        transactionIds.remove(transaction.getTransactionId());
+//    }
 
     /**
      * Meant to make Children (sub-categories) the same level of the parent in the tree structure, so the parent can be safely modified/deleted without
@@ -161,21 +161,21 @@ public class Category implements Details {
         determineMinimumBudget();
 
     }
-    public void addTransaction(Transaction transaction) {
-        if (transaction != null) {
+//    public void addTransaction(Transaction transaction) {
+//        if (transaction != null) {
+//
+//            transactions.add(transaction);
+//            transactionIds.add(transaction.getTransactionId());
+//
+//        }
+//
+//
+//    }
 
-            transactions.add(transaction);
-            transactionIds.add(transaction.getTransactionId());
-
-        }
-
-
-    }
-
-    public void addTransactions(@NonNull Collection<Transaction> transactions) {
-        transactions.remove(null);
-        this.transactions.addAll(transactions);
-    }
+//    public void addTransactions(@NonNull Collection<Transaction> transactions) {
+//        transactions.remove(null);
+//        this.transactions.addAll(transactions);
+//    }
 
     /**
      * Warning: The budget should be at least above the minimum budget, otherwise it will be ignored.
@@ -230,9 +230,9 @@ public class Category implements Details {
     }
 
 
-    public Set<Long> getTransactionIds() {
-        return new HashSet<>(transactionIds);
-    }
+//    public Set<Long> getTransactionIds() {
+//        return new HashSet<>(transactionIds);
+//    }
 
     /**
      * Produces a defensive copy of children to ensure immutability.
@@ -283,40 +283,40 @@ public class Category implements Details {
         return total;
     }
 
-    /**
-     * This produces a defensive copy of transactions to ensure immutability.
-     * @param includeSub adds the transactions of all sub-categories if true. Ignores duplicates.
-     * @return returns the transactions of the category.
-     */
-    public Set<Transaction> getTransactions(boolean includeSub) {
-        Set<Transaction> totalTransactions = new HashSet<>(transactions);
+//    /**
+//     * This produces a defensive copy of transactions to ensure immutability.
+//     * @param includeSub adds the transactions of all sub-categories if true. Ignores duplicates.
+//     * @return returns the transactions of the category.
+//     */
+//    public Set<Transaction> getTransactions(boolean includeSub) {
+//        Set<Transaction> totalTransactions = new HashSet<>(transactions);
+//
+//        if (includeSub) {
+//            for (Category child : children) {
+//                totalTransactions.addAll(child.getTransactions(true));
+//            }
+//
+//        }
+//
+//        return totalTransactions;
+//    }
 
-        if (includeSub) {
-            for (Category child : children) {
-                totalTransactions.addAll(child.getTransactions(true));
-            }
-
-        }
-
-        return totalTransactions;
-    }
-
-    /**
-     * Warning: Ensure the children are cached before calling this method.
-     * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
-     * @return returns the total amount of the category.
-     */
-    public BigDecimal findTotal(boolean includeSub) {
-
-        BigDecimal total = new BigDecimal("0");
-        Set<Transaction> totalTransactions = getTransactions(includeSub);
-
-        // sum total
-        for (Transaction transaction : totalTransactions) {
-            total = total.add(transaction.getAmount());
-        }
-        return total;
-    }
+//    /**
+//     * Warning: Ensure the children are cached before calling this method.
+//     * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
+//     * @return returns the total amount of the category.
+//     */
+//    public BigDecimal findTotal(boolean includeSub) {
+//
+//        BigDecimal total = new BigDecimal("0");
+//        Set<Transaction> totalTransactions = getTransactions(includeSub);
+//
+//        // sum total
+//        for (Transaction transaction : totalTransactions) {
+//            total = total.add(transaction.getAmount());
+//        }
+//        return total;
+//    }
 
     /**
      * This is to check whether this category is a descendant of a given category via recursion.

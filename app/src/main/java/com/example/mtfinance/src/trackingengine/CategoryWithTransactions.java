@@ -29,6 +29,18 @@ public class CategoryWithTransactions {
        transactions = new HashSet<>();
    }
 
+    /**
+     * This only does not account for sub-categories
+     * @return
+     */
+   public BigDecimal findTotal() {
+       BigDecimal total = new BigDecimal("0");
+       for (Transaction transaction : transactions) {
+           total = total.add(transaction.getAmount());
+       }
+       return total;
+   }
+
 
 
 
