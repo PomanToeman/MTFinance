@@ -403,4 +403,75 @@ public class TrackingRepositoryTest {
         Category restoredL5 = restoredL4.getChildren(false).iterator().next();
         assertEquals("L5 Main", restoredL5.getName());
     }
+
+    @Test
+    public void testUpdateCategory() {
+        Category cat = new Category("Initial Name", "Initial Desc", BigDecimal.valueOf(100));
+        trackingRepository.insertCategory(cat);
+
+        cat.setName("Updated Name");
+        cat.setDescription("Updated Desc");
+        cat.setMonthlyBudget(BigDecimal.valueOf(200));
+        trackingRepository.updateCategory(cat);
+
+        Category updated = categoryRepository.getCategoryById(cat.getCategoryId());
+        assertEquals("Updated Name", updated.getName());
+        assertEquals("Updated Desc", updated.getDescription());
+        assertEquals(0, BigDecimal.valueOf(200).compareTo(updated.getMonthlyBudget()));
+    }
+
+    @Test
+    public void testUpdateTransaction() {
+        Transaction t = new Transaction.Builder("Old Name", BigDecimal.valueOf(50)).build();
+        Long originalId = transactionRepository.insert(t);
+
+        // Create an updated version of the same transaction by reusing the ID
+        Transaction updatedT = new Transaction.Builder("New Name", BigDecimal.valueOf(75)).build();
+        updatedT.setTransactionId(originalId);
+        
+        trackingRepository.updateTransaction(updatedT);
+
+        Transaction result = transactionRepository.getById(originalId);
+        assertEquals("New Name", result.getName());
+        assertEquals(0, BigDecimal.valueOf(75).compareTo(result.getAmount()));
+    }
+
+    @Test
+    public void testUpdateCategoryTreeWithBudgetChange() {
+        Category parent = new Category("Parent", "Parent desc", BigDecimal.valueOf(100));
+        Category child = new Category("Child", "Child desc", BigDecimal.valueOf(50));
+        categoryRepository.insert(parent);
+        child.setParent(parent);
+        categoryRepository.insert(child);
+
+        // Restore to get the full tree in memory
+        Category restoredChild = categoryRepository.getCategoryByIdRestored(child.getCategoryId());
+        
+        // Increase child budget to trigger parent budget increase via determineMinimumBudget()
+        // determineMinimumBudget is called inside setMonthlyBudget
+        restoredChild.setMonthlyBudget(BigDecimal.valueOf(150));
+        
+        // Now parent's budget should be 150 in memory
+        assertEquals(0, BigDecimal.valueOf(150).compareTo(restoredChild.getParent().getMonthlyBudget()));
+
+        // Update the tree
+        trackingRepository.updateCategoryTree(restoredChild);
+
+        // Verify parent in DB is updated
+        Category updatedParent = categoryRepository.getCategoryById(parent.getCategoryId());
+        assertEquals(0, BigDecimal.valueOf(150).compareTo(updatedParent.getMonthlyBudget()));
+    }
+
+    @Test
+    public void testGetCategoryByIdRestoredExplicit() {
+        Category cat = new Category("RestoredTest", "", BigDecimal.valueOf(100));
+        trackingRepository.insertCategory(cat);
+        
+        Category restored = trackingRepository.getCategoryByIdRestored(cat.getCategoryId());
+        assertNotNull(restored);
+        assertEquals(cat.getCategoryId(), restored.getCategoryId());
+        // Parent should be General Category by default if none specified
+        assertNotNull(restored.getParent());
+        assertEquals("General Category", restored.getParent().getName());
+    }
 }

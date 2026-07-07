@@ -111,6 +111,24 @@ public class TrackingRepository {
          return categoryWithTransactionsDao.getCategoriesByIds(ids);
     }
 
+    public void updateCategory(Category category) {
+        categoryRepository.updateCategory(category);
+    }
+
+    public void updateTransaction(Transaction transaction) {
+        transactionRepository.update(transaction);
+    }
+
+    public void updateCategoryTree(Category category) {
+        categoryRepository.updateCategoryTree(category);
+    }
+
+    public Category getCategoryByIdRestored(Long id) {
+        return categoryRepository.getCategoryByIdRestored(id);
+    }
+
+
+
 
 
 

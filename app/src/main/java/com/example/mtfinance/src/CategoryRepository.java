@@ -167,6 +167,20 @@ public class CategoryRepository {
         return categoryDao.getByIds(ids);
     }
 
+    /**
+     * This assumes the category Tree has been modified.
+     * Only works when Category has its cache restored.
+     * @param category - the category inside the tree (must have cache restored).
+     */
+    public void updateCategoryTree(Category category) {
+        Set<Category> treeContents = new HashSet<>();
+        treeContents.add(category);
+        treeContents.addAll(category.getChildren(true));
+        treeContents.addAll(category.getAncestors());
+        treeContents.remove(null); // for safety
+        updateAllCategories(treeContents);
+    }
+
 
     /**
      * Meant for repositories
@@ -175,6 +189,9 @@ public class CategoryRepository {
     protected CategoryDao getCategoryDao() {
         return categoryDao;
     }
+
+
+
 
 
 

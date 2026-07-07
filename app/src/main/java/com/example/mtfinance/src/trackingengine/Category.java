@@ -281,6 +281,23 @@ public class Category implements Details {
         return this.getParent().isDescendantOf(category); // recursive.
     }
 
+
+    /**
+     *
+     * @return - ancestors of this category as a set.
+     */
+    public Set<Category> getAncestors() {
+        Set<Category> ancestors = new HashSet<>();
+        Category current = this;
+
+        while (current.getParent() != null) {
+            ancestors.add(current.getParent());
+            current = current.getParent();
+        }
+
+        return ancestors;
+    }
+
     @Override
     public String getDetails() {
         return String.format("Name: %s\nDescription: %s\nSub Categories: %s", name, description, children);
