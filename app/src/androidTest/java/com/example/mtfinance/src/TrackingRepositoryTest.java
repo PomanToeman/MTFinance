@@ -323,4 +323,84 @@ public class TrackingRepositoryTest {
         List<Long> transIds = trackingRepository.getTransactionIdsForCategory(stressCat.getCategoryId());
         assertEquals(count, transIds.size());
     }
+
+    @Test
+    public void testDeepHierarchyBranchIsolationAndRestoration() {
+        // Depth 1: General Category (Already exists)
+        Category general = categoryRepository.getGeneralCategory();
+
+        // Depth 2: Main Branch
+        Category l2Main = new Category("L2 Main", "Main branch level 2", BigDecimal.valueOf(1000));
+        l2Main.setParent(general);
+        categoryRepository.insert(l2Main);
+
+        // Depth 3: Main Branch
+        Category l3Main = new Category("L3 Main", "Main branch level 3", BigDecimal.valueOf(800));
+        l3Main.setParent(l2Main);
+        categoryRepository.insert(l3Main);
+
+        // Depth 4: Main Branch
+        Category l4Main = new Category("L4 Main", "Main branch level 4", BigDecimal.valueOf(600));
+        l4Main.setParent(l3Main);
+        categoryRepository.insert(l4Main);
+
+        // Depth 5: Main Branch
+        Category l5Main = new Category("L5 Main", "Main branch level 5", BigDecimal.valueOf(400));
+        l5Main.setParent(l4Main);
+        categoryRepository.insert(l5Main);
+
+        // Different Branch (Isolation Test)
+        Category l2Other = new Category("L2 Other", "Other branch level 2", BigDecimal.valueOf(1000));
+        l2Other.setParent(general);
+        categoryRepository.insert(l2Other);
+
+        // Add Transactions
+        BigDecimal mainTotal = BigDecimal.ZERO;
+
+        Transaction t2 = new Transaction.Builder("T2 Main", BigDecimal.valueOf(20)).build();
+        trackingRepository.insertTransaction(t2, l2Main.getCategoryId());
+        mainTotal = mainTotal.add(t2.getAmount());
+
+        Transaction t3 = new Transaction.Builder("T3 Main", BigDecimal.valueOf(30)).build();
+        trackingRepository.insertTransaction(t3, l3Main.getCategoryId());
+        mainTotal = mainTotal.add(t3.getAmount());
+
+        Transaction t4 = new Transaction.Builder("T4 Main", BigDecimal.valueOf(40)).build();
+        trackingRepository.insertTransaction(t4, l4Main.getCategoryId());
+        mainTotal = mainTotal.add(t4.getAmount());
+
+        Transaction t5 = new Transaction.Builder("T5 Main", BigDecimal.valueOf(50)).build();
+        trackingRepository.insertTransaction(t5, l5Main.getCategoryId());
+        mainTotal = mainTotal.add(t5.getAmount());
+
+        // Transaction in the other branch (Should be isolated)
+        Transaction tOther = new Transaction.Builder("T Other", BigDecimal.valueOf(1000)).build();
+        trackingRepository.insertTransaction(tOther, l2Other.getCategoryId());
+
+        // Transaction in the root (Should be isolated from L2 total)
+        Transaction tRoot = new Transaction.Builder("T Root", BigDecimal.valueOf(500)).build();
+        trackingRepository.insertTransaction(tRoot, general.getCategoryId());
+
+        // 1. Check isolation: Total for L2 Main should only include its descendants
+        BigDecimal resultTotal = trackingRepository.findTotalInCategory(l2Main, true);
+        assertEquals(0, mainTotal.compareTo(resultTotal));
+
+        // 2. Check restoration: Ensure full hierarchy is restored from DB
+        Category restoredL2 = categoryRepository.getCategoryByIdRestored(l2Main.getCategoryId());
+        assertNotNull(restoredL2);
+        assertEquals(general.getCategoryId(), restoredL2.getParent().getCategoryId()); // Parent check
+
+        // Check children chain
+        assertEquals(1, restoredL2.getChildren(false).size());
+        Category restoredL3 = restoredL2.getChildren(false).iterator().next();
+        assertEquals("L3 Main", restoredL3.getName());
+
+        assertEquals(1, restoredL3.getChildren(false).size());
+        Category restoredL4 = restoredL3.getChildren(false).iterator().next();
+        assertEquals("L4 Main", restoredL4.getName());
+
+        assertEquals(1, restoredL4.getChildren(false).size());
+        Category restoredL5 = restoredL4.getChildren(false).iterator().next();
+        assertEquals("L5 Main", restoredL5.getName());
+    }
 }
