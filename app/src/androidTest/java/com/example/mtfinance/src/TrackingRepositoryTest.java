@@ -266,4 +266,61 @@ public class TrackingRepositoryTest {
         latch.await(2, TimeUnit.SECONDS);
         return (T) data[0];
     }
+
+    @Test
+    public void testDeepAndWideCategoryHierarchyWithManyTransactions() {
+        // Create root
+        Category root = new Category("Business", "All business expenses", BigDecimal.valueOf(10000));
+        categoryRepository.insert(root);
+
+        BigDecimal expectedTotal = BigDecimal.ZERO;
+
+        // Level 1: 5 children
+        for (int i = 0; i < 5; i++) {
+            Category l1 = new Category("Dept " + i, "Level 1 Department", BigDecimal.valueOf(1000));
+            l1.setParent(root);
+            categoryRepository.insert(l1);
+
+            Transaction t1 = new Transaction.Builder("L1 Trans " + i, BigDecimal.valueOf(100)).build();
+            trackingRepository.insertTransaction(t1, l1.getCategoryId());
+            expectedTotal = expectedTotal.add(t1.getAmount());
+
+            // Level 2: 4 grandchildren per level 1 child (Total 20 grandchildren)
+            for (int j = 0; j < 4; j++) {
+                Category l2 = new Category("Team " + i + "-" + j, "Level 2 Team", BigDecimal.valueOf(200));
+                l2.setParent(l1);
+                categoryRepository.insert(l2);
+
+                Transaction t2 = new Transaction.Builder("L2 Trans " + i + "-" + j, BigDecimal.valueOf(50)).build();
+                trackingRepository.insertTransaction(t2, l2.getCategoryId());
+                expectedTotal = expectedTotal.add(t2.getAmount());
+            }
+        }
+
+        // Verify root total including all descendants
+        BigDecimal total = trackingRepository.findTotalInCategory(root, true);
+        assertEquals(0, expectedTotal.compareTo(total));
+    }
+
+    @Test
+    public void testStressTestingTransactions() {
+        Category stressCat = new Category("Stress Test", "Large volume of transactions", BigDecimal.valueOf(100000));
+        categoryRepository.insert(stressCat);
+
+        int count = 100;
+        BigDecimal amountPerTrans = BigDecimal.valueOf(1.50);
+        BigDecimal expectedTotal = BigDecimal.ZERO;
+
+        for (int i = 0; i < count; i++) {
+            Transaction t = new Transaction.Builder("Trans " + i, amountPerTrans).build();
+            trackingRepository.insertTransaction(t, stressCat.getCategoryId());
+            expectedTotal = expectedTotal.add(amountPerTrans);
+        }
+
+        BigDecimal total = trackingRepository.findTotalInCategory(stressCat, false);
+        assertEquals(0, expectedTotal.compareTo(total));
+
+        List<Long> transIds = trackingRepository.getTransactionIdsForCategory(stressCat.getCategoryId());
+        assertEquals(count, transIds.size());
+    }
 }

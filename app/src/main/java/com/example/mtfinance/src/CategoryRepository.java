@@ -104,10 +104,22 @@ public class CategoryRepository {
         categoryDao.updateAll(categories);
     }
 
+    /**
+     * Returns the Category with restored cache (parent and children) for the given ID.
+     * Category must already be in the database.
+     * @param id - the ID of the category to restore.
+     * @return - the category with restored cache.
+     */
     public Category getCategoryByIdRestored(@NonNull Long id) {
         return getCategoryByIdRestoredInternal(id, new HashSet<>());
     }
 
+    /**
+     *
+     * @param id - the ID of the category to restore (recusrive)
+     * @param visited - a set of IDs that have already been restored.
+     * @return - the category with restored cache.
+     */
     private Category getCategoryByIdRestoredInternal(Long id, Set<Long> visited) {
         if (id == null || visited.contains(id)) return null;
         visited.add(id); // to track if categories has already been restored.
@@ -123,16 +135,28 @@ public class CategoryRepository {
 
             // restore all children.
             for (Category child : categoryDao.getByParentId(category.getCategoryId())) {
-               Category childRestored = getCategoryByIdRestoredInternal(child.getCategoryId(), visited);
-               if (childRestored != null) {
-                   child.setParent(category);;
-               }
+                if (child != null) {
+                    Category childRestored = getCategoryByIdRestoredInternal(child.getCategoryId(), visited);
+                    if (childRestored != null) {
+                        childRestored.setParent(category);
+                    }
+                }
+
+
             }
         }
 
         return category;
+
     }
 
+    /**
+     * Returns the Category with restored cache (parent and children) for the given instance.
+     * Category must already be in the database, and will use that version for restoration.
+     * If it is a modified instance, please update the category first before using this.
+     * @param category - the category to restore.
+     * @return - the category with restored cache.
+     */
     public Category getCategoryRestored(@NonNull Category category) {
         return getCategoryByIdRestored(category.getCategoryId()); // this will create a copy
     }

@@ -35,8 +35,8 @@ public class TrackingRepository {
 
     /**
      * Insert a category into the database.
-     * Warining: this method assumes any chanced transactions are already in the database (as it only brings the IDs).
-     *  this does not insert/update the cached transactions into the database. Must be done separately.
+     * No two categories can have the same name.
+     * You need to insert a category first before inserting any transactions under it.
      * @param category - the category to be inserted
      */
     public void insertCategory(Category category) {
