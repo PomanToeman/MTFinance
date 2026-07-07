@@ -30,6 +30,7 @@ public interface CategoryTransactionDao {
     void deleteCrossRefsForCategory(long categoryId);
 
 
+
     @Query("SELECT categoryId FROM categoryTransactionCrossRef WHERE transactionId = :transactionId")
     List<Long> getCategoryIdsForTransaction(long transactionId);
 
@@ -38,10 +39,21 @@ public interface CategoryTransactionDao {
 
     @Transaction
     @Query("SELECT * FROM categories WHERE categoryId = :id")
-    CategoryWithTransactions getCategoryWithTransactions(Long id);
+    CategoryWithTransactions getCategoryById(Long id);
+
+    @Transaction
+    @Query("SELECT * FROM categories WHERE categoryId IN (:ids)")
+    List<CategoryWithTransactions> getCategoriesByIds(java.util.Collection<Long> ids);
+
+
+
 
     @Transaction
     @Query("SELECT * FROM categories WHERE parent_id = :parentId")
     List<CategoryWithTransactions> getCategoriesWithTransactionsByParentId(Long parentId);
+
+
+
+
 
 }

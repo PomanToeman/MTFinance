@@ -140,4 +140,42 @@ public class TrackingRepositoryTest {
         assertTrue(found1);
         assertTrue(found2);
     }
+
+    @Test
+    public void testFindTotalInCategorySimple() {
+        Category category = new Category("PaknSave", "Food stuff", BigDecimal.valueOf(500));
+        categoryRepository.insert(category);
+
+        Transaction t1 = new Transaction.Builder("Apple", BigDecimal.valueOf(2.50)).build();
+        Transaction t2 = new Transaction.Builder("Milk", BigDecimal.valueOf(3.50)).build();
+
+        trackingRepository.insertTransaction(t1, category.getCategoryId());
+        trackingRepository.insertTransaction(t2, category.getCategoryId());
+
+        BigDecimal total = trackingRepository.findTotalInCategory(category, false);
+        assertEquals(0, BigDecimal.valueOf(6.00).compareTo(total));
+    }
+
+    @Test
+    public void testFindTotalInCategoryWithSubcategories() {
+        Category parent = new Category("Transport", "Commute", BigDecimal.valueOf(300));
+        Category child = new Category("Fuel", "Gasoline", BigDecimal.valueOf(100));
+        categoryRepository.insert(parent);
+        child.setParent(parent);
+        categoryRepository.insert(child);
+
+        Transaction t1 = new Transaction.Builder("Train ticket", BigDecimal.valueOf(15.00)).build();
+        Transaction t2 = new Transaction.Builder("Petrol", BigDecimal.valueOf(45.00)).build();
+
+        trackingRepository.insertTransaction(t1, parent.getCategoryId());
+        trackingRepository.insertTransaction(t2, child.getCategoryId());
+
+        // Total for parent including subcategories
+        BigDecimal totalWithSubs = trackingRepository.findTotalInCategory(parent, true);
+        assertEquals(0, BigDecimal.valueOf(60.00).compareTo(totalWithSubs));
+
+        // Total for parent excluding subcategories
+        BigDecimal totalWithoutSubs = trackingRepository.findTotalInCategory(parent, false);
+        assertEquals(0, BigDecimal.valueOf(15.00).compareTo(totalWithoutSubs));
+    }
 }

@@ -123,7 +123,10 @@ public class CategoryRepository {
 
             // restore all children.
             for (Category child : categoryDao.getByParentId(category.getCategoryId())) {
-                getCategoryByIdRestoredInternal(child.getCategoryId(), visited);
+               Category childRestored = getCategoryByIdRestoredInternal(child.getCategoryId(), visited);
+               if (childRestored != null) {
+                   child.setParent(category);;
+               }
             }
         }
 

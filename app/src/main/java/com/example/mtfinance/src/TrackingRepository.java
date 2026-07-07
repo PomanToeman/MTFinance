@@ -10,6 +10,8 @@ import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
+import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -88,11 +90,7 @@ public class TrackingRepository {
     }
 
 
-    //    /**
-//     * Warning: Ensure the children are cached before calling this method.
-//     * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
-//     * @return returns the total amount of the category.
-//     */
+
 //    public BigDecimal findTotal(boolean includeSub) {
 //
 //        BigDecimal total = new BigDecimal("0");
@@ -104,6 +102,41 @@ public class TrackingRepository {
 //        }
 //        return total;
 //    }
+
+
+        /**
+     *
+         * @param category - the category to be searched.
+     * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
+     * @return returns the total amount of the category.
+     */
+    public BigDecimal findTotalInCategory(Category category, boolean includeSub) {
+         CategoryWithTransactions parentCategorywithTransactions =categoryWithTransactionsDao.getCategoryById(category.getCategoryId());
+         if (parentCategorywithTransactions == null) {
+             return BigDecimal.ZERO;
+         }
+
+
+         Set<Transaction> transactions = new HashSet<>(parentCategorywithTransactions.transactions);
+
+         if (includeSub) {
+             // to cache the children of the category.
+             parentCategorywithTransactions.category = categoryRepository.getCategoryRestored(parentCategorywithTransactions.category);
+
+             for (Category child : parentCategorywithTransactions.category.getChildren(true)) {
+                 CategoryWithTransactions childCategory = categoryWithTransactionsDao.getCategoryById(child.getCategoryId());
+                 transactions.addAll(childCategory.transactions);
+             }
+         }
+
+         BigDecimal total = new BigDecimal("0");
+         for (Transaction transaction : transactions) {
+             total = total.add(transaction.getAmount());
+         }
+         return total;
+
+
+    }
 
 
 }
