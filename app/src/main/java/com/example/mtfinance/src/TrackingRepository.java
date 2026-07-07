@@ -87,4 +87,23 @@ public class TrackingRepository {
          return categoryWithTransactionsDao.getAllCategoriesWithTransactions();
     }
 
+
+    //    /**
+//     * Warning: Ensure the children are cached before calling this method.
+//     * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
+//     * @return returns the total amount of the category.
+//     */
+//    public BigDecimal findTotal(boolean includeSub) {
+//
+//        BigDecimal total = new BigDecimal("0");
+//        Set<Transaction> totalTransactions = getTransactions(includeSub);
+//
+//        // sum total
+//        for (Transaction transaction : totalTransactions) {
+//            total = total.add(transaction.getAmount());
+//        }
+//        return total;
+//    }
+
+
 }
