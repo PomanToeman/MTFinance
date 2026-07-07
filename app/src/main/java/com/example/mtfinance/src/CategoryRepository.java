@@ -141,6 +141,15 @@ public class CategoryRepository {
     }
 
 
+    /**
+     * Meant for repositories
+     * @return
+     */
+    protected CategoryDao getCategoryDao() {
+        return categoryDao;
+    }
+
+
 
 
 

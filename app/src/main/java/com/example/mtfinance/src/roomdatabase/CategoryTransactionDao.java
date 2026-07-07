@@ -36,4 +36,12 @@ public interface CategoryTransactionDao {
     @Query("SELECT transactionId FROM categoryTransactionCrossRef WHERE categoryId = :categoryId")
     List<Long> getTransactionIdsForCategory(long categoryId);
 
+    @Transaction
+    @Query("SELECT * FROM categories WHERE categoryId = :id")
+    CategoryWithTransactions getCategoryWithTransactions(Long id);
+
+    @Transaction
+    @Query("SELECT * FROM categories WHERE parent_id = :parentId")
+    List<CategoryWithTransactions> getCategoriesWithTransactionsByParentId(Long parentId);
+
 }

@@ -7,6 +7,8 @@ import androidx.room.Relation;
 import com.example.mtfinance.src.roomdatabase.CategoryTransactionCrossRef;
 
 
+import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -22,4 +24,13 @@ public class CategoryWithTransactions {
             associateBy = @Junction(CategoryTransactionCrossRef.class)
     )
     public Set<Transaction> transactions;
+
+   public CategoryWithTransactions() {
+       transactions = new HashSet<>();
+   }
+
+
+
+
+
 }

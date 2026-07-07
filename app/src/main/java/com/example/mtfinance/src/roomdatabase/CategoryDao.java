@@ -1,13 +1,17 @@
 package com.example.mtfinance.src.roomdatabase;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Transaction;
 import androidx.room.Update;
+import androidx.room.Upsert;
 
 
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 
 import java.util.Collection;
 import java.util.List;
@@ -38,6 +42,8 @@ public interface CategoryDao {
 
     @Query("SELECT * FROM categories WHERE categoryId IN (:ids)")
     List<Category> getByIds(java.util.Collection<Long> ids);
+
+
 
 
 
