@@ -43,5 +43,8 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)
+    implementation(libs.room.runtime)
+    annotationProcessor(libs.room.compiler)
 
 }
+
