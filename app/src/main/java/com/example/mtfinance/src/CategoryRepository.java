@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import com.example.mtfinance.src.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.TrackingType;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -15,7 +16,7 @@ import java.util.Set;
 public class CategoryRepository {
 
     public final List<Category> defaultCategories = new ArrayList<>();
-    public final Category root = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000));
+    public final Category root = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
 
 
     private final CategoryDao categoryDao;
@@ -23,8 +24,8 @@ public class CategoryRepository {
     public CategoryRepository(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
         // default categories
-        defaultCategories.add(new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100)));
-        defaultCategories.add(new Category("Utilities", "Utilities", BigDecimal.valueOf(100)));
+        defaultCategories.add(new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE));
+        defaultCategories.add(new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
 
         populateDefaultCategories();
     }

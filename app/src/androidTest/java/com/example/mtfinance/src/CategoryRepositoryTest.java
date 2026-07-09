@@ -15,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.example.mtfinance.src.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import org.junit.After;
@@ -61,7 +62,7 @@ public class CategoryRepositoryTest {
 
     @Test
     public void testInsertCategory() {
-        Category newCat = new Category("Entertainment", "Movies etc", BigDecimal.valueOf(50));
+        Category newCat = new Category("Entertainment", "Movies etc", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         long id = repository.insert(newCat);
         assertTrue(id > 0);
         
@@ -72,20 +73,20 @@ public class CategoryRepositoryTest {
     @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
     public void testUniqueNameConstraint() {
         // "Groceries" is already in defaultCategories
-        Category duplicate = new Category("Groceries", "Duplicate", BigDecimal.valueOf(100));
+        Category duplicate = new Category("Groceries", "Duplicate", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         repository.insert(duplicate);
     }
 
     @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
     public void testUniqueNameConstraintCaseInsensitive() {
         // "groceries" should conflict with "Groceries" because of NOCASE collation
-        Category duplicate = new Category("groceries", "Duplicate", BigDecimal.valueOf(100));
+        Category duplicate = new Category("groceries", "Duplicate", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         repository.insert(duplicate);
     }
 
     @Test
     public void testGetCategoryById() {
-        Category cat = new Category("TestCat", "Desc", BigDecimal.valueOf(50));
+        Category cat = new Category("TestCat", "Desc", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         long id = repository.insert(cat);
 
         Category retrieved = categoryDao.getById(id);
@@ -95,8 +96,8 @@ public class CategoryRepositoryTest {
 
     @Test
     public void testAutomaticParentInsertion() {
-        Category parent = new Category("Parent", "I am not in DB", BigDecimal.valueOf(200));
-        Category child = new Category("Child", "I am also not in DB", BigDecimal.valueOf(50));
+        Category parent = new Category("Parent", "I am not in DB", BigDecimal.valueOf(200), TrackingType.EXPENSE);
+        Category child = new Category("Child", "I am also not in DB", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         child.setParent(parent);
 
         // This should trigger recursive insertion of parent
@@ -116,9 +117,9 @@ public class CategoryRepositoryTest {
 
     @Test
     public void testAutomaticGrandparentInsertion() {
-        Category grandParent = new Category("Grandparent", "Top", BigDecimal.valueOf(500));
-        Category parent = new Category("ParentName", "Middle", BigDecimal.valueOf(200));
-        Category child = new Category("ChildName", "Bottom", BigDecimal.valueOf(50));
+        Category grandParent = new Category("Grandparent", "Top", BigDecimal.valueOf(500), TrackingType.EXPENSE);
+        Category parent = new Category("ParentName", "Middle", BigDecimal.valueOf(200), TrackingType.EXPENSE);
+        Category child = new Category("ChildName", "Bottom", BigDecimal.valueOf(50), TrackingType.EXPENSE);
 
         parent.setParent(grandParent);
         child.setParent(parent);
@@ -140,7 +141,7 @@ public class CategoryRepositoryTest {
 
     @Test
     public void testDeleteCategoryRemovesFromDatabase() {
-        Category toDelete = new Category("ToDelete", "Desc", BigDecimal.valueOf(50));
+        Category toDelete = new Category("ToDelete", "Desc", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         repository.insert(toDelete);
         
         // Find it in DB to get the ID/object
@@ -167,8 +168,8 @@ public class CategoryRepositoryTest {
     @Test
     public void testDeleteCategoryReassignsChildren() {
 
-        Category parent = new Category("ParentToDelete", "Desc", BigDecimal.valueOf(100));
-        Category child = new Category("ChildToReassign", "Desc", BigDecimal.valueOf(50));
+        Category parent = new Category("ParentToDelete", "Desc", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category child = new Category("ChildToReassign", "Desc", BigDecimal.valueOf(50), TrackingType.EXPENSE);
 
 
 
@@ -215,8 +216,8 @@ public class CategoryRepositoryTest {
     public void testGetCategoryByIdRestored() {
         // Setup hierarchy: Root -> Parent -> Child
         Category root = repository.getGeneralCategory();
-        Category parent = new Category("Parent", "Parent desc", BigDecimal.valueOf(200));
-        Category child = new Category("Child", "Child desc", BigDecimal.valueOf(50));
+        Category parent = new Category("Parent", "Parent desc", BigDecimal.valueOf(200), TrackingType.EXPENSE);
+        Category child = new Category("Child", "Child desc", BigDecimal.valueOf(50), TrackingType.EXPENSE);
 
         parent.setParent(root);
         child.setParent(parent);

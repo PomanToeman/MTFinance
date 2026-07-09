@@ -29,6 +29,7 @@ public class Category implements Details {
     private BigDecimal monthlyBudget;
     @ColumnInfo(name = "parent_id")
     private Long parentId = null; // foreign key
+    private final TrackingType type;
 
     // cache fields (need to be restored/updated once extracted from room)
     @Ignore
@@ -38,13 +39,14 @@ public class Category implements Details {
 
 
     // constructor
-    public Category(@NonNull String name,  String description, @NonNull BigDecimal monthlyBudget) {
+    public Category(@NonNull String name,  String description, @NonNull BigDecimal monthlyBudget, @NonNull TrackingType type) {
         TrackingUtlis.checkAmount(monthlyBudget);
 
         this.categoryId = TrackingUtlis.getNextCategoryCounterId();
         this.name = name;
         this.description = TrackingUtlis.determineDescription(description);
         this.monthlyBudget = monthlyBudget;
+        this.type = type;
 
         this.children = new HashSet<>();
 
@@ -205,8 +207,9 @@ public class Category implements Details {
         return categoryId;
     }
 
-
-
+    public TrackingType getType() {
+        return type;
+    }
 
     /**
      * Produces a defensive copy of children to ensure immutability.

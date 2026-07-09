@@ -7,6 +7,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
@@ -58,8 +59,8 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_categories_hierarchy() {
-        Category categoryOne = new Category("Subscriptions", "Test 3", DEFAULT_BUDGET);
-        Category categoryTwo = new Category("Netflix", "Sub category of subscriptions", DEFAULT_BUDGET);
+        Category categoryOne = new Category("Subscriptions", "Test 3", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category categoryTwo = new Category("Netflix", "Sub category of subscriptions", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         categoryTwo.setParent(categoryOne);
         categoryOne.setParent(categoryTwo); // cycle prevention check
@@ -72,8 +73,8 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_categories_hierarchy_basic() {
-        Category parent = new Category("Subscriptions", "Main category", DEFAULT_BUDGET);
-        Category child = new Category("Netflix", "Streaming sub", DEFAULT_BUDGET);
+        Category parent = new Category("Subscriptions", "Main category", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Netflix", "Streaming sub", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         child.setParent(parent);
 
@@ -84,8 +85,8 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_categories_setParent_preventsCycle() {
-        Category sub = new Category("Subscriptions", "", DEFAULT_BUDGET);
-        Category netflix = new Category("Netflix", "", DEFAULT_BUDGET);
+        Category sub = new Category("Subscriptions", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category netflix = new Category("Netflix", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         netflix.setParent(sub);
         sub.setParent(netflix); // This should NOT create a cycle
@@ -98,10 +99,10 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_categories_deep_hierarchy() {
-        Category root = new Category("Root", "", DEFAULT_BUDGET);
-        Category level1 = new Category("Level 1", "", DEFAULT_BUDGET);
-        Category level2 = new Category("Level 2", "", DEFAULT_BUDGET);
-        Category level3 = new Category("Level 3", "", DEFAULT_BUDGET);
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category level1 = new Category("Level 1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category level2 = new Category("Level 2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category level3 = new Category("Level 3", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         level1.setParent(root);
         level2.setParent(level1);
@@ -115,10 +116,10 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_categories_multiple_children() {
-        Category subscriptions = new Category("Subscriptions", "", DEFAULT_BUDGET);
-        Category netflix = new Category("Netflix", "", DEFAULT_BUDGET);
-        Category spotify = new Category("Spotify", "", DEFAULT_BUDGET);
-        Category youtube = new Category("YouTube", "", DEFAULT_BUDGET);
+        Category subscriptions = new Category("Subscriptions", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category netflix = new Category("Netflix", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category spotify = new Category("Spotify", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category youtube = new Category("YouTube", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         netflix.setParent(subscriptions);
         spotify.setParent(subscriptions);
@@ -133,9 +134,9 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_categories_changeParent() {
-        Category oldParent = new Category("Old Parent", "", DEFAULT_BUDGET);
-        Category newParent = new Category("New Parent", "", DEFAULT_BUDGET);
-        Category child = new Category("Child", "", DEFAULT_BUDGET);
+        Category oldParent = new Category("Old Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category newParent = new Category("New Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         child.setParent(oldParent);
         child.setParent(newParent);
@@ -147,15 +148,15 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_categories_noParent() {
-        Category orphan = new Category("Orphan", "", DEFAULT_BUDGET);
+        Category orphan = new Category("Orphan", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         assertNull(orphan.getParent());
-        assertFalse(orphan.isDescendantOf(new Category("Anything", "", DEFAULT_BUDGET)));
+        assertFalse(orphan.isDescendantOf(new Category("Anything", "", DEFAULT_BUDGET, TrackingType.EXPENSE)));
     }
 
     @Test
     public void testing_categories_selfParent_prevention() {
-        Category cat = new Category("Self", "", DEFAULT_BUDGET);
+        Category cat = new Category("Self", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
         cat.setParent(cat);
 
         assertNull(cat.getParent());
@@ -167,8 +168,8 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_minimum_budget_handling() {
-        Category root = new Category("Root", "", DEFAULT_BUDGET);
-        Category level1 = new Category("L1", "", BigDecimal.ONE);
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category level1 = new Category("L1", "", BigDecimal.ONE, TrackingType.EXPENSE);
         level1.setParent(root);
 
         assertEquals(BigDecimal.ONE, root.getMonthlyBudget());
@@ -177,10 +178,10 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_minimum_budget_with_multiple_children() {
-        Category subscriptions = new Category("Subscriptions", "", DEFAULT_BUDGET);
-        Category netflix = new Category("Netflix", "", BigDecimal.valueOf(15.99));
-        Category spotify = new Category("Spotify", "", BigDecimal.valueOf(10.99));
-        Category youtube = new Category("YouTube", "", BigDecimal.valueOf(13.99));
+        Category subscriptions = new Category("Subscriptions", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category netflix = new Category("Netflix", "", BigDecimal.valueOf(15.99), TrackingType.EXPENSE);
+        Category spotify = new Category("Spotify", "", BigDecimal.valueOf(10.99), TrackingType.EXPENSE);
+        Category youtube = new Category("YouTube", "", BigDecimal.valueOf(13.99), TrackingType.EXPENSE);
 
         netflix.setParent(subscriptions);
         spotify.setParent(subscriptions);
@@ -194,10 +195,10 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_minimum_budget_deep_hierarchy() {
-        Category root = new Category("Root", "", DEFAULT_BUDGET);
-        Category l1 = new Category("L1", "", BigDecimal.valueOf(5));
-        Category l2 = new Category("L2", "", BigDecimal.valueOf(10));
-        Category l3 = new Category("L3", "", BigDecimal.valueOf(15));
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category l1 = new Category("L1", "", BigDecimal.valueOf(5), TrackingType.EXPENSE);
+        Category l2 = new Category("L2", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category l3 = new Category("L3", "", BigDecimal.valueOf(15), TrackingType.EXPENSE);
 
         l1.setParent(root);
         l2.setParent(l1);
@@ -211,8 +212,8 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_setBudget_respectsMinimum() {
-        Category parent = new Category("Parent", "", DEFAULT_BUDGET);
-        Category child = new Category("Child", "", BigDecimal.valueOf(25.50));
+        Category parent = new Category("Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", BigDecimal.valueOf(25.50), TrackingType.EXPENSE);
         child.setParent(parent);
 
         parent.setMonthlyBudget(BigDecimal.valueOf(10));
@@ -222,8 +223,8 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_setBudget_aboveMinimum() {
-        Category parent = new Category("Parent", "", DEFAULT_BUDGET);
-        Category child = new Category("Child", "", BigDecimal.valueOf(20));
+        Category parent = new Category("Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", BigDecimal.valueOf(20), TrackingType.EXPENSE);
         child.setParent(parent);
 
         parent.setMonthlyBudget(BigDecimal.valueOf(50));
@@ -233,11 +234,11 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_minimumBudget_afterAddingNewChild() {
-        Category root = new Category("Root", "", BigDecimal.valueOf(100));
-        Category child1 = new Category("Child1", "", BigDecimal.valueOf(30));
+        Category root = new Category("Root", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category child1 = new Category("Child1", "", BigDecimal.valueOf(30), TrackingType.EXPENSE);
         child1.setParent(root);
 
-        Category child2 = new Category("Child2", "", BigDecimal.valueOf(80));
+        Category child2 = new Category("Child2", "", BigDecimal.valueOf(80), TrackingType.EXPENSE);
         child2.setParent(root);
 
         assertEquals(BigDecimal.valueOf(110), root.getMonthlyBudget());
@@ -245,7 +246,7 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_minimumBudget_noChildren() {
-        Category alone = new Category("Alone", "", DEFAULT_BUDGET);
+        Category alone = new Category("Alone", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         assertEquals(DEFAULT_BUDGET, alone.getMonthlyBudget());
         assertEquals(BigDecimal.ZERO, alone.determineMinimumBudget());
@@ -257,7 +258,7 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_getDetails_noChildren() {
-        Category category = new Category("Netflix", "Streaming subscription", DEFAULT_BUDGET);
+        Category category = new Category("Netflix", "Streaming subscription", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         String details = category.getDetails();
 
@@ -268,9 +269,9 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_getDetails_withChildren() {
-        Category parent = new Category("Subscriptions", "All subs", DEFAULT_BUDGET);
-        Category netflix = new Category("Netflix", "Video", DEFAULT_BUDGET);
-        Category spotify = new Category("Spotify", "Music", DEFAULT_BUDGET);
+        Category parent = new Category("Subscriptions", "All subs", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category netflix = new Category("Netflix", "Video", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category spotify = new Category("Spotify", "Music", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         netflix.setParent(parent);
         spotify.setParent(parent);
@@ -285,7 +286,7 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_getDetails_emptyDescription() {
-        Category cat = new Category("EmptyDesc", "", DEFAULT_BUDGET);
+        Category cat = new Category("EmptyDesc", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         String details = cat.getDetails();
 
@@ -296,7 +297,7 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_getDetails_nullSafety() {
-        Category cat = new Category("Test", null, DEFAULT_BUDGET);
+        Category cat = new Category("Test", null, DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         String details = cat.getDetails();
         assertNotNull(details);
@@ -308,16 +309,16 @@ public class ExampleUnitTest {
     public void testing_category_budget_validation_rejectsInvalidAmounts() {
         // Test 1: Creating category with negative budget
         assertThrows(IllegalArgumentException.class, () -> {
-            new Category("Invalid Negative", "Test", BigDecimal.valueOf(-10.50));
+            new Category("Invalid Negative", "Test", BigDecimal.valueOf(-10.50), TrackingType.EXPENSE);
         });
 
         // Test 2: Creating category with zero budget
         assertThrows(IllegalArgumentException.class, () -> {
-            new Category("Invalid Zero", "Test", BigDecimal.ZERO);
+            new Category("Invalid Zero", "Test", BigDecimal.ZERO, TrackingType.EXPENSE);
         });
 
         // Test 3: Setting negative budget on existing category
-        Category validCategory = new Category("Valid Category", "Test", DEFAULT_BUDGET);
+        Category validCategory = new Category("Valid Category", "Test", DEFAULT_BUDGET, TrackingType.EXPENSE);
         assertThrows(IllegalArgumentException.class, () -> {
             validCategory.setMonthlyBudget(BigDecimal.valueOf(-5.00));
         });
@@ -329,13 +330,13 @@ public class ExampleUnitTest {
 
         // Test 5: Creating child with invalid budget should also fail
         assertThrows(IllegalArgumentException.class, () -> {
-            Category parent = new Category("Parent", "", DEFAULT_BUDGET);
-            Category invalidChild = new Category("Bad Child", "", BigDecimal.valueOf(-1));
+            Category parent = new Category("Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+            Category invalidChild = new Category("Bad Child", "", BigDecimal.valueOf(-1), TrackingType.EXPENSE);
             invalidChild.setParent(parent);
         });
 
         // Verify valid category still works normally
-        Category goodCategory = new Category("Good Category", "Test", DEFAULT_BUDGET);
+        Category goodCategory = new Category("Good Category", "Test", DEFAULT_BUDGET, TrackingType.EXPENSE);
         assertEquals(DEFAULT_BUDGET, goodCategory.getMonthlyBudget());
     }
 
@@ -346,26 +347,26 @@ public class ExampleUnitTest {
     @Test
     public void testing_category_null_constructor_parameters() {
         // Implementation currently doesn't throw NPE, it just assigns null (or default via TrackingUtlis)
-        Category catNameNull = new Category(null, "desc", DEFAULT_BUDGET);
+        Category catNameNull = new Category(null, "desc", DEFAULT_BUDGET, TrackingType.EXPENSE);
         assertNull(catNameNull.getName());
 
-        assertThrows(NullPointerException.class, () -> new Category("name", "desc", null));
+        assertThrows(NullPointerException.class, () -> new Category("name", "desc", null, TrackingType.EXPENSE));
 
         // description can be null as it's passed to TrackingUtlis.determineDescription
-        Category catDescNull = new Category("name", null, DEFAULT_BUDGET);
+        Category catDescNull = new Category("name", null, DEFAULT_BUDGET, TrackingType.EXPENSE);
         assertEquals(TrackingUtlis.EMPTY_DESCRIPTION, catDescNull.getDescription());
     }
 
     @Test
     public void testing_category_setBudget_null() {
-        Category cat = new Category("name", "desc", DEFAULT_BUDGET);
+        Category cat = new Category("name", "desc", DEFAULT_BUDGET, TrackingType.EXPENSE);
         // setBudget calls TrackingUtlis.checkAmount(budget) which doesn't check for null specifically before use
         assertThrows(NullPointerException.class, () -> cat.setMonthlyBudget(null));
     }
 
     @Test
     public void testing_category_isDescendantOf_null() {
-        Category cat = new Category("name", "desc", DEFAULT_BUDGET);
+        Category cat = new Category("name", "desc", DEFAULT_BUDGET, TrackingType.EXPENSE);
         // Current implementation: if (this.getParent() == null || category.equals(this))
         // category.equals(this) will be false if category is null.
         // then category.equals(this.getParent()) will be false if getParent is null.
@@ -397,9 +398,9 @@ public class ExampleUnitTest {
 
     @Test
     public void testing_makeChildrenCongruent_basic() {
-        Category grandparent = new Category("Grandparent", "", DEFAULT_BUDGET);
-        Category parent = new Category("Parent", "", DEFAULT_BUDGET);
-        Category child = new Category("Child", "", DEFAULT_BUDGET);
+        Category grandparent = new Category("Grandparent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category parent = new Category("Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         parent.setParent(grandparent);
         child.setParent(parent);
@@ -420,9 +421,9 @@ public class ExampleUnitTest {
     public void testing_deleteCategory_logic() {
         // Since CategoryRepository.deleteCategory calls makeChildrenCongruent,
         // we can test the logic flow here.
-        Category root = new Category("Root", "", DEFAULT_BUDGET);
-        Category toDelete = new Category("ToDelete", "", DEFAULT_BUDGET);
-        Category child = new Category("Child", "", DEFAULT_BUDGET);
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category toDelete = new Category("ToDelete", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
 
         toDelete.setParent(root);
         child.setParent(toDelete);

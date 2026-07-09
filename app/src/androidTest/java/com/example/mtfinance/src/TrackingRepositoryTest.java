@@ -14,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.example.mtfinance.src.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
+import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
@@ -54,7 +55,7 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testInsertCategory() {
-        Category category = new Category("Entertainment", "Movies, games", BigDecimal.valueOf(100));
+        Category category = new Category("Entertainment", "Movies, games", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         trackingRepository.insertCategory(category);
 
         List<Category> allCategories = categoryRepository.getAllCategories();
@@ -73,7 +74,7 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testInsertTransactionWithCategoryId() {
-        Category category = new Category("Dining", "Eating out", BigDecimal.valueOf(200));
+        Category category = new Category("Dining", "Eating out", BigDecimal.valueOf(200), TrackingType.EXPENSE);
         categoryRepository.insert(category);
         Long catId = category.getCategoryId();
 
@@ -121,8 +122,8 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testFindCategoriesByTransactionId() {
-        Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100));
-        Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100));
+        Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         categoryRepository.insert(cat1);
         categoryRepository.insert(cat2);
 
@@ -149,7 +150,7 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testFindTotalInCategorySimple() {
-        Category category = new Category("PaknSave", "Food stuff", BigDecimal.valueOf(500));
+        Category category = new Category("PaknSave", "Food stuff", BigDecimal.valueOf(500), TrackingType.EXPENSE);
         categoryRepository.insert(category);
 
         Transaction t1 = new Transaction.Builder("Apple", BigDecimal.valueOf(2.50)).build();
@@ -164,8 +165,8 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testFindTotalInCategoryWithSubcategories() {
-        Category parent = new Category("Transport", "Commute", BigDecimal.valueOf(300));
-        Category child = new Category("Fuel", "Gasoline", BigDecimal.valueOf(100));
+        Category parent = new Category("Transport", "Commute", BigDecimal.valueOf(300), TrackingType.EXPENSE);
+        Category child = new Category("Fuel", "Gasoline", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         categoryRepository.insert(parent);
         child.setParent(parent);
         categoryRepository.insert(child);
@@ -187,7 +188,7 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testGetCategoryWithTransactionsByCategoryId() {
-        Category category = new Category("TestCat", "", BigDecimal.valueOf(100));
+        Category category = new Category("TestCat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         categoryRepository.insert(category);
         Transaction t = new Transaction.Builder("T1", BigDecimal.valueOf(10)).build();
         trackingRepository.insertTransaction(t, category.getCategoryId());
@@ -200,9 +201,9 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testGetCategoryWithTransactionsByParentId() {
-        Category parent = new Category("Parent", "", BigDecimal.valueOf(100));
+        Category parent = new Category("Parent", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         categoryRepository.insert(parent);
-        Category child = new Category("Child", "", BigDecimal.valueOf(50));
+        Category child = new Category("Child", "", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         child.setParent(parent);
         categoryRepository.insert(child);
 
@@ -213,7 +214,7 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testGetTransactionIdsForCategory() {
-        Category category = new Category("TestCat", "", BigDecimal.valueOf(100));
+        Category category = new Category("TestCat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         categoryRepository.insert(category);
         Transaction t1 = new Transaction.Builder("T1", BigDecimal.valueOf(10)).build();
         Transaction t2 = new Transaction.Builder("T2", BigDecimal.valueOf(20)).build();
@@ -228,7 +229,7 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testGetAllCategoriesWithTransactions() throws InterruptedException {
-        Category cat = new Category("Cat", "", BigDecimal.valueOf(100));
+        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         trackingRepository.insertCategory(cat);
 
         List<CategoryWithTransactions> result = getValue(trackingRepository.getAllCategoriesWithTransactions());
@@ -239,8 +240,8 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testGetCategoriesWithTransactionsByIds() throws InterruptedException {
-        Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100));
-        Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100));
+        Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         categoryRepository.insert(cat1);
         categoryRepository.insert(cat2);
 
@@ -270,14 +271,14 @@ public class TrackingRepositoryTest {
     @Test
     public void testDeepAndWideCategoryHierarchyWithManyTransactions() {
         // Create root
-        Category root = new Category("Business", "All business expenses", BigDecimal.valueOf(10000));
+        Category root = new Category("Business", "All business expenses", BigDecimal.valueOf(10000), TrackingType.EXPENSE);
         categoryRepository.insert(root);
 
         BigDecimal expectedTotal = BigDecimal.ZERO;
 
         // Level 1: 5 children
         for (int i = 0; i < 5; i++) {
-            Category l1 = new Category("Dept " + i, "Level 1 Department", BigDecimal.valueOf(1000));
+            Category l1 = new Category("Dept " + i, "Level 1 Department", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
             l1.setParent(root);
             categoryRepository.insert(l1);
 
@@ -287,7 +288,7 @@ public class TrackingRepositoryTest {
 
             // Level 2: 4 grandchildren per level 1 child (Total 20 grandchildren)
             for (int j = 0; j < 4; j++) {
-                Category l2 = new Category("Team " + i + "-" + j, "Level 2 Team", BigDecimal.valueOf(200));
+                Category l2 = new Category("Team " + i + "-" + j, "Level 2 Team", BigDecimal.valueOf(200), TrackingType.EXPENSE);
                 l2.setParent(l1);
                 categoryRepository.insert(l2);
 
@@ -304,7 +305,7 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testStressTestingTransactions() {
-        Category stressCat = new Category("Stress Test", "Large volume of transactions", BigDecimal.valueOf(100000));
+        Category stressCat = new Category("Stress Test", "Large volume of transactions", BigDecimal.valueOf(100000), TrackingType.EXPENSE);
         categoryRepository.insert(stressCat);
 
         int count = 100;
@@ -330,27 +331,27 @@ public class TrackingRepositoryTest {
         Category general = categoryRepository.getGeneralCategory();
 
         // Depth 2: Main Branch
-        Category l2Main = new Category("L2 Main", "Main branch level 2", BigDecimal.valueOf(1000));
+        Category l2Main = new Category("L2 Main", "Main branch level 2", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
         l2Main.setParent(general);
         categoryRepository.insert(l2Main);
 
         // Depth 3: Main Branch
-        Category l3Main = new Category("L3 Main", "Main branch level 3", BigDecimal.valueOf(800));
+        Category l3Main = new Category("L3 Main", "Main branch level 3", BigDecimal.valueOf(800), TrackingType.EXPENSE);
         l3Main.setParent(l2Main);
         categoryRepository.insert(l3Main);
 
         // Depth 4: Main Branch
-        Category l4Main = new Category("L4 Main", "Main branch level 4", BigDecimal.valueOf(600));
+        Category l4Main = new Category("L4 Main", "Main branch level 4", BigDecimal.valueOf(600), TrackingType.EXPENSE);
         l4Main.setParent(l3Main);
         categoryRepository.insert(l4Main);
 
         // Depth 5: Main Branch
-        Category l5Main = new Category("L5 Main", "Main branch level 5", BigDecimal.valueOf(400));
+        Category l5Main = new Category("L5 Main", "Main branch level 5", BigDecimal.valueOf(400), TrackingType.EXPENSE);
         l5Main.setParent(l4Main);
         categoryRepository.insert(l5Main);
 
         // Different Branch (Isolation Test)
-        Category l2Other = new Category("L2 Other", "Other branch level 2", BigDecimal.valueOf(1000));
+        Category l2Other = new Category("L2 Other", "Other branch level 2", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
         l2Other.setParent(general);
         categoryRepository.insert(l2Other);
 
@@ -406,7 +407,7 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testUpdateCategory() {
-        Category cat = new Category("Initial Name", "Initial Desc", BigDecimal.valueOf(100));
+        Category cat = new Category("Initial Name", "Initial Desc", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         trackingRepository.insertCategory(cat);
 
         cat.setName("Updated Name");
@@ -438,8 +439,8 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testUpdateCategoryTreeWithBudgetChange() {
-        Category parent = new Category("Parent", "Parent desc", BigDecimal.valueOf(100));
-        Category child = new Category("Child", "Child desc", BigDecimal.valueOf(50));
+        Category parent = new Category("Parent", "Parent desc", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category child = new Category("Child", "Child desc", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         categoryRepository.insert(parent);
         child.setParent(parent);
         categoryRepository.insert(child);
@@ -464,7 +465,7 @@ public class TrackingRepositoryTest {
 
     @Test
     public void testGetCategoryByIdRestoredExplicit() {
-        Category cat = new Category("RestoredTest", "", BigDecimal.valueOf(100));
+        Category cat = new Category("RestoredTest", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         trackingRepository.insertCategory(cat);
         
         Category restored = trackingRepository.getCategoryByIdRestored(cat.getCategoryId());
