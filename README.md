@@ -22,10 +22,11 @@ None for now as no front-end has been developed.
 - **Language**: Java (As I have good proficiency from previous work)
 - **Local Database**: Room database (Due to simple implementation and native Android support)
 - **Queries and DAO**: CRUD (with SQLite)
-- **Architecture**: MVVM
+- **Architecture**: MVVM (Model-View-ViewModel)
 - **Dependency Injection**: Hilt
 - **UI**: Jetpack Compose
 - **Testing**: JUnit
+- **Other**: ViewModel, LiveData, Gradle.
 
 
 

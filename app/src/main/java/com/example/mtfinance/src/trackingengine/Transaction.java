@@ -5,6 +5,7 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity(tableName = "transactions")
@@ -13,9 +14,7 @@ public class Transaction implements Details {
     /**
      * Differentiate between expense and income transactions for more accurate tracking.
      */
-    public enum TransactionType {
-        EXPENSE, INCOME;
-    }
+
     // instance fields
     @PrimaryKey(autoGenerate = false)
     private Long transactionId;
@@ -27,13 +26,13 @@ public class Transaction implements Details {
     @NonNull
     private final LocalDateTime date;
     @NonNull
-    private final TransactionType type;
+    private final TrackingType type;
 
     /**
      * This is for the room database. Use the builder instead when creating new instances.
      *
      */
-    public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date, @NonNull TransactionType type) {
+    public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date, @NonNull TrackingType type) {
         TrackingUtlis.checkAmount(amount);
         this.transactionId = TrackingUtlis.getNextTransactionCounterId();
         this.name = name;
@@ -86,7 +85,7 @@ public class Transaction implements Details {
         return amount;
     }
     @NonNull
-    public TransactionType getType() {
+    public TrackingType getType() {
         return type;
     }
 
@@ -123,7 +122,7 @@ public class Transaction implements Details {
         @NonNull
         private final String name;
         private LocalDateTime date = LocalDateTime.now();
-        private TransactionType type = TransactionType.EXPENSE;
+        private TrackingType type = TrackingType.EXPENSE;
 
         /**
          * Constructor of the builder. Must have the required fields.
@@ -154,7 +153,12 @@ public class Transaction implements Details {
             return this;
         }
 
-        public Builder type(TransactionType type) {
+        public Builder date(LocalDate date) {
+            this.date = date.atStartOfDay();
+            return this;
+        }
+
+        public Builder type(TrackingType type) {
             this.type = type;
             return this;
         }

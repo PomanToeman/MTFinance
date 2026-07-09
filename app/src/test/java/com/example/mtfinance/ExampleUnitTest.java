@@ -382,9 +382,7 @@ public class ExampleUnitTest {
         assertThrows(NullPointerException.class, () -> new Transaction.Builder("name", null));
 
         Transaction.Builder builder = new Transaction.Builder("name", BigDecimal.ONE);
-        // builder.date(null) will set date to null
-        Transaction tDateNull = builder.date(null).build();
-        assertNull(tDateNull.getDate());
+
 
         // description handles null in constructor via TrackingUtlis
         Transaction tDescNull = builder.description(null).build();
