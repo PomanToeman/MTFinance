@@ -76,13 +76,15 @@ public class Category implements Details {
 
     /**
      * To set this category as the sub category (child) of a given category (parent) to allow dependence and more accurate tracking.
+     * Parent and child cannot be different types (expense/income).
      * This is through a tree structure (one parent to many children).
      * The parent cannot be already be descendant of this category as would break the structure.
      * if given category is a grandparent or above, this category will move up until it is a child to preserve the structure.
      * @param parent - the parent to be set for this category (if possible)
      */
     public void setParent(@NonNull Category parent) {
-        if (this.equals(parent)) {
+
+        if (this.equals(parent) || !isSameType(parent.getType())) {
             return;
         }
 
@@ -130,7 +132,7 @@ public class Category implements Details {
 
     /**
      * This helper method is to set parent while bypassing checks.
-     * @param parent
+     * @param parent - the parent to be set.
      */
     private void setParentInternal(Category parent) {
 
@@ -174,6 +176,10 @@ public class Category implements Details {
             }
         }
 
+    }
+
+    public boolean isSameType(TrackingType type) {
+        return this.type == type;
     }
 
 
@@ -267,13 +273,14 @@ public class Category implements Details {
      * This is to check whether this category is a descendant of a given category via recursion.
      *
      * Warning: if extracted from room, ensure intial parents are cached/restored before calling this method.
+     * Note that different types mean they can never be descendants.
      *
      *
      * @param category - the given category to check against this category (aka potential ancestor).
      * @return returns true if the category is a descendant of this category. false otherwise
      */
     public boolean isDescendantOf(Category category) {
-        if (this.getParent() == null || category.equals(this)) {
+        if (this.getParent() == null || category.equals(this) || !isSameType(category.getType())) {
             return false;
         }
         else if (category.equals(this.getParent())) {

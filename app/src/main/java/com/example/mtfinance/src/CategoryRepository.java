@@ -1,5 +1,7 @@
 package com.example.mtfinance.src;
 
+import android.widget.Switch;
+
 import androidx.annotation.NonNull;
 
 import com.example.mtfinance.src.roomdatabase.CategoryDao;
@@ -15,29 +17,31 @@ import java.util.Set;
 
 public class CategoryRepository {
 
-    public final List<Category> defaultCategories = new ArrayList<>();
-    public final Category root = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
-
+    public final List<Category> defaultExpenseCategories = new ArrayList<>();
+    public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
+    public final Category IncomeCategory = new Category("Income", "Tracks income transactions", BigDecimal.valueOf(1000), TrackingType.INCOME);
+    public final Category accountTransferCategory = new Category("Account Transfer", "Account Transfers", BigDecimal.valueOf(1000), TrackingType.ACCOUNT_TRANSFERS);
 
     private final CategoryDao categoryDao;
 
     public CategoryRepository(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
         // default categories
-        defaultCategories.add(new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE));
-        defaultCategories.add(new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
+        defaultExpenseCategories.add(new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE));
+        defaultExpenseCategories.add(new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
 
         populateDefaultCategories();
     }
 
+
     public Long insert(@NonNull Category category) {
-        if (category.equals(getGeneralCategory())) {
-            return -1L; // cannot insert general category
+        if (category.equals(getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
+            return -1L;
         }
 
         if (category.getParentId() == null) {
             category.setParent(getGeneralCategory()); // ensures the greatest parent is the general category
-            category.setParentId(getGeneralCategory().getCategoryId());
+
         }
         else if (!getAllCategories().contains(category.getParent())) {
             insert(category.getParent()); // automatically inserts parent if not already in database.
@@ -47,7 +51,15 @@ public class CategoryRepository {
     }
 
     public Category getGeneralCategory() {
-        return getCategoryRestored(root); // general category.
+        return getCategoryRestored(generalCategory); // general category.
+    }
+
+    public Category getIncomeCategory() {
+        return IncomeCategory;
+    }
+
+    public Category getAccountTransferCategory() {
+        return accountTransferCategory;
     }
 
     public List<Category> getAllCategories() {
@@ -85,12 +97,19 @@ public class CategoryRepository {
     }
 
 
+    /**
+     * Meant to add all necessary categories to the database that are needed for the app to work.
+     * This includes the root categories for each type, and the default expense categories.
+     */
     private void populateDefaultCategories() {
         if (categoryDao.getAll().isEmpty()) {
-            categoryDao.insert(root);
+            categoryDao.insert(generalCategory);
+            categoryDao.insert(IncomeCategory);
+            categoryDao.insert(accountTransferCategory);
 
-            for (Category category : defaultCategories) {
-                category.setParent(root);
+
+            for (Category category : defaultExpenseCategories) {
+                category.setParent(generalCategory);
                 categoryDao.insert(category);
             }
         }
@@ -98,6 +117,9 @@ public class CategoryRepository {
 
 
     public void updateCategory(@NonNull Category category) {
+        if (category.equals(getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
+            return;
+        }
         categoryDao.update(category);
     }
 
@@ -189,6 +211,20 @@ public class CategoryRepository {
      */
     protected CategoryDao getCategoryDao() {
         return categoryDao;
+    }
+
+
+    public Category getRootCategoryByType(TrackingType type) {
+        switch (type) {
+            case EXPENSE:
+                return getGeneralCategory();
+            case INCOME:
+                return getIncomeCategory();
+            case ACCOUNT_TRANSFERS:
+                return getAccountTransferCategory();
+            default:
+                return null;
+        }
     }
 
 

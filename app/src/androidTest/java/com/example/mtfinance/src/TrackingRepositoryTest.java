@@ -60,7 +60,7 @@ public class TrackingRepositoryTest {
 
         List<Category> allCategories = categoryRepository.getAllCategories();
         // 3 default (General, Groceries, Utilities) + 1 new
-        assertEquals(4, allCategories.size());
+        assertEquals(6, allCategories.size());
 
         boolean found = false;
         for (Category c : allCategories) {
@@ -234,8 +234,8 @@ public class TrackingRepositoryTest {
 
         List<CategoryWithTransactions> result = getValue(trackingRepository.getAllCategoriesWithTransactions());
         assertNotNull(result);
-        // 3 default + 1 new = 4
-        assertEquals(4, result.size());
+        // 5 default + 1 new = 4
+        assertEquals(6, result.size());
     }
 
     @Test
@@ -474,5 +474,63 @@ public class TrackingRepositoryTest {
         // Parent should be General Category by default if none specified
         assertNotNull(restored.getParent());
         assertEquals("General Category", restored.getParent().getName());
+    }
+
+    @Test
+    public void testInsertIncomeTransactionRedirectsToIncomeCategory() {
+        // Create an income transaction
+        Transaction incomeTrans = new Transaction.Builder("Salary", BigDecimal.valueOf(3000))
+                .type(TrackingType.INCOME)
+                .build();
+        
+        // Try to insert under an expense category
+        Category expenseCat = new Category("Books", "", BigDecimal.valueOf(50), TrackingType.EXPENSE);
+        categoryRepository.insert(expenseCat);
+        
+        trackingRepository.insertTransaction(incomeTrans, expenseCat.getCategoryId());
+        
+        // Verify it was redirected to Income root category
+        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(incomeTrans.getTransactionId());
+        assertEquals(1, associatedCategories.size());
+        assertEquals("Income", associatedCategories.get(0).getName());
+        assertEquals(TrackingType.INCOME, associatedCategories.get(0).getType());
+    }
+
+    @Test
+    public void testInsertAccountTransferTransactionRedirectsToTransferCategory() {
+        // Create a transfer transaction
+        Transaction transferTrans = new Transaction.Builder("Bank Transfer", BigDecimal.valueOf(500))
+                .type(TrackingType.ACCOUNT_TRANSFERS)
+                .build();
+        
+        // Try to insert under an expense category
+        Category expenseCat = new Category("Gadgets", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
+        categoryRepository.insert(expenseCat);
+        
+        trackingRepository.insertTransaction(transferTrans, expenseCat.getCategoryId());
+        
+        // Verify it was redirected to Account Transfer root category
+        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(transferTrans.getTransactionId());
+        assertEquals(1, associatedCategories.size());
+        assertEquals("Account Transfer", associatedCategories.get(0).getName());
+        assertEquals(TrackingType.ACCOUNT_TRANSFERS, associatedCategories.get(0).getType());
+    }
+
+    @Test
+    public void testInsertExpenseTransactionRespectsCategoryId() {
+        // Create an expense transaction
+        Transaction expenseTrans = new Transaction.Builder("Book Purchase", BigDecimal.valueOf(20))
+                .type(TrackingType.EXPENSE)
+                .build();
+        
+        Category expenseCat = new Category("Education", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        categoryRepository.insert(expenseCat);
+        
+        trackingRepository.insertTransaction(expenseTrans, expenseCat.getCategoryId());
+        
+        // Verify it stayed in the provided category
+        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(expenseTrans.getTransactionId());
+        assertEquals(1, associatedCategories.size());
+        assertEquals("Education", associatedCategories.get(0).getName());
     }
 }

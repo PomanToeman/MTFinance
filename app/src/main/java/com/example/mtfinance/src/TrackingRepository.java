@@ -8,6 +8,7 @@ import com.example.mtfinance.src.roomdatabase.CategoryTransactionCrossRef;
 import com.example.mtfinance.src.roomdatabase.CategoryTransactionDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
+import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.math.BigDecimal;
@@ -36,6 +37,7 @@ public class TrackingRepository {
     /**
      * Insert a category into the database.
      * No two categories can have the same name.
+     * You cannot insert income and account Transfer Category (will not be inserted).
      * You need to insert a category first before inserting any transactions under it.
      * @param category - the category to be inserted
      */
@@ -46,16 +48,24 @@ public class TrackingRepository {
     /**
      * If you just want to insert a transaction with a specific category, use this method.
      * The Category must already be in the database.
+     * will automatically insert under income or accountTransfer categories if not expense (regardless of category input).
      * It's best to insert the category first before inserting the transaction.
+     *
      *
      * @param transaction - The transaction to be inserted.
      * @param CategoryId - The ID of a category already within a database.
      */
     public void insertTransaction(@NonNull Transaction transaction, @NonNull Long CategoryId) {
+
         Category category = categoryRepository.getCategoryById(CategoryId);
         if (category == null) {
             return;
         }
+        if (!category.isSameType(transaction.getType())) {
+            insertTransaction(transaction, categoryRepository.getRootCategoryByType(transaction.getType()).getCategoryId());
+            return;
+        }
+
         transactionRepository.insert(transaction);
 
         // to define relationship.
@@ -65,7 +75,7 @@ public class TrackingRepository {
 
     /**
      * If you just want to insert a transaction with no specific category, use this method.
-     * This method will put it under the general category.
+     * This method will put it under the general category (or other roots if not expense type).
      * @param transaction - The transaction to be inserted.
      */
     public void insertTransactionDefault(@NonNull Transaction transaction) {

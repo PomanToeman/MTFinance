@@ -46,6 +46,7 @@ public class CategoryRepositoryTest {
     public void closeDb() {
         database.close();
         TrackingUtlis.resetCategoryCounter();
+        TrackingUtlis.resetTransactionCounter();
     }
 
     @Test
@@ -53,7 +54,7 @@ public class CategoryRepositoryTest {
         // Repository constructor calls populateDefaultCategories
         List<Category> all = repository.getAllCategories();
         // General Category + 2 default categories
-        assertEquals(3, all.size());
+        assertEquals(5, all.size());
         
         Category general = repository.getGeneralCategory();
         assertNotNull(general);
@@ -67,7 +68,7 @@ public class CategoryRepositoryTest {
         assertTrue(id > 0);
         
         List<Category> all = repository.getAllCategories();
-        assertEquals(4, all.size());
+        assertEquals(6, all.size());
     }
 
     @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
@@ -178,7 +179,7 @@ public class CategoryRepositoryTest {
 
         repository.insert(child); // Inserts both
 
-        assertEquals(5, repository.getAllCategories().size());
+        assertEquals(7, repository.getAllCategories().size());
 
 
         // Find the parent object with its ID
@@ -246,5 +247,40 @@ public class CategoryRepositoryTest {
         Category restoredParent = restoredChild.getParent();
         assertFalse("Restored parent should have children", restoredParent.getChildren(false).isEmpty());
         assertTrue("Restored parent should contain the child", restoredParent.getChildren(false).contains(restoredChild));
+    }
+
+    @Test
+    public void testDefaultCategoriesTypes() {
+        List<Category> all = repository.getAllCategories();
+        
+        Category general = null;
+        Category income = null;
+        Category transfer = null;
+        
+        for (Category c : all) {
+            if (c.getName().equals("General Category")) general = c;
+            if (c.getName().equals("Income")) income = c;
+            if (c.getName().equals("Account Transfer")) transfer = c;
+        }
+        
+        assertNotNull(general);
+        assertEquals(TrackingType.EXPENSE, general.getType());
+        
+        assertNotNull(income);
+        assertEquals(TrackingType.INCOME, income.getType());
+        
+        assertNotNull(transfer);
+        assertEquals(TrackingType.ACCOUNT_TRANSFERS, transfer.getType());
+    }
+
+    @Test
+    public void testInsertNonExpenseCategoryFails() {
+        Category incomeSub = new Category("Salary", "", BigDecimal.valueOf(1000), TrackingType.INCOME);
+        long id = repository.insert(incomeSub);
+        assertEquals(-1L, id);
+        
+        Category transferSub = new Category("Bank Transfer", "", BigDecimal.valueOf(100), TrackingType.ACCOUNT_TRANSFERS);
+        long id2 = repository.insert(transferSub);
+        assertEquals(-1L, id2);
     }
 }
