@@ -1,5 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -45,6 +47,9 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     implementation(libs.room.runtime)
     annotationProcessor(libs.room.compiler)
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
 }
 

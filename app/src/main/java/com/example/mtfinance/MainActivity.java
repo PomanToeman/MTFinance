@@ -11,7 +11,14 @@ import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.math.BigDecimal;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class MainActivity extends AppCompatActivity {
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

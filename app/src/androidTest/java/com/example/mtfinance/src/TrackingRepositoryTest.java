@@ -533,4 +533,33 @@ public class TrackingRepositoryTest {
         assertEquals(1, associatedCategories.size());
         assertEquals("Education", associatedCategories.get(0).getName());
     }
+
+    @Test
+    public void testInsertExpenseTransactionUnderWrongCategoryTypeRedirects() {
+        // 1. Create an expense transaction
+        Transaction expenseTrans = new Transaction.Builder("Lunch", BigDecimal.valueOf(15))
+                .type(TrackingType.EXPENSE)
+                .build();
+
+        // 2. Attempt to insert under Income category
+        Category incomeCat = categoryRepository.getIncomeCategory();
+        trackingRepository.insertTransaction(expenseTrans, incomeCat.getCategoryId());
+
+        // Verify it was redirected to General Category (EXPENSE root)
+        List<Category> associatedCategories1 = trackingRepository.findCategoriesByTransactionId(expenseTrans.getTransactionId());
+        assertEquals(1, associatedCategories1.size());
+        assertEquals("General Category", associatedCategories1.get(0).getName());
+
+        // 3. Attempt to insert under Account Transfer category
+        Transaction expenseTrans2 = new Transaction.Builder("Dinner", BigDecimal.valueOf(30))
+                .type(TrackingType.EXPENSE)
+                .build();
+        Category transferCat = categoryRepository.getAccountTransferCategory();
+        trackingRepository.insertTransaction(expenseTrans2, transferCat.getCategoryId());
+
+        // Verify it was redirected to General Category
+        List<Category> associatedCategories2 = trackingRepository.findCategoriesByTransactionId(expenseTrans2.getTransactionId());
+        assertEquals(1, associatedCategories2.size());
+        assertEquals("General Category", associatedCategories2.get(0).getName());
+    }
 }

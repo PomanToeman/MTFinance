@@ -10,10 +10,6 @@
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="testInsertTransaction()">
-        <option name="selectionMode" value="DROPDOWN" />
-        <DialogSelection />
-      </SelectionState>
       <SelectionState runConfigName="TransactionRepositoryTest">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
@@ -27,6 +23,10 @@
         <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="All andriod Tests">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName="testInsertIncomeTransactionRedirectsToIncomeCategory()">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
