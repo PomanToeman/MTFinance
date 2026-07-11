@@ -33,21 +33,71 @@ public class CategoryViewModelTest {
     @Before
     public void setUp() {
         MockitoAnnotations.openMocks(this);
+        // Default mock for the repository call in the constructor
+        MutableLiveData<List<CategoryWithTransactions>> liveData = new MutableLiveData<>();
+        liveData.setValue(new ArrayList<>());
+        when(trackingRepository.getAllCategoriesWithTransactions()).thenReturn(liveData);
     }
 
     @Test
     public void constructor_loadsCategoriesFromRepository() {
-        // Arrange
-        List<CategoryWithTransactions> expectedCategories = new ArrayList<>();
-        MutableLiveData<List<CategoryWithTransactions>> liveData = new MutableLiveData<>();
-        liveData.setValue(expectedCategories);
-        when(trackingRepository.getAllCategoriesWithTransactions()).thenReturn(liveData);
-
         // Act
         viewModel = new CategoryViewModel(trackingRepository);
         
         // Assert
         verify(trackingRepository).getAllCategoriesWithTransactions();
-        assertEquals(expectedCategories, viewModel.getAllCategories().getValue());
+        assertEquals(new ArrayList<>(), viewModel.getAllCategories().getValue());
+    }
+
+    @Test
+    public void setSearchQuery_updatesSearchQueryLiveData() {
+        // Arrange
+        viewModel = new CategoryViewModel(trackingRepository);
+        String query = "  Groceries  ";
+
+        // Act
+        viewModel.setSearchQuery(query);
+
+        // Assert
+        assertEquals("Groceries", viewModel.getSearchQuery().getValue());
+    }
+
+    @Test
+    public void filterCategories_withValidQuery_callsRepositorySearch() {
+        // Arrange
+        String query = "Food";
+        List<CategoryWithTransactions> searchResults = new ArrayList<>();
+        MutableLiveData<List<CategoryWithTransactions>> repoLiveData = new MutableLiveData<>();
+        repoLiveData.setValue(searchResults);
+
+        // Mock repository search
+        when(trackingRepository.searchCategories(query)).thenReturn(repoLiveData);
+
+        viewModel = new CategoryViewModel(trackingRepository);
+        viewModel.setSearchQuery(query);
+
+        // Act
+        viewModel.filterCategories();
+
+        // Assert
+        verify(trackingRepository).searchCategories(query);
+        assertEquals(searchResults, viewModel.getFilteredCategories().getValue());
+    }
+
+    @Test
+    public void filterCategories_withEmptyQuery_returnsAllCategories() {
+        // Arrange
+        List<CategoryWithTransactions> allCats = new ArrayList<>();
+        // Mocking the initial load in setUp handles the constructor.
+        // But we want to ensure allCategories is populated.
+        
+        viewModel = new CategoryViewModel(trackingRepository);
+        viewModel.setSearchQuery("");
+
+        // Act
+        viewModel.filterCategories();
+
+        // Assert
+        assertEquals(allCats, viewModel.getFilteredCategories().getValue());
     }
 }

@@ -29,7 +29,13 @@ public interface CategoryTransactionDao {
     @Query("DELETE FROM categoryTransactionCrossRef WHERE categoryId = :categoryId")
     void deleteCrossRefsForCategory(long categoryId);
 
+    @Transaction
+    @Query("SELECT * FROM categories WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR LOWER(description) LIKE '%' || LOWER(:query) || '%'")
+    LiveData<List<CategoryWithTransactions>> searchCategories(String query);
 
+//    @Transaction
+//    @Query("SELECT * FROM transactions WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR LOWER(description) LIKE '%' || LOWER(:query) || '%'")
+//    LiveData<List<Transaction>> searchTransactions(String query);
 
     @Query("SELECT categoryId FROM categoryTransactionCrossRef WHERE transactionId = :transactionId")
     List<Long> getCategoryIdsForTransaction(long transactionId);

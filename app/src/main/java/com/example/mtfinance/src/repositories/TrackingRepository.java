@@ -125,6 +125,10 @@ public class TrackingRepository {
          return categoryWithTransactionsDao.getCategoriesByIds(ids);
     }
 
+    public LiveData<List<CategoryWithTransactions>> searchCategories(String query) {
+         return categoryWithTransactionsDao.searchCategories(query);
+    }
+
 
 
     public void updateCategory(Category category) {
