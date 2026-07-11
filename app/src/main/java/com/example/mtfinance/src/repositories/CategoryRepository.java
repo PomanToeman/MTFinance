@@ -1,10 +1,8 @@
-package com.example.mtfinance.src;
-
-import android.widget.Switch;
+package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
 
-import com.example.mtfinance.src.roomdatabase.CategoryDao;
+import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 
@@ -15,6 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.inject.Inject;
+
 public class CategoryRepository {
 
     public final List<Category> defaultExpenseCategories = new ArrayList<>();
@@ -24,6 +24,7 @@ public class CategoryRepository {
 
     private final CategoryDao categoryDao;
 
+    @Inject
     public CategoryRepository(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
         // default categories

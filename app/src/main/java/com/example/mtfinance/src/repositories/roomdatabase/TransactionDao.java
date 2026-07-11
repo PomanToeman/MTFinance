@@ -1,4 +1,4 @@
-package com.example.mtfinance.src.roomdatabase;
+package com.example.mtfinance.src.repositories.roomdatabase;
 
 import androidx.room.Dao;
 import androidx.room.Insert;

@@ -12,8 +12,9 @@ import androidx.room.Room;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import com.example.mtfinance.src.roomdatabase.AppDatabase;
-import com.example.mtfinance.src.roomdatabase.CategoryDao;
+import com.example.mtfinance.src.repositories.CategoryRepository;
+import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
+import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
@@ -24,9 +25,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.math.BigDecimal;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @RunWith(AndroidJUnit4.class)
 public class CategoryRepositoryTest {

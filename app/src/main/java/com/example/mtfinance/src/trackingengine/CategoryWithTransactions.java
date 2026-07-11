@@ -4,7 +4,7 @@ import androidx.room.Embedded;
 import androidx.room.Junction;
 import androidx.room.Relation;
 
-import com.example.mtfinance.src.roomdatabase.CategoryTransactionCrossRef;
+import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCrossRef;
 
 
 import java.math.BigDecimal;

@@ -11,12 +11,13 @@ import androidx.room.Room;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import com.example.mtfinance.src.roomdatabase.AppDatabase;
-import com.example.mtfinance.src.trackingengine.Category;
-import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
-import com.example.mtfinance.src.trackingengine.TrackingType;
-import com.example.mtfinance.src.trackingengine.TrackingUtlis;
-import com.example.mtfinance.src.trackingengine.Transaction;
+import com.example.mtfinance.src.repositories.CategoryRepository;
+import com.example.mtfinance.src.repositories.TrackingRepository;
+import com.example.mtfinance.src.repositories.TransactionRepository;
+import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
+import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCrossRef;
+import com.example.mtfinance.src.trackingengine.*;
+
 
 import org.junit.After;
 import org.junit.Before;
@@ -28,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
 
 @RunWith(AndroidJUnit4.class)
 public class TrackingRepositoryTest {
@@ -131,8 +133,8 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(transaction, cat1.getCategoryId());
 
         // Associate with second category
-        com.example.mtfinance.src.roomdatabase.CategoryTransactionCrossRef crossRef = 
-            new com.example.mtfinance.src.roomdatabase.CategoryTransactionCrossRef(cat2.getCategoryId(), transaction.getTransactionId());
+        CategoryTransactionCrossRef crossRef =
+            new CategoryTransactionCrossRef(cat2.getCategoryId(), transaction.getTransactionId());
         database.categoryTransactionDao().insertCrossRef(crossRef);
 
         List<Category> foundCategories = trackingRepository.findCategoriesByTransactionId(transaction.getTransactionId());

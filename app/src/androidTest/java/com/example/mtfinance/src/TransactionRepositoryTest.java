@@ -11,8 +11,9 @@ import androidx.room.Room;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import com.example.mtfinance.src.roomdatabase.AppDatabase;
-import com.example.mtfinance.src.roomdatabase.TransactionDao;
+import com.example.mtfinance.src.repositories.TransactionRepository;
+import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
+import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 

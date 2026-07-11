@@ -8,14 +8,6 @@ plugins {
 
 }
 
-buildscript {
-    dependencies {
-        // For KGP
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:KGP_VERSION")
 
-        // For KSP
-        classpath("com.google.devtools.ksp:symbol-processing-gradle-plugin:KSP_VERSION")
-    }
-}
 
 

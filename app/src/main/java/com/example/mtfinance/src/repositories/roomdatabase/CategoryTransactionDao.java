@@ -1,4 +1,4 @@
-package com.example.mtfinance.src.roomdatabase;
+package com.example.mtfinance.src.repositories.roomdatabase;
 
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
@@ -42,8 +42,8 @@ public interface CategoryTransactionDao {
     CategoryWithTransactions getCategoryById(Long id);
 
     @Transaction
-    @Query("SELECT * FROM categories WHERE categoryId IN (:ids)")
-    LiveData<List<CategoryWithTransactions>> getCategoriesByIds(java.util.Collection<Long> ids);
+    @Query("SELECT * FROM categories WHERE categoryId IN (:categoryIds)")
+    LiveData<List<CategoryWithTransactions>> getCategoriesByIds(java.util.Collection<Long> categoryIds);
 
 
 

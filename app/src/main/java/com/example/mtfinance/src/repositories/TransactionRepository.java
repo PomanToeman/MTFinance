@@ -1,13 +1,16 @@
-package com.example.mtfinance.src;
+package com.example.mtfinance.src.repositories;
 
-import com.example.mtfinance.src.roomdatabase.TransactionDao;
+import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.util.List;
 
+import javax.inject.Inject;
+
 public class TransactionRepository {
     private final TransactionDao transactionDao;
 
+    @Inject
     public TransactionRepository(TransactionDao transactionDao) {
         this.transactionDao = transactionDao;
     }
