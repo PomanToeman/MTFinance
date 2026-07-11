@@ -111,6 +111,7 @@ public class TrackingRepository {
 
     }
 
+
     public List<CategoryWithTransactions> getCategoryWithTransactionsByParentId(Long parentId) {
          return categoryWithTransactionsDao.getCategoriesWithTransactionsByParentId(parentId);
     }

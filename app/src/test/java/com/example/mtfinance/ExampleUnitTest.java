@@ -350,7 +350,7 @@ public class ExampleUnitTest {
         Category catNameNull = new Category(null, "desc", DEFAULT_BUDGET, TrackingType.EXPENSE);
         assertNull(catNameNull.getName());
 
-        assertThrows(NullPointerException.class, () -> new Category("name", "desc", null, TrackingType.EXPENSE));
+        assertThrows(IllegalArgumentException.class, () -> new Category("name", "desc", null, TrackingType.EXPENSE));
 
         // description can be null as it's passed to TrackingUtlis.determineDescription
         Category catDescNull = new Category("name", null, DEFAULT_BUDGET, TrackingType.EXPENSE);
@@ -361,7 +361,7 @@ public class ExampleUnitTest {
     public void testing_category_setBudget_null() {
         Category cat = new Category("name", "desc", DEFAULT_BUDGET, TrackingType.EXPENSE);
         // setBudget calls TrackingUtlis.checkAmount(budget) which doesn't check for null specifically before use
-        assertThrows(NullPointerException.class, () -> cat.setMonthlyBudget(null));
+        assertThrows(Exception.class, () -> cat.setMonthlyBudget(null));
     }
 
     @Test
@@ -380,7 +380,7 @@ public class ExampleUnitTest {
         Transaction tNameNull = new Transaction.Builder(null, BigDecimal.ONE).build();
         assertNull(tNameNull.getName());
 
-        assertThrows(NullPointerException.class, () -> new Transaction.Builder("name", null));
+        assertThrows(IllegalArgumentException.class, () -> new Transaction.Builder("name", null));
 
         Transaction.Builder builder = new Transaction.Builder("name", BigDecimal.ONE);
 

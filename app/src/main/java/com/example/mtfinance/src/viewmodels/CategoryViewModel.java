@@ -20,6 +20,7 @@ public class CategoryViewModel extends ViewModel {
     private final MutableLiveData<List<CategoryWithTransactions>> allCategories = new MutableLiveData<>();
     private final MutableLiveData<List<CategoryWithTransactions>> filteredCategories = new MutableLiveData<>();
     private final MutableLiveData<String> searchQuery = new MutableLiveData<>();
+    private final MutableLiveData<CategoryWithTransactions> selectedCategory = new MutableLiveData<>();
 
 
 
@@ -27,6 +28,11 @@ public class CategoryViewModel extends ViewModel {
     public CategoryViewModel(TrackingRepository trackingRepository) {
         this.trackingRepository = trackingRepository;
         loadAllCategories();
+
+        if (allCategories.getValue() != null && !allCategories.getValue().isEmpty()) {
+            setSelectedCategory(1L);
+        }
+
     }
 
     // LIST
@@ -62,6 +68,17 @@ public class CategoryViewModel extends ViewModel {
 
 
     // CATEGORY DASHBOARD (for singular Category)
+    public void setSelectedCategory(Long categoryId) {
+        CategoryWithTransactions selectedCategory = trackingRepository.getCategoryWithTransactionsByCategoryId(categoryId);
+        if (selectedCategory == null) {
+            return;
+        }
+        selectedCategory.category = trackingRepository.getCategoryByIdRestored(categoryId);
+        this.selectedCategory.setValue(selectedCategory);
+    }
+    public LiveData<CategoryWithTransactions> getSelectedCategory() {
+        return selectedCategory;
+    }
 
 
 

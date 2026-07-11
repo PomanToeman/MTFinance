@@ -24,7 +24,7 @@ public class TrackingUtlis {
      * @throws IllegalArgumentException - if the amount is not a non-zero positive number.
      */
     public static void checkAmount(BigDecimal amount) throws IllegalArgumentException {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Invalid amount: " + amount);
         }
     }
