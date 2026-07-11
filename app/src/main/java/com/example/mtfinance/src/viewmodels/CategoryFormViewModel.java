@@ -48,7 +48,8 @@ public class CategoryFormViewModel extends ViewModel {
             return;
         }
         Category category = trackingRepository.getCategoryByIdRestored(editCategoryId);
-        if (category == null) {
+        if (category == null || trackingRepository.isRoot(category)) {
+            errorMessage.setValue("Category not found or is root (cannot edit root)");
             setEditCategory(null);
             return;
         }
@@ -65,7 +66,7 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
     public void setName( String name) {
-        if (name == null || name.isEmpty()) {
+        if (name == null) {
             return;
         }
         this.name.setValue(name);
@@ -89,10 +90,18 @@ public class CategoryFormViewModel extends ViewModel {
         }
         this.monthlyBudget.setValue(monthlyBudget);
     }
+    
+    // private since only Expense categories allowed.
+    private void setType(TrackingType type) {
+        this.type.setValue(type);
+    }
+
 
 
     public void saveCategory() {
        try {
+           errorMessage.setValue("");
+           successMessage.setValue("");
            validateForm();
            isLoading.setValue(true);
            if (editCategoryId == null) {
@@ -101,6 +110,7 @@ public class CategoryFormViewModel extends ViewModel {
                    newCategory.setParentId(parentId.getValue());
                }
                trackingRepository.insertCategory(newCategory);
+               setEditCategory(newCategory.getCategoryId());
            }
            else {
                Category category = trackingRepository.getCategoryByIdRestored(editCategoryId);
@@ -110,9 +120,12 @@ public class CategoryFormViewModel extends ViewModel {
                category.setName(name.getValue());
                category.setDescription(description.getValue());
                category.setMonthlyBudget(monthlyBudget.getValue());
-               category.setParent(trackingRepository.getCategoryByIdRestored(parentId.getValue()));
+               if (parentId.getValue() != null) {
+                   category.setParent(trackingRepository.getCategoryByIdRestored(parentId.getValue()));
+               }
                trackingRepository.updateCategoryTree(category);
            }
+           successMessage.setValue("Category saved successfully");
 
        }
        catch (Exception e) {
@@ -121,7 +134,7 @@ public class CategoryFormViewModel extends ViewModel {
        }
        finally {
            isLoading.setValue(false);
-           successMessage.setValue("Category saved successfully");
+           
        }
 
     }
@@ -131,10 +144,21 @@ public class CategoryFormViewModel extends ViewModel {
             throw new IllegalArgumentException("Name cannot be empty");
         }
         TrackingUtlis.checkAmount(monthlyBudget.getValue());
-        if (trackingRepository.getCategoryByIdRestored(parentId.getValue()) == null) {
+        // if parent category is set, check it exists.
+        if (parentId.getValue() != null && trackingRepository.getCategoryByIdRestored(parentId.getValue()) == null) {
             throw new IllegalArgumentException("Parent category does not exist");
         }
 
+    }
+
+    public void clear() {
+        name.setValue("");
+        description.setValue("");
+        parentId.setValue(null);
+        monthlyBudget.setValue(BigDecimal.ONE);
+        type.setValue(TrackingType.EXPENSE);
+        errorMessage.setValue("");
+        successMessage.setValue("");
     }
 
 

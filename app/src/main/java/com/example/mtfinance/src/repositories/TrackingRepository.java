@@ -144,9 +144,29 @@ public class TrackingRepository {
         categoryRepository.updateCategoryTree(category);
     }
 
+    /**
+     * Returns the Category with restored cache (parent and children) for the given ID.
+     * @param id
+     * @return
+     */
     public Category getCategoryByIdRestored(Long id) {
         return categoryRepository.getCategoryByIdRestored(id);
     }
+
+    /**
+     * Allows for easy checks if a category is a root.
+     * @param category
+     * @return
+     */
+    public boolean isRoot(Category category) {
+        if (category == null) return false;
+        return categoryRepository.isRoot(category);
+    }
+
+    public boolean isRoot(Long id) {
+        return isRoot(getCategoryByIdRestored(id));
+    }
+
 
 
 

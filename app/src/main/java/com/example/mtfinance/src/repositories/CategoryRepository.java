@@ -228,6 +228,16 @@ public class CategoryRepository {
         }
     }
 
+    public boolean isRoot(Category category) {
+        for (TrackingType type : TrackingType.values()) {
+            if (category.equals(getRootCategoryByType(type))) {
+                return true;
+            }
+        }
+        return false;
+
+    }
+
 
 
 
