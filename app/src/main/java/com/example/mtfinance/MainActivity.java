@@ -15,7 +15,7 @@ import javax.inject.Inject;
 
 import dagger.hilt.android.AndroidEntryPoint;
 
-@AndroidEntryPoint
+
 public class MainActivity extends AppCompatActivity {
 
 
@@ -25,12 +25,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Transaction transaction = new Transaction.Builder("Groceries", BigDecimal.valueOf(1.0)).description("Shopping for bananas").build();
-        Category category = new Category("Groceries", "Grocery shopping", BigDecimal.TEN, TrackingType.EXPENSE);
-        Category categoryTwo = new Category("Bananas", "Grocery shopping", BigDecimal.TEN, TrackingType.EXPENSE);
-
-
-        categoryTwo.setParent(category);
+        Category category = new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE);
 
 
 
