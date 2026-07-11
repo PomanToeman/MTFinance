@@ -12,37 +12,52 @@ import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import java.math.BigDecimal;
 
+import dagger.hilt.android.lifecycle.HiltViewModel;
+import jakarta.inject.Inject;
+
+@HiltViewModel
 public class CategoryFormViewModel extends ViewModel {
+    // instance fields.
     private final TrackingRepository trackingRepository;
 
-    private final MutableLiveData<String> name = new MutableLiveData<>("name");
-    private final MutableLiveData<String> description = new MutableLiveData<>("description");
+    private final MutableLiveData<String> name = new MutableLiveData<>();
+    private final MutableLiveData<String> description = new MutableLiveData<>();
     private final MutableLiveData<Long> parentId = new MutableLiveData<>();
 
-    private final MutableLiveData<BigDecimal> monthlyBudget = new MutableLiveData<>(BigDecimal.ONE);
-    private final MutableLiveData<BigDecimal> minimumBudget = new MutableLiveData<>(BigDecimal.ONE);
-    private final MutableLiveData<TrackingType> type = new MutableLiveData<>(TrackingType.EXPENSE);
+    private final MutableLiveData<BigDecimal> monthlyBudget = new MutableLiveData<>();
+    private final MutableLiveData<BigDecimal> minimumBudget = new MutableLiveData<>();
+    private final MutableLiveData<TrackingType> type = new MutableLiveData<>();
 
     // logistical fields
-    private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
-    private final MutableLiveData<String> errorMessage = new MutableLiveData<>("");
-    private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
+    private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>();
+    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
+    private final MutableLiveData<String> successMessage = new MutableLiveData<>();
 
 
     // creating mode if null
     private Long editCategoryId = null;
 
 
-
+    @Inject
     public CategoryFormViewModel(TrackingRepository trackingRepository) {
         this.trackingRepository = trackingRepository;
+        clear(); // set default values
     }
 
+    /**
+     * Sets the category to edit.
+     * The category must already be in the database, and cannot be root.
+     * @param categoryId - The category in database to edit.
+     */
     public void setEditCategory(Long categoryId) {
         this.editCategoryId = categoryId;
         loadCategoryForEditing();
     }
 
+    /**
+     * Gets category and sets all fields to its values.
+     * Will ignore if category is root or cannot be found.
+     */
     private void loadCategoryForEditing() {
         if (editCategoryId == null) {
             return;
@@ -72,6 +87,10 @@ public class CategoryFormViewModel extends ViewModel {
         this.name.setValue(name);
     }
 
+    /**
+     * Note: a default description is set if empty.
+     * @param description - the decription to set (if not empty)
+     */
     public void setDescription(String description) {
         this.description.setValue(TrackingUtlis.determineDescription(description));
     }
@@ -83,6 +102,10 @@ public class CategoryFormViewModel extends ViewModel {
         this.parentId.setValue(parentId);
     }
 
+    /**
+     * The given budget must be greater than or equal to the minimum budget to be set.
+     * @param monthlyBudget - the monthly budget to set.
+     */
     public void setMonthlyBudget(BigDecimal monthlyBudget) {
         if (monthlyBudget.compareTo(minimumBudget.getValue()) < 0) {
             this.monthlyBudget.setValue(minimumBudget.getValue());
@@ -100,10 +123,13 @@ public class CategoryFormViewModel extends ViewModel {
 
     public void saveCategory() {
        try {
+           validateForm();
+
            errorMessage.setValue("");
            successMessage.setValue("");
-           validateForm();
            isLoading.setValue(true);
+
+           // Create Category
            if (editCategoryId == null) {
                Category newCategory = new Category(name.getValue(), description.getValue(), monthlyBudget.getValue(), type.getValue());
                if (parentId.getValue() != null) {
@@ -112,6 +138,7 @@ public class CategoryFormViewModel extends ViewModel {
                trackingRepository.insertCategory(newCategory);
                setEditCategory(newCategory.getCategoryId());
            }
+           // Edit Category
            else {
                Category category = trackingRepository.getCategoryByIdRestored(editCategoryId);
                if (category == null) {
@@ -125,12 +152,13 @@ public class CategoryFormViewModel extends ViewModel {
                }
                trackingRepository.updateCategoryTree(category);
            }
+
            successMessage.setValue("Category saved successfully");
 
        }
        catch (Exception e) {
            errorMessage.setValue("Cannot save category: " + e.getMessage());
-           successMessage.setValue("");
+
        }
        finally {
            isLoading.setValue(false);
@@ -139,7 +167,7 @@ public class CategoryFormViewModel extends ViewModel {
 
     }
 
-    public void validateForm() throws IllegalArgumentException{
+    private void validateForm() throws IllegalArgumentException{
         if (name.getValue() == null || name.getValue().isEmpty()) {
             throw new IllegalArgumentException("Name cannot be empty");
         }
@@ -151,18 +179,26 @@ public class CategoryFormViewModel extends ViewModel {
 
     }
 
+    /**
+     * Clears all fields to their default values
+     */
     public void clear() {
-        name.setValue("");
-        description.setValue("");
+        editCategoryId = null;
+        name.setValue("Name");
+        description.setValue(TrackingUtlis.EMPTY_DESCRIPTION);
         parentId.setValue(null);
         monthlyBudget.setValue(BigDecimal.ONE);
+        minimumBudget.setValue(BigDecimal.ZERO);
         type.setValue(TrackingType.EXPENSE);
         errorMessage.setValue("");
         successMessage.setValue("");
     }
 
 
-    // public getters
+    // PUBLIC GETTERS
+    public Long getEditCategoryId() {
+        return editCategoryId;
+    }
     public LiveData<String> getName() {
         return name;
     }

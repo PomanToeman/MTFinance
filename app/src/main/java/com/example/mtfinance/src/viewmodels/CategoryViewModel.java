@@ -7,8 +7,6 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
-
-import java.util.ArrayList;
 import java.util.List;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
