@@ -4,22 +4,18 @@ import android.os.Bundle;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.ViewModelProvider;
 
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
-import com.example.mtfinance.src.trackingengine.Transaction;
-import com.example.mtfinance.src.viewmodels.CategoryDashboardViewModel;
+import com.example.mtfinance.src.viewmodels.CategoryViewModel;
 
 import java.math.BigDecimal;
-
-import javax.inject.Inject;
 
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
 public class MainActivity extends AppCompatActivity {
-    private CategoryDashboardViewModel categoryDashboardViewModel;
+    private CategoryViewModel categoryViewModel;
 
 
     @Override

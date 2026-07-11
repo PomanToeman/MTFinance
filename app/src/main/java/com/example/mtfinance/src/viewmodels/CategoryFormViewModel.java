@@ -1,4 +1,6 @@
 package com.example.mtfinance.src.viewmodels;
 
-public class CategoryFormViewModel {
+import androidx.lifecycle.ViewModel;
+
+public class CategoryFormViewModel extends ViewModel {
 }

@@ -13,18 +13,32 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 import javax.inject.Inject;
 
 @HiltViewModel
-public class CategoryDashboardViewModel extends ViewModel {
+public class CategoryViewModel extends ViewModel {
     private final TrackingRepository trackingRepository;
-    private final LiveData<List<CategoryWithTransactions>> categoryWithTransactionsLiveData;
+    private LiveData<List<CategoryWithTransactions>> categories;
+
+
+
     @Inject
-    public CategoryDashboardViewModel(TrackingRepository trackingRepository) {
+    public CategoryViewModel(TrackingRepository trackingRepository) {
         this.trackingRepository = trackingRepository;
-        this.categoryWithTransactionsLiveData = trackingRepository.getAllCategoriesWithTransactions();
+        loadAllCategories();
     }
 
-    public LiveData<List<CategoryWithTransactions>> getCategoryWithTransactionsLiveData() {
-        return categoryWithTransactionsLiveData;
+
+    private void loadAllCategories() {
+        categories = trackingRepository.getAllCategoriesWithTransactions();
+
     }
+
+    public LiveData<List<CategoryWithTransactions>> getAllCategories() {
+        return categories;
+    }
+
+
+
+
+
 
 
 }
