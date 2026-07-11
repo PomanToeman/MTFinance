@@ -23,7 +23,7 @@ import javax.inject.Inject;
  * Transactions and Categories follow a many-to-many relationship.
  * Each transaction has one or more categories that is in.
  */
-public class TrackingRepository implements TrackingRepositoryInterface{
+public class TrackingRepository {
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
     private final CategoryTransactionDao categoryWithTransactionsDao;
@@ -43,7 +43,6 @@ public class TrackingRepository implements TrackingRepositoryInterface{
      * You need to insert a category first before inserting any transactions under it.
      * @param category - the category to be inserted
      */
-    @Override
     public void insertCategory(Category category) {
         categoryRepository.insert(category);
     }
@@ -58,7 +57,6 @@ public class TrackingRepository implements TrackingRepositoryInterface{
      * @param transaction - The transaction to be inserted.
      * @param CategoryId - The ID of a category already within a database.
      */
-    @Override
     public void insertTransaction(@NonNull Transaction transaction, @NonNull Long CategoryId) {
 
         Category category = categoryRepository.getCategoryById(CategoryId);
@@ -94,7 +92,6 @@ public class TrackingRepository implements TrackingRepositoryInterface{
      * @param id - The given ID of the transaction
      * @return - returns a set of categories that has the given transaction ID.
      */
-     @Override
      public List<Category> findCategoriesByTransactionId(Long id) {
          List<Long> categoryIds = categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
          return categoryRepository.getCategoriesByIds(categoryIds);
@@ -105,23 +102,19 @@ public class TrackingRepository implements TrackingRepositoryInterface{
      * @return
      */
 
-    @Override
     public LiveData<List<CategoryWithTransactions>> getAllCategoriesWithTransactions() {
          return categoryWithTransactionsDao.getAllCategoriesWithTransactions();
     }
 
-    @Override
     public CategoryWithTransactions getCategoryWithTransactionsByCategoryId(Long id) {
          return categoryWithTransactionsDao.getCategoryById(id);
 
     }
 
-    @Override
     public List<CategoryWithTransactions> getCategoryWithTransactionsByParentId(Long parentId) {
          return categoryWithTransactionsDao.getCategoriesWithTransactionsByParentId(parentId);
     }
 
-    @Override
     public List<Long> getTransactionIdsForCategory(Long categoryId) {
          return categoryWithTransactionsDao.getTransactionIdsForCategory(categoryId);
     }
@@ -134,22 +127,18 @@ public class TrackingRepository implements TrackingRepositoryInterface{
 
 
 
-    @Override
     public void updateCategory(Category category) {
         categoryRepository.updateCategory(category);
     }
 
-    @Override
     public void updateTransaction(Transaction transaction) {
         transactionRepository.update(transaction);
     }
 
-    @Override
     public void updateCategoryTree(Category category) {
         categoryRepository.updateCategoryTree(category);
     }
 
-    @Override
     public Category getCategoryByIdRestored(Long id) {
         return categoryRepository.getCategoryByIdRestored(id);
     }
@@ -167,7 +156,6 @@ public class TrackingRepository implements TrackingRepositoryInterface{
      * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
      * @return returns the total amount of the category.
      */
-    @Override
     public BigDecimal findTotalInCategory(Category category, boolean includeSub) {
          CategoryWithTransactions parentCategorywithTransactions =categoryWithTransactionsDao.getCategoryById(category.getCategoryId());
          if (parentCategorywithTransactions == null) {
