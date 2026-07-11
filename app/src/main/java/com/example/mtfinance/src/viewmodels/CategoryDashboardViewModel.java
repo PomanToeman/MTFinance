@@ -10,7 +10,7 @@ import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import java.util.List;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
-import jakarta.inject.Inject;
+import javax.inject.Inject;
 
 @HiltViewModel
 public class CategoryDashboardViewModel extends ViewModel {
@@ -25,4 +25,6 @@ public class CategoryDashboardViewModel extends ViewModel {
     public LiveData<List<CategoryWithTransactions>> getCategoryWithTransactionsLiveData() {
         return categoryWithTransactionsLiveData;
     }
+
+
 }
