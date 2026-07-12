@@ -211,5 +211,17 @@ public class TrackingRepository {
 
 
 
+    // TRANSACTIONS
+
+    public  List<Transaction> getAllTransactions() {
+        return transactionRepository.getAll();
+    }
+
+    public Transaction getTransactionById(Long id) {
+        return transactionRepository.getById(id);
+    }
+
+
+
 
 }

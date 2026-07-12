@@ -1,5 +1,6 @@
 package com.example.mtfinance.src.repositories.roomdatabase;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
@@ -26,4 +27,7 @@ public interface TransactionDao {
 
     @Update
     void update(Transaction transaction);
+
+    @Query("SELECT * FROM transactions WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR LOWER(description) LIKE '%' || LOWER(:query) || '%'")
+    LiveData<List<Transaction>> searchTransactions(String query);
 }

@@ -20,7 +20,7 @@ public class Transaction implements Details {
     private Long transactionId;
     @NonNull
     private final String name;
-    private final String description;
+    private  String description;
     @NonNull
     private final BigDecimal amount;
     @NonNull
