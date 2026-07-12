@@ -42,7 +42,7 @@ public class TrackingRepositoryTest {
     public void createDb() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
-        categoryRepository = new CategoryRepository(database.categoryDao());
+        categoryRepository = new CategoryRepository(database.categoryDao(), true);
         transactionRepository = new TransactionRepository(database.transactionDao());
 
         trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao());

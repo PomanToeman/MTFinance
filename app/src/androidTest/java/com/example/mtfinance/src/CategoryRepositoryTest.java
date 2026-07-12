@@ -38,7 +38,8 @@ public class CategoryRepositoryTest {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         categoryDao = database.categoryDao();
-        repository = new CategoryRepository(categoryDao);
+        repository = new CategoryRepository(categoryDao, true);
+
     }
 
     @After

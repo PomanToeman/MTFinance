@@ -1,6 +1,7 @@
 package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
@@ -31,8 +32,21 @@ public class CategoryRepository {
         defaultExpenseCategories.add(new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE));
         defaultExpenseCategories.add(new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
 
-        populateDefaultCategories();
+        new Thread(this::populateDefaultCategories).start();
     }
+
+    @VisibleForTesting
+    public CategoryRepository(CategoryDao categoryDao, boolean populateDefaultCategories) {
+        this.categoryDao = categoryDao;
+        // default categories
+        defaultExpenseCategories.add(new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE));
+        defaultExpenseCategories.add(new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
+
+        if (populateDefaultCategories) populateDefaultCategories();
+
+    }
+
+
 
 
     public Long insert(@NonNull Category category) {
@@ -41,7 +55,7 @@ public class CategoryRepository {
         }
 
         if (category.getParentId() == null) {
-            category.setParent(getGeneralCategory()); // ensures the greatest parent is the general category
+            category.setParent(generalCategory); // ensures the greatest parent is the general category
 
         }
         else if (!getAllCategories().contains(category.getParent())) {
@@ -102,6 +116,7 @@ public class CategoryRepository {
      * Meant to add all necessary categories to the database that are needed for the app to work.
      * This includes the root categories for each type, and the default expense categories.
      */
+
     private void populateDefaultCategories() {
         if (categoryDao.getAll().isEmpty()) {
             categoryDao.insert(generalCategory);

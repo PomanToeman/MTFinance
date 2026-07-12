@@ -76,8 +76,7 @@ public class CategoryViewModelTest {
         viewModel = new CategoryViewModel(trackingRepository);
         viewModel.setSearchQuery(query);
 
-        // Act
-        viewModel.filterCategories();
+
 
         // Assert
         verify(trackingRepository).searchCategories(query);
@@ -90,12 +89,11 @@ public class CategoryViewModelTest {
         List<CategoryWithTransactions> allCats = new ArrayList<>();
         // Mocking the initial load in setUp handles the constructor.
         // But we want to ensure allCategories is populated.
-        
+
         viewModel = new CategoryViewModel(trackingRepository);
         viewModel.setSearchQuery("");
 
-        // Act
-        viewModel.filterCategories();
+
 
         // Assert
         assertEquals(allCats, viewModel.getFilteredCategories().getValue());
