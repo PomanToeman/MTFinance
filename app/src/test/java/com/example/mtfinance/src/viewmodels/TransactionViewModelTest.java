@@ -55,7 +55,10 @@ public class TransactionViewModelTest {
     public void setSelectedTransaction_updatesLiveData() {
         // Arrange
         Long transactionId = 1L;
-        Transaction transaction = new Transaction("Lunch", "Sandwich", BigDecimal.valueOf(10.50), LocalDateTime.now(), TrackingType.EXPENSE);
+        Transaction transaction = new Transaction.Builder("Lunch", BigDecimal.valueOf(10.50))
+                .description("Sandwich")
+                .type(TrackingType.EXPENSE)
+                .build();
         transaction.setTransactionId(transactionId);
         
         List<Category> categories = new ArrayList<>();
@@ -78,7 +81,10 @@ public class TransactionViewModelTest {
     public void getTransactions_returnsDataFromRepository() {
         // Arrange
         List<Transaction> transactions = new ArrayList<>();
-        transactions.add(new Transaction("Salary", "Monthly pay", BigDecimal.valueOf(3000), LocalDateTime.now(), TrackingType.INCOME));
+        transactions.add(new Transaction.Builder("Salary", BigDecimal.valueOf(3000))
+                .description("Monthly pay")
+                .type(TrackingType.INCOME)
+                .build());
         
         // Note: constructor already called in setUp, so we re-instantiate or mock before
         when(trackingRepository.getAllTransactions()).thenReturn(transactions);

@@ -377,8 +377,8 @@ public class ExampleUnitTest {
     @Test
     public void testing_transaction_builder_null_parameters() {
         // Builder doesn't check for null name, but checkAmount might NPE on null amount
-        Transaction tNameNull = new Transaction.Builder(null, BigDecimal.ONE).build();
-        assertNull(tNameNull.getName());
+        assertThrows(NullPointerException.class, () -> new Transaction.Builder(null, BigDecimal.ONE).build());
+
 
         assertThrows(IllegalArgumentException.class, () -> new Transaction.Builder("name", null));
 

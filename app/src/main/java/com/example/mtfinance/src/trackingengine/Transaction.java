@@ -1,14 +1,16 @@
 package com.example.mtfinance.src.trackingengine;
 
 import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Entity(tableName = "transactions")
+@Entity(tableName = "transactions", indices = {@Index(value = {"hash"}, unique = true)})
 public class Transaction implements Details {
 
     /**
@@ -18,6 +20,8 @@ public class Transaction implements Details {
     // instance fields
     @PrimaryKey(autoGenerate = false)
     private Long transactionId;
+    @ColumnInfo(name = "hash")
+    private final String generatedHash;
     @NonNull
     private final String name;
     private  String description;
@@ -32,7 +36,7 @@ public class Transaction implements Details {
      * This is for the room database. Use the builder instead when creating new instances.
      *
      */
-    public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date, @NonNull TrackingType type) {
+    public Transaction(@NonNull String name, String description, @NonNull BigDecimal amount, @NonNull LocalDateTime date, @NonNull TrackingType type, String generatedHash) {
         TrackingUtlis.checkAmount(amount);
         this.transactionId = TrackingUtlis.getNextTransactionCounterId();
         this.name = name;
@@ -40,6 +44,7 @@ public class Transaction implements Details {
         this.amount = amount;
         this.date = date;
         this.type = type;
+        this.generatedHash = generatedHash;
     }
 
     // constructor
@@ -50,6 +55,7 @@ public class Transaction implements Details {
         this.amount = build.amount;
         this.name = build.name;
         this.type = build.type;
+        this.generatedHash = build.generatedHash;
 
     }
 
@@ -61,11 +67,19 @@ public class Transaction implements Details {
         this.transactionId = transactionId;
     }
 
+    public void setDescription(String description) {
+        this.description = TrackingUtlis.determineDescription(description);
+    }
+
+
     // getters
     public Long getTransactionId() {
         return transactionId;
     }
 
+    public String getGeneratedHash() {
+        return generatedHash;
+    }
 
     @NonNull
     public LocalDateTime getDate() {
@@ -88,6 +102,7 @@ public class Transaction implements Details {
     public TrackingType getType() {
         return type;
     }
+
 
     @Override
     public String getDetails() {
@@ -114,6 +129,8 @@ public class Transaction implements Details {
         return transactionId.intValue();
     }
 
+
+
     public static class Builder {
 
         private String description = TrackingUtlis.EMPTY_DESCRIPTION;
@@ -123,6 +140,7 @@ public class Transaction implements Details {
         private final String name;
         private LocalDateTime date = LocalDateTime.now();
         private TrackingType type = TrackingType.EXPENSE;
+        private String generatedHash;
 
         /**
          * Constructor of the builder. Must have the required fields.
@@ -138,6 +156,7 @@ public class Transaction implements Details {
         }
 
         public Transaction build() {
+            generateHash();
             return new Transaction(this);
         }
 
@@ -158,9 +177,23 @@ public class Transaction implements Details {
             return this;
         }
 
-        public Builder type(TrackingType type) {
+        public Builder type(@NonNull TrackingType type) {
             this.type = type;
             return this;
+        }
+
+        /**
+         * This ensures identical transactions conflict with each other while allowing overlapping
+         * ones (Transactions often have the same name).
+         */
+        private void generateHash() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(name.trim());
+            sb.append(amount);
+            sb.append(date);
+            sb.append(type);
+            generatedHash = sb.toString().toLowerCase();
+
         }
 
 
