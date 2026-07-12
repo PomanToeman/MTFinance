@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
+import androidx.lifecycle.MutableLiveData;
 
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
@@ -20,7 +21,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,8 +38,10 @@ public class TransactionViewModelTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         
-        // Mock default behavior for constructor call
-        when(trackingRepository.getAllTransactions()).thenReturn(new ArrayList<>());
+        // Mock default behavior for constructor call: return a LiveData object
+        MutableLiveData<List<Transaction>> transactionsLiveData = new MutableLiveData<>();
+        transactionsLiveData.setValue(new ArrayList<>());
+        when(trackingRepository.getAllTransactions()).thenReturn(transactionsLiveData);
         
         viewModel = new TransactionViewModel(trackingRepository);
     }
@@ -48,7 +50,7 @@ public class TransactionViewModelTest {
     public void constructor_loadsAllTransactions() {
         // Assert
         verify(trackingRepository).getAllTransactions();
-        assertNotNull(viewModel.getTransactions().getValue());
+        assertNotNull(viewModel.getAllTransactions().getValue());
     }
 
     @Test
@@ -80,19 +82,21 @@ public class TransactionViewModelTest {
     @Test
     public void getTransactions_returnsDataFromRepository() {
         // Arrange
-        List<Transaction> transactions = new ArrayList<>();
-        transactions.add(new Transaction.Builder("Salary", BigDecimal.valueOf(3000))
+        List<Transaction> transactionsList = new ArrayList<>();
+        transactionsList.add(new Transaction.Builder("Salary", BigDecimal.valueOf(3000))
                 .description("Monthly pay")
                 .type(TrackingType.INCOME)
                 .build());
         
-        // Note: constructor already called in setUp, so we re-instantiate or mock before
-        when(trackingRepository.getAllTransactions()).thenReturn(transactions);
+        MutableLiveData<List<Transaction>> transactionsLiveData = new MutableLiveData<>();
+        transactionsLiveData.setValue(transactionsList);
+        
+        when(trackingRepository.getAllTransactions()).thenReturn(transactionsLiveData);
         
         // Act
         TransactionViewModel newViewModel = new TransactionViewModel(trackingRepository);
 
         // Assert
-        assertEquals(transactions, newViewModel.getTransactions().getValue());
+        assertEquals(transactionsList, newViewModel.getAllTransactions().getValue());
     }
 }

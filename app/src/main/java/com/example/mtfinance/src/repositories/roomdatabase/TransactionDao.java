@@ -19,6 +19,10 @@ public interface TransactionDao {
     @Query("SELECT * FROM transactions")
     List<Transaction> getAll();
 
+    @Query("SELECT * FROM transactions")
+    LiveData<List<Transaction>> getAllLive();
+
+
     @Query("SELECT * FROM transactions WHERE transactionId = :id")
     Transaction getById(Long id);
 

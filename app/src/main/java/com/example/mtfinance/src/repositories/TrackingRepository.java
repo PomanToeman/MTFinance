@@ -213,8 +213,8 @@ public class TrackingRepository {
 
     // TRANSACTIONS
 
-    public  List<Transaction> getAllTransactions() {
-        return transactionRepository.getAll();
+    public LiveData<List<Transaction>> getAllTransactions() {
+        return transactionRepository.getAllLive();
     }
 
     public Transaction getTransactionById(Long id) {

@@ -18,18 +18,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 @HiltViewModel
 public class TransactionViewModel extends ViewModel {
     private final TrackingRepository trackingRepository;
-    private final MutableLiveData<List<Transaction>> transactions = new MutableLiveData<>();
+    private final LiveData<List<Transaction>> allTransactions;
     private final MutableLiveData<Transaction> selectedTransaction = new MutableLiveData<>();
     private final MutableLiveData<List<Category>> categoriesUnderSelectedTransaction = new MutableLiveData<>();
     @Inject
     public TransactionViewModel(TrackingRepository trackingRepository) {
         this.trackingRepository = trackingRepository;
-        loadTransactions();
+        this.allTransactions = trackingRepository.getAllTransactions();
     }
 
-    private void loadTransactions() {
-        transactions.setValue(trackingRepository.getAllTransactions());
-    }
 
     public void setSelectedTransaction(Long id) {
         Transaction transaction = trackingRepository.getTransactionById(id);
@@ -40,8 +37,8 @@ public class TransactionViewModel extends ViewModel {
 
     }
 
-    public LiveData<List<Transaction>> getTransactions() {
-        return transactions;
+    public LiveData<List<Transaction>> getAllTransactions() {
+        return allTransactions;
     }
 
     public LiveData<Transaction> getSelectedTransaction() {

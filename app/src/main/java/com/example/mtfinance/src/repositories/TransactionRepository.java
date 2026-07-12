@@ -1,5 +1,7 @@
 package com.example.mtfinance.src.repositories;
 
+import androidx.lifecycle.LiveData;
+
 import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
@@ -21,6 +23,10 @@ public class TransactionRepository {
 
     public List<Transaction> getAll() {
         return transactionDao.getAll();
+    }
+
+    public LiveData<List<Transaction>> getAllLive() {
+        return transactionDao.getAllLive();
     }
 
     public Transaction getById(Long id) {

@@ -63,7 +63,7 @@ public class CategoryViewModel extends ViewModel {
         }).start();
     }
 
-    public CategoryWithTransactions getSelectedCategory() {
-        return selectedCategory.getValue();
+    public LiveData<CategoryWithTransactions> getSelectedCategory() {
+        return selectedCategory;
     }
 }
