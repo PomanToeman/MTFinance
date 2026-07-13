@@ -29,6 +29,11 @@ public class TransactionRepository {
         return transactionDao.getAllLive();
     }
 
+    public LiveData<List<Transaction>> searchTransactions(String query) {
+        return transactionDao.searchTransactions(query);
+    }
+
+
     public Transaction getById(Long id) {
         return transactionDao.getById(id);
     }

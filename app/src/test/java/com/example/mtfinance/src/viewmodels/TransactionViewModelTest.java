@@ -99,4 +99,60 @@ public class TransactionViewModelTest {
         // Assert
         assertEquals(transactionsList, newViewModel.getAllTransactions().getValue());
     }
+
+    @Test
+    public void setSearchQuery_updatesSearchQueryLiveData() {
+        // Act
+        viewModel.setSearchQuery("  Pizza  ");
+
+        // Assert
+        assertEquals("Pizza", viewModel.getSearchQuery().getValue());
+    }
+
+    @Test
+    public void filterTransactions_withValidQuery_triggersSwitchMap() {
+        // Arrange
+        String query = "Rent";
+        List<Transaction> searchResults = new ArrayList<>();
+        searchResults.add(new Transaction.Builder("Monthly Rent", BigDecimal.valueOf(1500)).build());
+        
+        MutableLiveData<List<Transaction>> repoLiveData = new MutableLiveData<>();
+        repoLiveData.setValue(searchResults);
+
+        when(trackingRepository.searchTransactions(query)).thenReturn(repoLiveData);
+
+        // ACTIVATE the switchMap by adding an observer
+        viewModel.getFilteredTransactions().observeForever(res -> {});
+
+        // Act
+        viewModel.setSearchQuery(query);
+
+        // Assert
+        verify(trackingRepository).searchTransactions(query);
+        assertEquals(searchResults, viewModel.getFilteredTransactions().getValue());
+    }
+
+    @Test
+    public void filterTransactions_withEmptyQuery_returnsAllTransactions() {
+        // Arrange
+        List<Transaction> allTransactions = new ArrayList<>();
+        allTransactions.add(new Transaction.Builder("Grocery", BigDecimal.valueOf(50)).build());
+        
+        MutableLiveData<List<Transaction>> allTransactionsLiveData = new MutableLiveData<>();
+        allTransactionsLiveData.setValue(allTransactions);
+        
+        when(trackingRepository.getAllTransactions()).thenReturn(allTransactionsLiveData);
+        
+        // Re-instantiate to pick up new mock
+        viewModel = new TransactionViewModel(trackingRepository);
+
+        // ACTIVATE the switchMap
+        viewModel.getFilteredTransactions().observeForever(res -> {});
+
+        // Act
+        viewModel.setSearchQuery("");
+
+        // Assert
+        assertEquals(allTransactions, viewModel.getFilteredTransactions().getValue());
+    }
 }

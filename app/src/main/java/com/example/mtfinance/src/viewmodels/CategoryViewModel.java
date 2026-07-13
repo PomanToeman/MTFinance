@@ -25,8 +25,8 @@ public class CategoryViewModel extends ViewModel {
     public CategoryViewModel(TrackingRepository trackingRepository) {
         this.trackingRepository = trackingRepository;
         this.allCategories = trackingRepository.getAllCategoriesWithTransactions();
-        
-        // Use switchMap to automatically update filteredCategories whenever searchQuery changes
+
+        // to automatically switch sources for filteredCategories whenever searchQuery changes
         this.filteredCategories = Transformations.switchMap(searchQuery, query -> {
             if (query == null || query.isEmpty()) {
                 return allCategories;
@@ -40,6 +40,11 @@ public class CategoryViewModel extends ViewModel {
     }
 
     // SEARCH
+
+    /**
+     * This automatically changes the filteredCategories
+     * @param query - the query to search for.
+     */
     public void setSearchQuery(String query) {
         searchQuery.setValue(query != null ? query.trim() : "");
     }

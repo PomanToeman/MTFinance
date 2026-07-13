@@ -211,7 +211,7 @@ public class TrackingRepository {
 
 
 
-    // TRANSACTIONS
+    // TRANSACTION METHODS
 
     public LiveData<List<Transaction>> getAllTransactions() {
         return transactionRepository.getAllLive();
@@ -221,6 +221,9 @@ public class TrackingRepository {
         return transactionRepository.getById(id);
     }
 
+    public LiveData<List<Transaction>> searchTransactions(String query) {
+        return transactionRepository.searchTransactions(query);
+    }
 
 
 
