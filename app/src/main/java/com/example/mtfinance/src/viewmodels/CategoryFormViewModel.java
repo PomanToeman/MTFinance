@@ -120,6 +120,29 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
 
+    /**
+     * WIll delete the category that is currently being edited.
+     * This CANNOT be undone!!
+     * deletes all of its transactions if permitted (will move to root category if permitted).
+     */
+    public void deleteCategory(boolean deleteTransactions) {
+        if (!trackingRepository.categoryExists(editCategoryId)) {
+            errorMessage.setValue("No category to delete");
+            return;
+        }
+
+        trackingRepository.deleteCategory(editCategoryId, deleteTransactions);
+        setEditCategory(null);
+        clear();
+        successMessage.setValue("Category deleted successfully");
+
+    }
+
+    /**
+     * This will create or update existing category in edit mode in the database.
+     * All fields must be valid before saving.
+     *
+     */
 
     public void saveCategory() {
        try {

@@ -218,6 +218,37 @@ public class CategoryFormViewModelTest {
         assertTrue(viewModel.getErrorMessage().getValue().contains("already exists"));
     }
 
+    @Test
+    public void deleteCategory_validCategory_callsRepositoryDelete() {
+        // Arrange
+        long categoryId = 5L;
+        Category category = new Category("To Delete", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        category.setCategoryId(categoryId);
+        
+        when(trackingRepository.categoryExists(categoryId)).thenReturn(true);
+        when(trackingRepository.getCategoryByIdRestored(categoryId)).thenReturn(category);
+        
+        viewModel.setEditCategory(categoryId);
+
+        // Act
+        viewModel.deleteCategory(true);
+
+        // Assert
+        verify(trackingRepository).deleteCategory(categoryId, true);
+        assertEquals("Category deleted successfully", viewModel.getSuccessMessage().getValue());
+        assertNull(viewModel.getEditCategoryId());
+        assertEquals("Name", viewModel.getName().getValue()); // Verify clear() was called
+    }
+
+    @Test
+    public void deleteCategory_noCategory_setsErrorMessage() {
+        // Act
+        viewModel.deleteCategory(false);
+
+        // Assert
+        assertTrue(viewModel.getErrorMessage().getValue().contains("No category to delete"));
+    }
+
     private void assertTrue(boolean condition) {
         org.junit.Assert.assertTrue(condition);
     }
