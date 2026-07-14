@@ -49,6 +49,7 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     implementation(libs.room.runtime)
     annotationProcessor(libs.room.compiler)
+    implementation(libs.commons.csv)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
