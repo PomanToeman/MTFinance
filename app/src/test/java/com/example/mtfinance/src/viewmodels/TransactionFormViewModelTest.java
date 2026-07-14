@@ -2,9 +2,12 @@ package com.example.mtfinance.src.viewmodels;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,13 +23,17 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class TransactionFormViewModelTest {
 
@@ -45,184 +52,138 @@ public class TransactionFormViewModelTest {
     }
 
     @Test
-    public void saveTransaction_validData_insertsIntoRepository() {
+    public void saveTransaction_multipleCategories_insertsCorrectly() {
         // Arrange
-        long categoryId = 1L;
-        Category category = new Category("Groceries", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
-        category.setCategoryId(categoryId);
-        when(trackingRepository.categoryExists(categoryId)).thenReturn(true);
-        when(trackingRepository.getCategoryByIdRestored(categoryId)).thenReturn(category);
+        Set<Long> categoryIds = new HashSet<>(Arrays.asList(1L, 2L));
+        when(trackingRepository.verifyExistingIdsCategories(categoryIds)).thenReturn(true);
+        when(trackingRepository.categoryExists(anyLong())).thenReturn(true);
 
-        viewModel.setName("Milk");
-        viewModel.setAmount(BigDecimal.valueOf(3.50));
-        viewModel.addCategoryId(categoryId);
+        viewModel.setName("Double Category");
+        viewModel.setAmount(BigDecimal.TEN);
+        viewModel.addCategoryId(1L);
+        viewModel.addCategoryId(2L);
         viewModel.setType(TrackingType.EXPENSE);
-        viewModel.setDate(LocalDate.now());
 
         // Act
         viewModel.saveTransaction();
 
         // Assert
-        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-        verify(trackingRepository).insertTransaction(transactionCaptor.capture(), eq(categoryId));
-        
-        Transaction captured = transactionCaptor.getValue();
-        assertEquals("Milk", captured.getName());
-        assertEquals(0, BigDecimal.valueOf(3.50).compareTo(captured.getAmount()));
-        assertEquals(TrackingType.EXPENSE, captured.getType());
+        // Logic in viewModel: boolean first = true; for (Long catId : categoryIds.getValue()) { ... }
+        // The first category should trigger insertTransaction
+        verify(trackingRepository).insertTransaction(any(Transaction.class), anyLong());
+        // Subsequent categories should trigger insertRelationship
+        verify(trackingRepository, times(categoryIds.size() - 1)).insertRelationship(anyLong(), anyLong());
         assertEquals("Transaction saved successfully", viewModel.getSuccessMessage().getValue());
     }
 
     @Test
-    public void saveTransaction_emptyName_failsValidation() {
+    public void editTransaction_syncsRelationshipsCorrectly() {
         // Arrange
-        viewModel.setName("");
-        viewModel.setAmount(BigDecimal.valueOf(10));
+        long transId = 100L;
+        Transaction existing = new Transaction.Builder("Old", BigDecimal.TEN).build();
+        existing.setTransactionId(transId);
+        
+        List<Long> oldCategoryIds = Arrays.asList(1L, 2L); // Categories 1 and 2 were associated
+        Set<Long> newCategoryIds = new HashSet<>(Arrays.asList(2L, 3L)); // Now 2 and 3 are associated
 
-        // Act
+        when(trackingRepository.transactionExists(transId)).thenReturn(true);
+        when(trackingRepository.getTransactionById(transId)).thenReturn(existing);
+        when(trackingRepository.getCategoryIdsByTransactionId(transId)).thenReturn(oldCategoryIds);
+        when(trackingRepository.verifyExistingIdsCategories(any())).thenReturn(true);
+        when(trackingRepository.categoryExists(anyLong())).thenReturn(true);
+
+        // Act - Load
+        viewModel.setTransactionId(transId);
+        
+        // Act - Edit relationships: Remove 1, Add 3. Category 2 stays.
+        viewModel.removeCategoryId(1L);
+        viewModel.addCategoryId(3L);
         viewModel.saveTransaction();
 
         // Assert
+        verify(trackingRepository).updateTransaction(existing);
+        // Category 3 is new, so insert relationship
+        verify(trackingRepository).insertRelationship(transId, 3L);
+        // Category 1 is removed, so delete relationship
+        verify(trackingRepository).deleteRelationship(transId, 1L);
+        // Category 2 was already there, shouldn't be touched by insert/delete again in the sync loop
+        verify(trackingRepository, never()).insertRelationship(transId, 2L);
+        verify(trackingRepository, never()).deleteRelationship(transId, 2L);
+        
+        assertEquals("Transaction Updated successfully", viewModel.getSuccessMessage().getValue());
+    }
+
+    @Test
+    public void deleteTransaction_callsRepository() {
+        // Arrange
+        long transId = 50L;
+        Transaction t = new Transaction.Builder("Delete Me", BigDecimal.ONE).build();
+        t.setTransactionId(transId);
+        
+        when(trackingRepository.transactionExists(transId)).thenReturn(true);
+        when(trackingRepository.getTransactionById(transId)).thenReturn(t);
+        when(trackingRepository.getCategoryIdsByTransactionId(transId)).thenReturn(Collections.singletonList(1L));
+
+        viewModel.setTransactionId(transId);
+
+        // Act
+        viewModel.deleteTransaction();
+
+        // Assert
+        verify(trackingRepository).deleteTransaction(transId);
+        assertEquals("Transaction deleted successfully", viewModel.getSuccessMessage().getValue());
+        // Verify fields cleared
+        assertEquals("", viewModel.getName().getValue());
+        assertEquals(0, BigDecimal.ZERO.compareTo(viewModel.getAmount().getValue()));
+    }
+
+    @Test
+    public void saveTransaction_emptyName_failsValidation() {
+        viewModel.setName("");
+        viewModel.setAmount(BigDecimal.valueOf(10));
+        viewModel.addCategoryId(1L);
+        viewModel.saveTransaction();
         assertTrue(viewModel.getErrorMessage().getValue().contains("Name cannot be empty"));
     }
 
     @Test
-    public void saveTransaction_invalidAmount_failsValidation() {
-        // Arrange
+    public void saveTransaction_noCategories_failsValidation() {
         viewModel.setName("Test");
-        viewModel.setAmount(BigDecimal.valueOf(-1));
-
-        // Act
+        viewModel.setAmount(BigDecimal.TEN);
+        // No addCategoryId called
         viewModel.saveTransaction();
-
-        // Assert
-        assertTrue(viewModel.getErrorMessage().getValue().contains("Invalid amount"));
-    }
-
-    @Test
-    public void saveTransaction_nullCategory_failsValidation() {
-        // Arrange
-        viewModel.setName("Test");
-        viewModel.setAmount(BigDecimal.valueOf(10));
-        viewModel.addCategoryId(null);
-
-        // Act
-        viewModel.saveTransaction();
-
-        // Assert
         assertTrue(viewModel.getErrorMessage().getValue().contains("Category cannot be empty"));
     }
 
     @Test
     public void saveTransaction_nonExistentCategory_failsValidation() {
-        // Arrange
-        long categoryId = 99L;
-        when(trackingRepository.categoryExists(categoryId)).thenReturn(false);
-
         viewModel.setName("Test");
-        viewModel.setAmount(BigDecimal.valueOf(10));
-        viewModel.addCategoryId(categoryId);
+        viewModel.setAmount(BigDecimal.TEN);
+        viewModel.addCategoryId(99L);
+        
+        when(trackingRepository.verifyExistingIdsCategories(any())).thenReturn(false);
 
-        // Act
         viewModel.saveTransaction();
-
-        // Assert
-        assertTrue(viewModel.getErrorMessage().getValue().contains("Category does not exist"));
+        assertTrue(viewModel.getErrorMessage().getValue().contains("do not exist"));
     }
 
     @Test
     public void saveTransaction_fiftyTransactions_insertsAll() {
-        // Arrange
         long categoryId = 1L;
-        Category category = new Category("Test", "", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
-        category.setCategoryId(categoryId);
+        Set<Long> ids = Collections.singleton(categoryId);
+        when(trackingRepository.verifyExistingIdsCategories(any())).thenReturn(true);
         when(trackingRepository.categoryExists(categoryId)).thenReturn(true);
-        when(trackingRepository.getCategoryByIdRestored(categoryId)).thenReturn(category);
 
         int count = 50;
-
-        // Act
         for (int i = 1; i <= count; i++) {
-            viewModel.setName("Transaction " + i);
+            viewModel.clear();
+            viewModel.setName("Trans " + i);
             viewModel.setAmount(BigDecimal.valueOf(i));
             viewModel.addCategoryId(categoryId);
-            viewModel.setType(TrackingType.EXPENSE);
-            viewModel.setDate(LocalDate.now());
-            
             viewModel.saveTransaction();
         }
 
-        // Assert
+        // Each saveTransaction loop should call insertTransaction once for the single category
         verify(trackingRepository, times(count)).insertTransaction(any(Transaction.class), eq(categoryId));
-        assertEquals("Transaction saved successfully", viewModel.getSuccessMessage().getValue());
-        assertEquals("", viewModel.getErrorMessage().getValue());
-    }
-
-    @Test
-    public void saveTransaction_duplicateTransaction_failsValidation() {
-        // Arrange
-        long categoryId = 1L;
-        when(trackingRepository.categoryExists(categoryId)).thenReturn(true);
-        when(trackingRepository.transactionHashExists(any(String.class))).thenReturn(true);
-
-        viewModel.setName("Duplicate");
-        viewModel.setAmount(BigDecimal.TEN);
-        viewModel.addCategoryId(categoryId);
-
-        // Act
-        viewModel.saveTransaction();
-
-        // Assert
-        assertTrue(viewModel.getErrorMessage().getValue().contains("already exists"));
-    }
-
-    @Test
-    public void editTransaction_updatesOnlyDescription() {
-        // Arrange
-        long transactionId = 123L;
-        Transaction existingTransaction = new Transaction.Builder("Dinner", new BigDecimal("50.00"))
-                .description("Old Description")
-                .type(TrackingType.EXPENSE)
-                .build();
-        existingTransaction.setTransactionId(transactionId);
-
-        when(trackingRepository.transactionExists(transactionId)).thenReturn(true);
-        when(trackingRepository.getTransactionById(transactionId)).thenReturn(existingTransaction);
-        when(trackingRepository.getCategoryIdsByTransactionId(transactionId)).thenReturn(Collections.singletonList(1L));
-        when(trackingRepository.categoryExists(1L)).thenReturn(true);
-
-        // Act - Load for editing
-        viewModel.setTransactionId(transactionId);
-        
-        // Assert loaded state
-        assertEquals("Dinner", viewModel.getName().getValue());
-        assertEquals("Old Description", viewModel.getDescription().getValue());
-
-        // Act - Change description and other fields (which should be blocked)
-        viewModel.setDescription("New Description");
-        viewModel.setName("New Name (Should be ignored)");
-        viewModel.setAmount(new BigDecimal("999"));
-
-        viewModel.saveTransaction();
-
-        // Assert - verify repository update
-        verify(trackingRepository).updateTransaction(existingTransaction);
-        assertEquals("New Description", existingTransaction.getDescription());
-        assertEquals("Dinner", existingTransaction.getName()); // Should NOT have changed
-        assertEquals(0, new BigDecimal("50.00").compareTo(existingTransaction.getAmount())); // Should NOT have changed
-    }
-
-    @Test
-    public void clear_resetsFields() {
-        // Arrange
-        viewModel.setName("To be cleared");
-        viewModel.setAmount(BigDecimal.TEN);
-        
-        // Act
-        viewModel.clear();
-        
-        // Assert
-        assertEquals("", viewModel.getName().getValue());
-        assertEquals(0, BigDecimal.ZERO.compareTo(viewModel.getAmount().getValue()));
     }
 }

@@ -22,7 +22,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 
 /**
  * Meant to manually enter transactions, Will also be used for the import feature.
- * Cannot edit fields (will add features to edit description and categories later).
  */
 @HiltViewModel
 public class TransactionFormViewModel extends ViewModel {
@@ -30,7 +29,7 @@ public class TransactionFormViewModel extends ViewModel {
     private final TrackingRepository trackingRepository;
     private final MutableLiveData<String> name = new MutableLiveData<>();
     private final MutableLiveData<String> description = new MutableLiveData<>();
-    private final MutableLiveData<Set<Long>> categoryIds = new MutableLiveData<>();
+    private final MutableLiveData<Set<Long>> categoryIds = new MutableLiveData<>(new HashSet<>());
     private final MutableLiveData<BigDecimal> amount = new MutableLiveData<>();
     private final MutableLiveData<TrackingType> type = new MutableLiveData<>();
     private final MutableLiveData<LocalDateTime> date = new MutableLiveData<>();
@@ -38,7 +37,7 @@ public class TransactionFormViewModel extends ViewModel {
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final MutableLiveData<String> successMessage = new MutableLiveData<>();
     private final MutableLiveData<Long> transactionId = new MutableLiveData<>();
-    private final MutableLiveData<Boolean> editMode = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> editMode = new MutableLiveData<>(false);
 
 
     @Inject
@@ -59,22 +58,22 @@ public class TransactionFormViewModel extends ViewModel {
         this.description.setValue(TrackingUtlis.determineDescription(description));
     }
     public void addCategoryId(Long categoryId) {
-       Set<Long> categoryIds = this.categoryIds.getValue();
-       if (categoryIds == null) {
-           categoryIds = new HashSet<>();
+       Set<Long> currentIds = this.categoryIds.getValue();
+       if (currentIds == null) {
+           currentIds = new HashSet<>();
        }
-       categoryIds.add(categoryId);
-       this.categoryIds.setValue(categoryIds);
+       currentIds.add(categoryId);
+       this.categoryIds.setValue(currentIds);
 
     }
 
     public void removeCategoryId(Long categoryId) {
-        Set<Long> categoryIds = this.categoryIds.getValue();
-        if (categoryIds == null) {
+        Set<Long> currentIds = this.categoryIds.getValue();
+        if (currentIds == null) {
             return;
         }
-        categoryIds.remove(categoryId);
-        this.categoryIds.setValue(categoryIds);
+        currentIds.remove(categoryId);
+        this.categoryIds.setValue(currentIds);
     }
     public void setAmount(BigDecimal amount) {
         if (Boolean.FALSE.equals(editMode.getValue())) {
@@ -99,7 +98,9 @@ public class TransactionFormViewModel extends ViewModel {
     }
     public void setTransactionId(Long transactionId) {
         this.transactionId.setValue(transactionId);
-        loadTransactionForEditing();
+        if (transactionId != null) {
+            loadTransactionForEditing();
+        }
     }
 
 
@@ -117,18 +118,22 @@ public class TransactionFormViewModel extends ViewModel {
     private void loadTransactionForEditing() {
         if (trackingRepository.transactionExists(transactionId.getValue())) {
             Transaction transaction = trackingRepository.getTransactionById(transactionId.getValue());
-            setName(transaction.getName());
-            setDescription(transaction.getDescription());
-            addCategoryId(trackingRepository.getCategoryIdsByTransactionId(transactionId.getValue()).get(0));
-            setAmount(transaction.getAmount());
-            setType(transaction.getType());
-            setDate(transaction.getDate());
+            name.setValue(transaction.getName());
+            description.setValue(transaction.getDescription());
+            
+            // Fix: Load ALL category IDs
+            Set<Long> ids = new HashSet<>(trackingRepository.getCategoryIdsByTransactionId(transactionId.getValue()));
+            categoryIds.setValue(ids);
+            
+            amount.setValue(transaction.getAmount());
+            type.setValue(transaction.getType());
+            date.setValue(transaction.getDate());
             editMode.setValue(true);
-
         }
         else {
             setErrorMessage("Transaction not found.");
-            setTransactionId(null);
+            transactionId.setValue(null);
+            editMode.setValue(false);
         }
     }
 
@@ -149,7 +154,6 @@ public class TransactionFormViewModel extends ViewModel {
         transactionId.setValue(null);
         editMode.setValue(false);
 
-
     }
 
     /**
@@ -166,11 +170,19 @@ public class TransactionFormViewModel extends ViewModel {
                 trackingRepository.updateTransaction(transaction);
 
                 List<Long> oldCategoryIds = trackingRepository.getCategoryIdsByTransactionId(transactionId.getValue());
-                insertTransactionWithRelationships(transaction);
                 Set<Long> newCategoryIds = categoryIds.getValue();
-                for (Long categoryId : oldCategoryIds) {
-                    if (newCategoryIds.contains(categoryId)) {
-                        trackingRepository.deleteRelationship(transactionId.getValue(), categoryId);
+                
+                // Add new relationships
+                for (Long catId : newCategoryIds) {
+                    if (!oldCategoryIds.contains(catId)) {
+                        trackingRepository.insertRelationship(transactionId.getValue(), catId);
+                    }
+                }
+                
+                // Remove old relationships
+                for (Long catId : oldCategoryIds) {
+                    if (!newCategoryIds.contains(catId)) {
+                        trackingRepository.deleteRelationship(transactionId.getValue(), catId);
                     }
                 }
 
@@ -179,8 +191,23 @@ public class TransactionFormViewModel extends ViewModel {
 
             }
             else {
-                Transaction newTransaction = new Transaction.Builder(name.getValue(), amount.getValue()).description(description.getValue()).type(type.getValue()).date(date.getValue()).build();
-                insertTransactionWithRelationships(newTransaction);
+                Transaction newTransaction = new Transaction.Builder(name.getValue(), amount.getValue())
+                        .description(description.getValue())
+                        .type(type.getValue())
+                        .date(date.getValue())
+                        .build();
+                
+
+                boolean first = true;
+                for (Long catId : categoryIds.getValue()) {
+                    if (first) {
+                        trackingRepository.insertTransaction(newTransaction, catId);
+                        first = false;
+                    } else {
+                        trackingRepository.insertRelationship(newTransaction.getTransactionId(), catId);
+                    }
+                }
+                
                 setErrorMessage("");
                 setSuccessMessage("Transaction saved successfully");
             }
@@ -196,18 +223,24 @@ public class TransactionFormViewModel extends ViewModel {
             }
     }
 
-    private void insertTransactionWithRelationships(Transaction transaction) throws IllegalStateException {
-        for (Long categoryId : categoryIds.getValue()) {
-            if (!trackingRepository.transactionExists(transaction.getTransactionId())) {
-
-                trackingRepository.insertRelationship(transaction.getTransactionId(), categoryId);
-            } else {
-                trackingRepository.insertTransaction(transaction, categoryId);
-            }
+    public void deleteTransaction() {
+        if (transactionId.getValue() == null) {
+            setErrorMessage("No transaction to delete.");
+            return;
+        }
+        try {
+            setIsLoading(true);
+            trackingRepository.deleteTransaction(transactionId.getValue());
+            clear();
+            setSuccessMessage("Transaction deleted successfully");
+        } catch (Exception e) {
+            setErrorMessage("Failed to delete transaction: " + e.getMessage());
+        } finally {
+            setIsLoading(false);
         }
     }
 
-    private void validateForm() throws IllegalArgumentException{
+    private void validateForm() throws IllegalArgumentException {
         if (name.getValue() == null || name.getValue().isEmpty()) {
             throw new IllegalArgumentException("Name cannot be empty.");
         }
@@ -234,40 +267,14 @@ public class TransactionFormViewModel extends ViewModel {
     }
 
     // public getters
-
-    public LiveData<String> getName() {
-        return name;
-    }
-    public LiveData<String> getDescription() {
-        return description;
-    }
-    public LiveData<Set<Long>> getCategoryIds() {
-        return categoryIds;
-    }
-    public LiveData<BigDecimal> getAmount() {
-        return amount;
-    }
-    public LiveData<TrackingType> getType() {
-        return type;
-    }
-    public LiveData<LocalDateTime> getDate() {
-        return date;
-    }
-    public LiveData<Boolean> getIsLoading() {
-        return isLoading;
-    }
-    public LiveData<String> getErrorMessage() {
-        return errorMessage;
-    }
-    public LiveData<String> getSuccessMessage() {
-        return successMessage;
-    }
-
-
-
-
-
-
-
-
+    public LiveData<String> getName() { return name; }
+    public LiveData<String> getDescription() { return description; }
+    public LiveData<Set<Long>> getCategoryIds() { return categoryIds; }
+    public LiveData<BigDecimal> getAmount() { return amount; }
+    public LiveData<TrackingType> getType() { return type; }
+    public LiveData<LocalDateTime> getDate() { return date; }
+    public LiveData<Boolean> getIsLoading() { return isLoading; }
+    public LiveData<String> getErrorMessage() { return errorMessage; }
+    public LiveData<String> getSuccessMessage() { return successMessage; }
+    public LiveData<Boolean> getEditMode() { return editMode; }
 }

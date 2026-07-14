@@ -51,7 +51,9 @@ public class CategoryFormViewModel extends ViewModel {
      */
     public void setEditCategory(Long categoryId) {
         this.editCategoryId = categoryId;
-        loadCategoryForEditing();
+        if (categoryId != null) {
+            loadCategoryForEditing();
+        }
     }
 
     /**
@@ -59,12 +61,13 @@ public class CategoryFormViewModel extends ViewModel {
      * Will ignore if category is root or cannot be found.
      */
     private void loadCategoryForEditing() {
-        if (editCategoryId == null) {
+        if (!trackingRepository.categoryExists(editCategoryId)) {
+            setErrorMessage("Cannot find category");
             return;
         }
         Category category = trackingRepository.getCategoryByIdRestored(editCategoryId);
         if (category == null || trackingRepository.isRoot(category)) {
-            errorMessage.setValue("Category not found or is root (cannot edit root)");
+            setErrorMessage("cannot edit root categories");
             setEditCategory(null);
             return;
         }
@@ -80,7 +83,7 @@ public class CategoryFormViewModel extends ViewModel {
         this.minimumBudget.setValue(minimumBudget);
     }
 
-    public void setName( String name) {
+    public void setName(String name) {
         if (name == null) {
             return;
         }
@@ -89,14 +92,14 @@ public class CategoryFormViewModel extends ViewModel {
 
     /**
      * Note: a default description is set if empty.
-     * @param description - the decription to set (if not empty)
+     * @param description - the description to be set (if not empty)
      */
     public void setDescription(String description) {
         this.description.setValue(TrackingUtlis.determineDescription(description));
     }
 
     public void setParentId(Long parentId) {
-        if (parentId != null && !trackingRepository.categoryExists(parentId)) {
+        if (!trackingRepository.categoryExists(parentId)) {
             return;
         }
         this.parentId.setValue(parentId);
@@ -107,7 +110,7 @@ public class CategoryFormViewModel extends ViewModel {
      * @param monthlyBudget - the monthly budget to set.
      */
     public void setMonthlyBudget(BigDecimal monthlyBudget) {
-        if (monthlyBudget.compareTo(minimumBudget.getValue()) < 0) {
+        if (monthlyBudget.compareTo(minimumBudget.getValue()) <= 0) {
             this.monthlyBudget.setValue(minimumBudget.getValue());
             return;
         }
@@ -120,6 +123,18 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
 
+    // private setters
+    private void setIsLoading(boolean isLoading) {
+        this.isLoading.setValue(isLoading);
+    }
+    private void setErrorMessage(String errorMessage) {
+        this.errorMessage.setValue(errorMessage);
+    }
+    private void setSuccessMessage(String successMessage) {
+        this.successMessage.setValue(successMessage);
+    }
+
+
     /**
      * WIll delete the category that is currently being edited.
      * This CANNOT be undone!!
@@ -127,14 +142,27 @@ public class CategoryFormViewModel extends ViewModel {
      */
     public void deleteCategory(boolean deleteTransactions) {
         if (!trackingRepository.categoryExists(editCategoryId)) {
-            errorMessage.setValue("No category to delete");
+            setErrorMessage("No category to delete");
             return;
         }
+        try {
+            setIsLoading(true);
+            trackingRepository.deleteCategory(editCategoryId, deleteTransactions);
+            setEditCategory(null);
+            clear();
+            setSuccessMessage("Category deleted successfully");
+            setErrorMessage("");
+        }
+        catch (Exception e) {
+            setErrorMessage("Cannot delete category: " + e.getMessage());
+            setSuccessMessage("");
+            return;
+        }
+        finally {
+            setIsLoading(false);
+        }
 
-        trackingRepository.deleteCategory(editCategoryId, deleteTransactions);
-        setEditCategory(null);
-        clear();
-        successMessage.setValue("Category deleted successfully");
+
 
     }
 
@@ -148,9 +176,9 @@ public class CategoryFormViewModel extends ViewModel {
        try {
            validateForm();
 
-           errorMessage.setValue("");
-           successMessage.setValue("");
-           isLoading.setValue(true);
+           setErrorMessage("");
+           setSuccessMessage("");
+           setIsLoading(true);
 
            // Create Category
            if (editCategoryId == null) {
@@ -176,15 +204,15 @@ public class CategoryFormViewModel extends ViewModel {
                trackingRepository.updateCategoryTree(category);
            }
 
-           successMessage.setValue("Category saved successfully");
+           setSuccessMessage("Category saved successfully");
 
        }
        catch (Exception e) {
-           errorMessage.setValue("Cannot save category: " + e.getMessage());
+           setErrorMessage("Cannot save category: " + e.getMessage());
 
        }
        finally {
-           isLoading.setValue(false);
+           setIsLoading(false);
            
        }
 

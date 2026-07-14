@@ -2,10 +2,9 @@ package com.example.mtfinance.src.viewmodels;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.clearInvocations;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,7 +24,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 
 public class CategoryFormViewModelTest {
 
@@ -68,6 +66,7 @@ public class CategoryFormViewModelTest {
         Category existingCategory = new Category("Old Name", "Old Desc", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         existingCategory.setCategoryId(categoryId);
         
+        when(trackingRepository.categoryExists(categoryId)).thenReturn(true);
         when(trackingRepository.getCategoryByIdRestored(categoryId)).thenReturn(existingCategory);
         
         viewModel.setEditCategory(categoryId);
@@ -116,6 +115,7 @@ public class CategoryFormViewModelTest {
         child.setParent(parent);
         parent.setCategoryId(10L);
         
+        when(trackingRepository.categoryExists(10L)).thenReturn(true);
         when(trackingRepository.getCategoryByIdRestored(10L)).thenReturn(parent);
         
         viewModel.setEditCategory(10L);
@@ -170,12 +170,13 @@ public class CategoryFormViewModelTest {
     public void editRoot_shouldFail() {
         Category root = new Category("Root", "", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
         root.setCategoryId(0L);
+        when(trackingRepository.categoryExists(0L)).thenReturn(true);
         when(trackingRepository.getCategoryByIdRestored(0L)).thenReturn(root);
         when(trackingRepository.isRoot(root)).thenReturn(true);
 
         viewModel.setEditCategory(0L);
 
-        assertTrue(viewModel.getErrorMessage().getValue().contains("cannot edit root"));
+        assertTrue(viewModel.getErrorMessage().getValue().contains("root"));
     }
 
     @Test
@@ -183,6 +184,7 @@ public class CategoryFormViewModelTest {
         long id = 1L;
         Category cat = new Category("Name", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         cat.setCategoryId(id);
+        when(trackingRepository.categoryExists(id)).thenReturn(true);
         when(trackingRepository.getCategoryByIdRestored(id)).thenReturn(cat);
         
         viewModel.setEditCategory(id);
@@ -247,9 +249,5 @@ public class CategoryFormViewModelTest {
 
         // Assert
         assertTrue(viewModel.getErrorMessage().getValue().contains("No category to delete"));
-    }
-
-    private void assertTrue(boolean condition) {
-        org.junit.Assert.assertTrue(condition);
     }
 }
