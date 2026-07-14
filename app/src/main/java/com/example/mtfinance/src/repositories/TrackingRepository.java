@@ -11,6 +11,7 @@ import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -269,6 +270,10 @@ public class TrackingRepository {
 
     public boolean categoryExists(Long id) {
         return categoryRepository.exists(id);
+    }
+
+    public boolean verifyExistingIdsCategories(Collection<Long> ids) {
+        return categoryRepository.verifyExistingIds(ids);
     }
 
     public boolean categoryNameExists(String name) {

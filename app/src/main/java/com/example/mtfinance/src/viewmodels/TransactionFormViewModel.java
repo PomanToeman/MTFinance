@@ -12,6 +12,9 @@ import com.example.mtfinance.src.trackingengine.Transaction;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import javax.inject.Inject;
 
@@ -27,7 +30,7 @@ public class TransactionFormViewModel extends ViewModel {
     private final TrackingRepository trackingRepository;
     private final MutableLiveData<String> name = new MutableLiveData<>();
     private final MutableLiveData<String> description = new MutableLiveData<>();
-    private final MutableLiveData<Long> categoryId = new MutableLiveData<>();
+    private final MutableLiveData<Set<Long>> categoryIds = new MutableLiveData<>();
     private final MutableLiveData<BigDecimal> amount = new MutableLiveData<>();
     private final MutableLiveData<TrackingType> type = new MutableLiveData<>();
     private final MutableLiveData<LocalDateTime> date = new MutableLiveData<>();
@@ -55,11 +58,23 @@ public class TransactionFormViewModel extends ViewModel {
     public void setDescription(String description) {
         this.description.setValue(TrackingUtlis.determineDescription(description));
     }
-    public void setCategoryId(Long categoryId) {
-        if (Boolean.FALSE.equals(editMode.getValue())) {
-            this.categoryId.setValue(categoryId);
-        }
+    public void addCategoryId(Long categoryId) {
+       Set<Long> categoryIds = this.categoryIds.getValue();
+       if (categoryIds == null) {
+           categoryIds = new HashSet<>();
+       }
+       categoryIds.add(categoryId);
+       this.categoryIds.setValue(categoryIds);
 
+    }
+
+    public void removeCategoryId(Long categoryId) {
+        Set<Long> categoryIds = this.categoryIds.getValue();
+        if (categoryIds == null) {
+            return;
+        }
+        categoryIds.remove(categoryId);
+        this.categoryIds.setValue(categoryIds);
     }
     public void setAmount(BigDecimal amount) {
         if (Boolean.FALSE.equals(editMode.getValue())) {
@@ -104,7 +119,7 @@ public class TransactionFormViewModel extends ViewModel {
             Transaction transaction = trackingRepository.getTransactionById(transactionId.getValue());
             setName(transaction.getName());
             setDescription(transaction.getDescription());
-            setCategoryId(trackingRepository.getCategoryIdsByTransactionId(transactionId.getValue()).get(0));
+            addCategoryId(trackingRepository.getCategoryIdsByTransactionId(transactionId.getValue()).get(0));
             setAmount(transaction.getAmount());
             setType(transaction.getType());
             setDate(transaction.getDate());
@@ -124,7 +139,7 @@ public class TransactionFormViewModel extends ViewModel {
     public void clear() {
         name.setValue("");
         description.setValue("");
-        categoryId.setValue(null);
+        categoryIds.setValue(new HashSet<>());
         amount.setValue(BigDecimal.ZERO);
         type.setValue(TrackingType.EXPENSE);
         errorMessage.setValue("");
@@ -133,6 +148,7 @@ public class TransactionFormViewModel extends ViewModel {
         date.setValue(LocalDateTime.now());
         transactionId.setValue(null);
         editMode.setValue(false);
+
 
     }
 
@@ -143,16 +159,28 @@ public class TransactionFormViewModel extends ViewModel {
         try {
             setIsLoading(true);
             validateForm();
-            // Create Transaction
+
             if (Boolean.TRUE.equals(editMode.getValue())) {
                 Transaction transaction = trackingRepository.getTransactionById(transactionId.getValue());
                 transaction.setDescription(description.getValue());
                 trackingRepository.updateTransaction(transaction);
 
+                List<Long> oldCategoryIds = trackingRepository.getCategoryIdsByTransactionId(transactionId.getValue());
+                insertTransactionWithRelationships(transaction);
+                Set<Long> newCategoryIds = categoryIds.getValue();
+                for (Long categoryId : oldCategoryIds) {
+                    if (newCategoryIds.contains(categoryId)) {
+                        trackingRepository.deleteRelationship(transactionId.getValue(), categoryId);
+                    }
+                }
+
+                setErrorMessage("");
+                setSuccessMessage("Transaction Updated successfully");
+
             }
             else {
                 Transaction newTransaction = new Transaction.Builder(name.getValue(), amount.getValue()).description(description.getValue()).type(type.getValue()).date(date.getValue()).build();
-                trackingRepository.insertTransaction(newTransaction, categoryId.getValue());
+                insertTransactionWithRelationships(newTransaction);
                 setErrorMessage("");
                 setSuccessMessage("Transaction saved successfully");
             }
@@ -168,16 +196,27 @@ public class TransactionFormViewModel extends ViewModel {
             }
     }
 
+    private void insertTransactionWithRelationships(Transaction transaction) throws IllegalStateException {
+        for (Long categoryId : categoryIds.getValue()) {
+            if (!trackingRepository.transactionExists(transaction.getTransactionId())) {
+
+                trackingRepository.insertRelationship(transaction.getTransactionId(), categoryId);
+            } else {
+                trackingRepository.insertTransaction(transaction, categoryId);
+            }
+        }
+    }
+
     private void validateForm() throws IllegalArgumentException{
         if (name.getValue() == null || name.getValue().isEmpty()) {
             throw new IllegalArgumentException("Name cannot be empty.");
         }
         TrackingUtlis.checkAmount(amount.getValue());
-        if (categoryId.getValue() == null) {
+        if (categoryIds.getValue() == null || categoryIds.getValue().isEmpty()) {
             throw new IllegalArgumentException("Category cannot be empty.");
         }
-        if (!trackingRepository.categoryExists(categoryId.getValue())) {
-            throw new IllegalArgumentException("Category does not exist.");
+        if (!trackingRepository.verifyExistingIdsCategories(categoryIds.getValue())) {
+            throw new IllegalArgumentException("Some Categories do not exist.");
         }
 
         if (Boolean.FALSE.equals(editMode.getValue())) {
@@ -202,8 +241,8 @@ public class TransactionFormViewModel extends ViewModel {
     public LiveData<String> getDescription() {
         return description;
     }
-    public LiveData<Long> getCategoryId() {
-        return categoryId;
+    public LiveData<Set<Long>> getCategoryIds() {
+        return categoryIds;
     }
     public LiveData<BigDecimal> getAmount() {
         return amount;

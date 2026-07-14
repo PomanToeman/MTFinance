@@ -5,7 +5,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,7 +55,7 @@ public class TransactionFormViewModelTest {
 
         viewModel.setName("Milk");
         viewModel.setAmount(BigDecimal.valueOf(3.50));
-        viewModel.setCategoryId(categoryId);
+        viewModel.addCategoryId(categoryId);
         viewModel.setType(TrackingType.EXPENSE);
         viewModel.setDate(LocalDate.now());
 
@@ -105,7 +104,7 @@ public class TransactionFormViewModelTest {
         // Arrange
         viewModel.setName("Test");
         viewModel.setAmount(BigDecimal.valueOf(10));
-        viewModel.setCategoryId(null);
+        viewModel.addCategoryId(null);
 
         // Act
         viewModel.saveTransaction();
@@ -122,7 +121,7 @@ public class TransactionFormViewModelTest {
 
         viewModel.setName("Test");
         viewModel.setAmount(BigDecimal.valueOf(10));
-        viewModel.setCategoryId(categoryId);
+        viewModel.addCategoryId(categoryId);
 
         // Act
         viewModel.saveTransaction();
@@ -146,7 +145,7 @@ public class TransactionFormViewModelTest {
         for (int i = 1; i <= count; i++) {
             viewModel.setName("Transaction " + i);
             viewModel.setAmount(BigDecimal.valueOf(i));
-            viewModel.setCategoryId(categoryId);
+            viewModel.addCategoryId(categoryId);
             viewModel.setType(TrackingType.EXPENSE);
             viewModel.setDate(LocalDate.now());
             
@@ -168,7 +167,7 @@ public class TransactionFormViewModelTest {
 
         viewModel.setName("Duplicate");
         viewModel.setAmount(BigDecimal.TEN);
-        viewModel.setCategoryId(categoryId);
+        viewModel.addCategoryId(categoryId);
 
         // Act
         viewModel.saveTransaction();

@@ -90,6 +90,16 @@ public class CategoryRepository {
         return categoryDao.exists(id);
     }
 
+    public boolean verifyExistingIds(Collection<Long> ids) {
+        if (ids == null)  {
+            return false;
+        }
+        List<Long> existingIds = categoryDao.veifyExitsingIds(ids);
+        return existingIds.size() == ids.size();
+
+
+    }
+
     public boolean nameExists(String name) {
         if (name == null || name.isEmpty()) return false;
         return categoryDao.nameExists(name.trim());
@@ -263,6 +273,8 @@ public class CategoryRepository {
         }
         return false;
     }
+
+
 
 
 

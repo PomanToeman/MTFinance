@@ -55,6 +55,9 @@ public interface CategoryDao {
     @Query("SELECT (SELECT COUNT(*) FROM categories) == 0")
     boolean isEmpty();
 
+    @Query("SELECT categoryId FROM categories WHERE categoryId IN (:ids)")
+    List<Long> veifyExitsingIds(Collection<Long> ids);
+
 
 
 
