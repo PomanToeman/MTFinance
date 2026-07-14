@@ -1,8 +1,10 @@
 package com.example.mtfinance.src;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import android.content.Context;
 
@@ -563,5 +565,105 @@ public class TrackingRepositoryTest {
         List<Category> associatedCategories2 = trackingRepository.findCategoriesByTransactionId(expenseTrans2.getTransactionId());
         assertEquals(1, associatedCategories2.size());
         assertEquals("General Category", associatedCategories2.get(0).getName());
+    }
+
+    @Test
+    public void testInsertRelationship() {
+        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        categoryRepository.insert(cat);
+        Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
+        transactionRepository.insert(trans);
+
+        trackingRepository.insertRelationship(trans.getTransactionId(), cat.getCategoryId());
+
+        List<Category> associated = trackingRepository.findCategoriesByTransactionId(trans.getTransactionId());
+        assertTrue(associated.stream().anyMatch(c -> c.getCategoryId().equals(cat.getCategoryId())));
+    }
+
+    @Test
+    public void testDeleteRelationship() {
+        Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        categoryRepository.insert(cat1);
+        categoryRepository.insert(cat2);
+
+        Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
+        trackingRepository.insertTransaction(trans, cat1.getCategoryId());
+        trackingRepository.insertRelationship(trans.getTransactionId(), cat2.getCategoryId());
+
+        assertEquals(2, trackingRepository.findCategoriesByTransactionId(trans.getTransactionId()).size());
+
+        trackingRepository.deleteRelationship(trans.getTransactionId(), cat2.getCategoryId());
+
+        List<Category> associated = trackingRepository.findCategoriesByTransactionId(trans.getTransactionId());
+        assertEquals(1, associated.size());
+        assertEquals(cat1.getCategoryId(), associated.get(0).getCategoryId());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testDeleteRelationshipThrowsExceptionWhenOnlyOneLeft() {
+        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        categoryRepository.insert(cat);
+        Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
+        trackingRepository.insertTransaction(trans, cat.getCategoryId());
+
+        trackingRepository.deleteRelationship(trans.getTransactionId(), cat.getCategoryId());
+    }
+
+    @Test
+    public void testDeleteTransaction() {
+        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        categoryRepository.insert(cat);
+        Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
+        trackingRepository.insertTransaction(trans, cat.getCategoryId());
+
+        Long transId = trans.getTransactionId();
+        assertTrue(trackingRepository.transactionExists(transId));
+
+        trackingRepository.deleteTransaction(transId);
+
+        assertFalse(trackingRepository.transactionExists(transId));
+        assertTrue(trackingRepository.findCategoriesByTransactionId(transId).isEmpty());
+    }
+
+    @Test
+    public void testDeleteCategoryMoveTransactionsToRoot() {
+        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        categoryRepository.insert(cat);
+        Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
+        trackingRepository.insertTransaction(trans, cat.getCategoryId());
+
+        Long catId = cat.getCategoryId();
+        assertTrue(trackingRepository.categoryExists(catId));
+
+        // Delete category but KEEP transactions (move to root)
+        trackingRepository.deleteCategory(catId, false);
+
+        assertFalse(trackingRepository.categoryExists(catId));
+        
+        // Transaction should still exist
+        assertTrue(trackingRepository.transactionExists(trans.getTransactionId()));
+        
+        // Verify it was moved to General Category
+        List<Category> associated = trackingRepository.findCategoriesByTransactionId(trans.getTransactionId());
+        assertEquals(1, associated.size());
+        assertEquals("General Category", associated.get(0).getName());
+    }
+
+    @Test
+    public void testDeleteCategoryAndDeleteTransactions() {
+        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        categoryRepository.insert(cat);
+        Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
+        trackingRepository.insertTransaction(trans, cat.getCategoryId());
+
+        Long catId = cat.getCategoryId();
+        Long transId = trans.getTransactionId();
+
+        // Delete category AND transactions
+        trackingRepository.deleteCategory(catId, true);
+
+        assertFalse(trackingRepository.categoryExists(catId));
+        assertFalse(trackingRepository.transactionExists(transId));
     }
 }

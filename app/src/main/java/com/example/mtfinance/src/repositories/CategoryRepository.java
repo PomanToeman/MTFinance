@@ -258,7 +258,10 @@ public class CategoryRepository {
     }
 
     public boolean isRoot(Long categoryId) {
-        return isRoot(getCategoryByIdRestored(categoryId));
+        if (exists(categoryId)) {
+            return isRoot(getCategoryByIdRestored(categoryId));
+        }
+        return false;
     }
 
 

@@ -41,5 +41,8 @@ public interface TransactionDao {
     @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE hash = :hash)")
     Boolean hashExists(String hash);
 
+    @Query("DELETE FROM transactions WHERE transactionId = :id")
+    void delete(Long id);
+
 
 }

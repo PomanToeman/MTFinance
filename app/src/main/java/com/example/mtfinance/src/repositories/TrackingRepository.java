@@ -76,12 +76,66 @@ public class TrackingRepository {
     }
 
     /**
+     * To regonise a relationship between a category and relationship.
+     * Both transaction and category must already be in the database.
+     * @param transactionId - The ID of a transaction already within a database.
+     * @param categoryId - The ID of a category already within a database.
+     */
+    public void insertRelationship(Long transactionId, Long categoryId) {
+        if (transactionExists(transactionId) && categoryExists(categoryId) ) {
+            CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(categoryId, transactionId);
+            categoryWithTransactionsDao.insertCrossRef(crossRef);
+        }
+    }
+    public void deleteRelationship(Long transactionId, Long categoryId) throws IllegalStateException {
+        if (findCategoryIdsByTransactionId(transactionId).size() <= 1) {
+            throw new IllegalStateException("Transaction must have at least one category");
+        }
+        categoryWithTransactionsDao.deleteCrossRef(categoryId, transactionId);
+    }
+
+    public void deleteTransaction(Long transactionId) {
+        categoryWithTransactionsDao.deleteCrossRefsForTransaction(transactionId);
+        transactionRepository.delete(transactionId);
+    }
+
+    /**
+     * Note when deleting a category, all transactions are automatically moved to their root category if you do
+     * not delete transactions.
+     * Cannot delete a root is well.
+     * @param categoryId - The ID of a category that will be deleted.
+     * @param deleteTransactions - If true, all transactions under the category will be deleted.
+     */
+    public void deleteCategory(Long categoryId, boolean deleteTransactions) {
+        if (categoryExists(categoryId) && !isRoot(categoryId)) {
+
+            List<Long> transactionIds = getTransactionIdsForCategory(categoryId);
+            if (deleteTransactions) {
+                for (Long transactionId : transactionIds) {
+                    deleteTransaction(transactionId);
+                }
+            }
+            else {
+                Long rootCategoryId = categoryRepository.getRootCategoryByType(categoryRepository.getCategoryById(categoryId).getType()).getCategoryId();
+                for (Long transactionId : transactionIds) {
+                    insertRelationship(transactionId, rootCategoryId);
+                }
+
+            }
+
+
+            categoryWithTransactionsDao.deleteCrossRefsForCategory(categoryId);
+            categoryRepository.deleteCategory(categoryRepository.getCategoryById(categoryId));
+        }
+    }
+
+    /**
      * If you just want to insert a transaction with no specific category, use this method.
      * This method will put it under the general category (or other roots if not expense type).
      * @param transaction - The transaction to be inserted.
      */
     public void insertTransactionDefault(@NonNull Transaction transaction) {
-        Category generalCategory = categoryRepository.getGeneralCategory();
+        Category generalCategory = categoryRepository.getRootCategoryByType(transaction.getType());
         insertTransaction(transaction, generalCategory.getCategoryId());
 
     }

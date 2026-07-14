@@ -46,6 +46,11 @@ public class TransactionRepository {
         transactionDao.update(transaction);
     }
 
+    public void delete(Long id) {
+        transactionDao.delete(id);
+    }
+
+
     public Boolean exists(Long id) {
         return transactionDao.exists(id);
     }
