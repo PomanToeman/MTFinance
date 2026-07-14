@@ -18,19 +18,21 @@ import javax.inject.Inject;
 
 public class CategoryRepository {
 
-    public final List<Category> defaultExpenseCategories = new ArrayList<>();
+    // default categories
     public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
     public final Category IncomeCategory = new Category("Income", "Tracks income transactions", BigDecimal.valueOf(1000), TrackingType.INCOME);
     public final Category accountTransferCategory = new Category("Account Transfer", "Account Transfers", BigDecimal.valueOf(1000), TrackingType.ACCOUNT_TRANSFERS);
+
+    public final List<Category> defaultExpenseCategories = List.of(
+            new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE),
+            new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
 
     private final CategoryDao categoryDao;
 
     @Inject
     public CategoryRepository(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
-        // default categories
-        defaultExpenseCategories.add(new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE));
-        defaultExpenseCategories.add(new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
+
 
         new Thread(this::populateDefaultCategories).start();
     }
@@ -38,9 +40,7 @@ public class CategoryRepository {
     @VisibleForTesting
     public CategoryRepository(CategoryDao categoryDao, boolean populateDefaultCategories) {
         this.categoryDao = categoryDao;
-        // default categories
-        defaultExpenseCategories.add(new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE));
-        defaultExpenseCategories.add(new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
+
 
         if (populateDefaultCategories) populateDefaultCategories();
 
@@ -231,13 +231,7 @@ public class CategoryRepository {
     }
 
 
-    /**
-     * Meant for repositories
-     * @return
-     */
-    protected CategoryDao getCategoryDao() {
-        return categoryDao;
-    }
+
 
 
     public Category getRootCategoryByType(TrackingType type) {

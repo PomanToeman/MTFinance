@@ -30,41 +30,61 @@ public class TransactionFormViewModel extends ViewModel {
     private final MutableLiveData<Long> categoryId = new MutableLiveData<>();
     private final MutableLiveData<BigDecimal> amount = new MutableLiveData<>();
     private final MutableLiveData<TrackingType> type = new MutableLiveData<>();
-    private MutableLiveData<LocalDateTime> date = new MutableLiveData<>();
+    private final MutableLiveData<LocalDateTime> date = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>();
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final MutableLiveData<String> successMessage = new MutableLiveData<>();
+    private final MutableLiveData<Long> transactionId = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> editMode = new MutableLiveData<>();
 
 
     @Inject
     public TransactionFormViewModel(TrackingRepository trackingRepository) {
         this.trackingRepository = trackingRepository;
+        clear(); // set default values
 
     }
 
     // setters
     public void setName(String name) {
-        this.name.setValue(name);
+        if (Boolean.FALSE.equals(editMode.getValue())) {
+            this.name.setValue(name);
+        }
+
     }
     public void setDescription(String description) {
         this.description.setValue(TrackingUtlis.determineDescription(description));
     }
     public void setCategoryId(Long categoryId) {
-        this.categoryId.setValue(categoryId);
+        if (Boolean.FALSE.equals(editMode.getValue())) {
+            this.categoryId.setValue(categoryId);
+        }
+
     }
     public void setAmount(BigDecimal amount) {
-        this.amount.setValue(amount);
+        if (Boolean.FALSE.equals(editMode.getValue())) {
+            this.amount.setValue(amount);
+        }
     }
     public void setType(TrackingType type) {
-        if (type != null) {
+
+        if (type != null && Boolean.FALSE.equals(editMode.getValue())) {
             this.type.setValue(type);
         }
     }
     public void setDate(LocalDateTime date) {
-        this.date.setValue(date);
+        if (Boolean.FALSE.equals(editMode.getValue())) {
+            this.date.setValue(date);
+        }
     }
     public void setDate(LocalDate date) {
-        this.date.setValue(date.atStartOfDay());
+        if (Boolean.FALSE.equals(editMode.getValue())) {
+            this.date.setValue(date.atStartOfDay());
+        }
+    }
+    public void setTransactionId(Long transactionId) {
+        this.transactionId.setValue(transactionId);
+        loadTransactionForEditing();
     }
 
 
@@ -77,6 +97,24 @@ public class TransactionFormViewModel extends ViewModel {
     }
     private void setSuccessMessage(String successMessage) {
         this.successMessage.setValue(successMessage);
+    }
+
+    private void loadTransactionForEditing() {
+        if (trackingRepository.transactionExists(transactionId.getValue())) {
+            Transaction transaction = trackingRepository.getTransactionById(transactionId.getValue());
+            setName(transaction.getName());
+            setDescription(transaction.getDescription());
+            setCategoryId(trackingRepository.findCategoryIdsByTransactionId(transactionId.getValue()).get(0));
+            setAmount(transaction.getAmount());
+            setType(transaction.getType());
+            setDate(transaction.getDate());
+            editMode.setValue(true);
+
+        }
+        else {
+            setErrorMessage("Transaction not found.");
+            setTransactionId(null);
+        }
     }
 
 
@@ -92,6 +130,9 @@ public class TransactionFormViewModel extends ViewModel {
         errorMessage.setValue("");
         successMessage.setValue("");
         isLoading.setValue(false);
+        date.setValue(LocalDateTime.now());
+        transactionId.setValue(null);
+        editMode.setValue(false);
 
     }
 
@@ -103,10 +144,19 @@ public class TransactionFormViewModel extends ViewModel {
             setIsLoading(true);
             validateForm();
             // Create Transaction
-            Transaction newTransaction = new Transaction.Builder(name.getValue(), amount.getValue()).description(description.getValue()).type(type.getValue()).date(date.getValue()).build();
-            trackingRepository.insertTransaction(newTransaction, categoryId.getValue());
-            setErrorMessage("");
-            setSuccessMessage("Transaction saved successfully");
+            if (Boolean.TRUE.equals(editMode.getValue())) {
+                Transaction transaction = trackingRepository.getTransactionById(transactionId.getValue());
+                transaction.setDescription(description.getValue());
+                trackingRepository.updateTransaction(transaction);
+
+            }
+            else {
+                Transaction newTransaction = new Transaction.Builder(name.getValue(), amount.getValue()).description(description.getValue()).type(type.getValue()).date(date.getValue()).build();
+                trackingRepository.insertTransaction(newTransaction, categoryId.getValue());
+                setErrorMessage("");
+                setSuccessMessage("Transaction saved successfully");
+            }
+
 
         }
         catch (Exception e) {
@@ -130,14 +180,16 @@ public class TransactionFormViewModel extends ViewModel {
             throw new IllegalArgumentException("Category does not exist.");
         }
 
-        // Check for identical transaction (duplicate detection)
-        Transaction dummy = new Transaction.Builder(name.getValue(), amount.getValue())
-                .description(description.getValue())
-                .type(type.getValue())
-                .date(date.getValue())
-                .build();
-        if (trackingRepository.transactionHashExists(dummy.getGeneratedHash())) {
-            throw new IllegalArgumentException("Identical transaction already exists.");
+        if (Boolean.FALSE.equals(editMode.getValue())) {
+            // Check for identical transaction (duplicate detection)
+            Transaction dummy = new Transaction.Builder(name.getValue(), amount.getValue())
+                    .description(description.getValue())
+                    .type(type.getValue())
+                    .date(date.getValue())
+                    .build();
+            if (trackingRepository.transactionHashExists(dummy.getGeneratedHash())) {
+                throw new IllegalArgumentException("Identical transaction already exists.");
+            }
         }
 
     }

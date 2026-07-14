@@ -1,9 +1,11 @@
 package com.example.mtfinance.src.viewmodels;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,6 +27,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 
 public class TransactionFormViewModelTest {
 
@@ -172,6 +175,42 @@ public class TransactionFormViewModelTest {
 
         // Assert
         assertTrue(viewModel.getErrorMessage().getValue().contains("already exists"));
+    }
+
+    @Test
+    public void editTransaction_updatesOnlyDescription() {
+        // Arrange
+        long transactionId = 123L;
+        Transaction existingTransaction = new Transaction.Builder("Dinner", new BigDecimal("50.00"))
+                .description("Old Description")
+                .type(TrackingType.EXPENSE)
+                .build();
+        existingTransaction.setTransactionId(transactionId);
+
+        when(trackingRepository.transactionExists(transactionId)).thenReturn(true);
+        when(trackingRepository.getTransactionById(transactionId)).thenReturn(existingTransaction);
+        when(trackingRepository.findCategoryIdsByTransactionId(transactionId)).thenReturn(Collections.singletonList(1L));
+        when(trackingRepository.categoryExists(1L)).thenReturn(true);
+
+        // Act - Load for editing
+        viewModel.setTransactionId(transactionId);
+        
+        // Assert loaded state
+        assertEquals("Dinner", viewModel.getName().getValue());
+        assertEquals("Old Description", viewModel.getDescription().getValue());
+
+        // Act - Change description and other fields (which should be blocked)
+        viewModel.setDescription("New Description");
+        viewModel.setName("New Name (Should be ignored)");
+        viewModel.setAmount(new BigDecimal("999"));
+
+        viewModel.saveTransaction();
+
+        // Assert - verify repository update
+        verify(trackingRepository).updateTransaction(existingTransaction);
+        assertEquals("New Description", existingTransaction.getDescription());
+        assertEquals("Dinner", existingTransaction.getName()); // Should NOT have changed
+        assertEquals(0, new BigDecimal("50.00").compareTo(existingTransaction.getAmount())); // Should NOT have changed
     }
 
     @Test

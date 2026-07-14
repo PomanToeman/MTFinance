@@ -9,6 +9,7 @@ import androidx.room.Transaction;
 
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 
+import java.util.Collection;
 import java.util.List;
 
 @Dao
@@ -33,10 +34,6 @@ public interface CategoryTransactionDao {
     @Query("SELECT * FROM categories WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR LOWER(description) LIKE '%' || LOWER(:query) || '%'")
     LiveData<List<CategoryWithTransactions>> searchCategories(String query);
 
-//    @Transaction
-//    @Query("SELECT * FROM transactions WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR LOWER(description) LIKE '%' || LOWER(:query) || '%'")
-//    LiveData<List<Transaction>> searchTransactions(String query);
-
     @Query("SELECT categoryId FROM categoryTransactionCrossRef WHERE transactionId = :transactionId")
     List<Long> getCategoryIdsForTransaction(long transactionId);
 
@@ -49,7 +46,7 @@ public interface CategoryTransactionDao {
 
     @Transaction
     @Query("SELECT * FROM categories WHERE categoryId IN (:categoryIds)")
-    LiveData<List<CategoryWithTransactions>> getCategoriesByIds(java.util.Collection<Long> categoryIds);
+    LiveData<List<CategoryWithTransactions>> getCategoriesByIds(Collection<Long> categoryIds);
 
 
 

@@ -97,6 +97,10 @@ public class TrackingRepository {
          return categoryRepository.getCategoriesByIds(categoryIds);
     }
 
+    public List<Long> findCategoryIdsByTransactionId(Long id) {
+         return categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
+    }
+
     /**
      * Live Data is to ensure these instances stay in sync with Room when one updates.
      * @return
