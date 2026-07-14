@@ -48,7 +48,7 @@ public class TransactionViewModel extends ViewModel {
         Transaction transaction = trackingRepository.getTransactionById(id);
         if (transaction != null) {
             selectedTransaction.setValue(transaction);
-            categoriesUnderSelectedTransaction.setValue(trackingRepository.findCategoriesByTransactionId(id));
+            categoriesUnderSelectedTransaction.setValue(trackingRepository.getCategoriesByTransactionId(id));
         }
 
     }

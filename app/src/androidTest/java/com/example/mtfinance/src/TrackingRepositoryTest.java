@@ -91,7 +91,7 @@ public class TrackingRepositoryTest {
         assertEquals("Pizza", allTransactions.get(0).getName());
 
         // Verify it's under the category
-        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
+        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
         boolean found = false;
         for (Category c : associatedCategories) {
             if (c.getCategoryId().equals(catId)) {
@@ -113,7 +113,7 @@ public class TrackingRepositoryTest {
 
         // Verify it's under General Category
         Category general = categoryRepository.getGeneralCategory();
-        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
+        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
         boolean found = false;
         for (Category c : associatedCategories) {
             if (c.getCategoryId().equals(general.getCategoryId())) {
@@ -139,7 +139,7 @@ public class TrackingRepositoryTest {
             new CategoryTransactionCrossRef(cat2.getCategoryId(), transaction.getTransactionId());
         database.categoryTransactionDao().insertCrossRef(crossRef);
 
-        List<Category> foundCategories = trackingRepository.findCategoriesByTransactionId(transaction.getTransactionId());
+        List<Category> foundCategories = trackingRepository.getCategoriesByTransactionId(transaction.getTransactionId());
         assertEquals(2, foundCategories.size());
 
         boolean found1 = false;
@@ -163,7 +163,7 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(t1, category.getCategoryId());
         trackingRepository.insertTransaction(t2, category.getCategoryId());
 
-        BigDecimal total = trackingRepository.findTotalInCategory(category, false);
+        BigDecimal total = trackingRepository.getTotalInCategory(category, false);
         assertEquals(0, BigDecimal.valueOf(6.00).compareTo(total));
     }
 
@@ -182,11 +182,11 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(t2, child.getCategoryId());
 
         // Total for parent including subcategories
-        BigDecimal totalWithSubs = trackingRepository.findTotalInCategory(parent, true);
+        BigDecimal totalWithSubs = trackingRepository.getTotalInCategory(parent, true);
         assertEquals(0, BigDecimal.valueOf(60.00).compareTo(totalWithSubs));
 
         // Total for parent excluding subcategories
-        BigDecimal totalWithoutSubs = trackingRepository.findTotalInCategory(parent, false);
+        BigDecimal totalWithoutSubs = trackingRepository.getTotalInCategory(parent, false);
         assertEquals(0, BigDecimal.valueOf(15.00).compareTo(totalWithoutSubs));
     }
 
@@ -303,7 +303,7 @@ public class TrackingRepositoryTest {
         }
 
         // Verify root total including all descendants
-        BigDecimal total = trackingRepository.findTotalInCategory(root, true);
+        BigDecimal total = trackingRepository.getTotalInCategory(root, true);
         assertEquals(0, expectedTotal.compareTo(total));
     }
 
@@ -322,7 +322,7 @@ public class TrackingRepositoryTest {
             expectedTotal = expectedTotal.add(amountPerTrans);
         }
 
-        BigDecimal total = trackingRepository.findTotalInCategory(stressCat, false);
+        BigDecimal total = trackingRepository.getTotalInCategory(stressCat, false);
         assertEquals(0, expectedTotal.compareTo(total));
 
         List<Long> transIds = trackingRepository.getTransactionIdsForCategory(stressCat.getCategoryId());
@@ -387,7 +387,7 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(tRoot, general.getCategoryId());
 
         // 1. Check isolation: Total for L2 Main should only include its descendants
-        BigDecimal resultTotal = trackingRepository.findTotalInCategory(l2Main, true);
+        BigDecimal resultTotal = trackingRepository.getTotalInCategory(l2Main, true);
         assertEquals(0, mainTotal.compareTo(resultTotal));
 
         // 2. Check restoration: Ensure full hierarchy is restored from DB
@@ -494,7 +494,7 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(incomeTrans, expenseCat.getCategoryId());
         
         // Verify it was redirected to Income root category
-        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(incomeTrans.getTransactionId());
+        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(incomeTrans.getTransactionId());
         assertEquals(1, associatedCategories.size());
         assertEquals("Income", associatedCategories.get(0).getName());
         assertEquals(TrackingType.INCOME, associatedCategories.get(0).getType());
@@ -514,7 +514,7 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(transferTrans, expenseCat.getCategoryId());
         
         // Verify it was redirected to Account Transfer root category
-        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(transferTrans.getTransactionId());
+        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(transferTrans.getTransactionId());
         assertEquals(1, associatedCategories.size());
         assertEquals("Account Transfer", associatedCategories.get(0).getName());
         assertEquals(TrackingType.ACCOUNT_TRANSFERS, associatedCategories.get(0).getType());
@@ -533,7 +533,7 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(expenseTrans, expenseCat.getCategoryId());
         
         // Verify it stayed in the provided category
-        List<Category> associatedCategories = trackingRepository.findCategoriesByTransactionId(expenseTrans.getTransactionId());
+        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(expenseTrans.getTransactionId());
         assertEquals(1, associatedCategories.size());
         assertEquals("Education", associatedCategories.get(0).getName());
     }
@@ -550,7 +550,7 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(expenseTrans, incomeCat.getCategoryId());
 
         // Verify it was redirected to General Category (EXPENSE root)
-        List<Category> associatedCategories1 = trackingRepository.findCategoriesByTransactionId(expenseTrans.getTransactionId());
+        List<Category> associatedCategories1 = trackingRepository.getCategoriesByTransactionId(expenseTrans.getTransactionId());
         assertEquals(1, associatedCategories1.size());
         assertEquals("General Category", associatedCategories1.get(0).getName());
 
@@ -562,7 +562,7 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(expenseTrans2, transferCat.getCategoryId());
 
         // Verify it was redirected to General Category
-        List<Category> associatedCategories2 = trackingRepository.findCategoriesByTransactionId(expenseTrans2.getTransactionId());
+        List<Category> associatedCategories2 = trackingRepository.getCategoriesByTransactionId(expenseTrans2.getTransactionId());
         assertEquals(1, associatedCategories2.size());
         assertEquals("General Category", associatedCategories2.get(0).getName());
     }
@@ -576,7 +576,7 @@ public class TrackingRepositoryTest {
 
         trackingRepository.insertRelationship(trans.getTransactionId(), cat.getCategoryId());
 
-        List<Category> associated = trackingRepository.findCategoriesByTransactionId(trans.getTransactionId());
+        List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
         assertTrue(associated.stream().anyMatch(c -> c.getCategoryId().equals(cat.getCategoryId())));
     }
 
@@ -591,11 +591,11 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(trans, cat1.getCategoryId());
         trackingRepository.insertRelationship(trans.getTransactionId(), cat2.getCategoryId());
 
-        assertEquals(2, trackingRepository.findCategoriesByTransactionId(trans.getTransactionId()).size());
+        assertEquals(2, trackingRepository.getCategoriesByTransactionId(trans.getTransactionId()).size());
 
         trackingRepository.deleteRelationship(trans.getTransactionId(), cat2.getCategoryId());
 
-        List<Category> associated = trackingRepository.findCategoriesByTransactionId(trans.getTransactionId());
+        List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
         assertEquals(1, associated.size());
         assertEquals(cat1.getCategoryId(), associated.get(0).getCategoryId());
     }
@@ -623,7 +623,7 @@ public class TrackingRepositoryTest {
         trackingRepository.deleteTransaction(transId);
 
         assertFalse(trackingRepository.transactionExists(transId));
-        assertTrue(trackingRepository.findCategoriesByTransactionId(transId).isEmpty());
+        assertTrue(trackingRepository.getCategoriesByTransactionId(transId).isEmpty());
     }
 
     @Test
@@ -645,7 +645,7 @@ public class TrackingRepositoryTest {
         assertTrue(trackingRepository.transactionExists(trans.getTransactionId()));
         
         // Verify it was moved to General Category
-        List<Category> associated = trackingRepository.findCategoriesByTransactionId(trans.getTransactionId());
+        List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
         assertEquals(1, associated.size());
         assertEquals("General Category", associated.get(0).getName());
     }

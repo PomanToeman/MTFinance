@@ -88,7 +88,7 @@ public class TrackingRepository {
         }
     }
     public void deleteRelationship(Long transactionId, Long categoryId) throws IllegalStateException {
-        if (findCategoryIdsByTransactionId(transactionId).size() <= 1) {
+        if (getCategoryIdsByTransactionId(transactionId).size() <= 1) {
             throw new IllegalStateException("Transaction must have at least one category");
         }
         categoryWithTransactionsDao.deleteCrossRef(categoryId, transactionId);
@@ -146,12 +146,12 @@ public class TrackingRepository {
      * @param id - The given ID of the transaction
      * @return - returns a set of categories that has the given transaction ID.
      */
-     public List<Category> findCategoriesByTransactionId(Long id) {
+     public List<Category> getCategoriesByTransactionId(Long id) {
          List<Long> categoryIds = categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
          return categoryRepository.getCategoriesByIds(categoryIds);
     }
 
-    public List<Long> findCategoryIdsByTransactionId(Long id) {
+    public List<Long> getCategoryIdsByTransactionId(Long id) {
          return categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
     }
 
@@ -239,7 +239,7 @@ public class TrackingRepository {
      * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
      * @return returns the total amount of the category.
      */
-    public BigDecimal findTotalInCategory(Category category, boolean includeSub) {
+    public BigDecimal getTotalInCategory(Category category, boolean includeSub) {
          CategoryWithTransactions parentCategorywithTransactions =categoryWithTransactionsDao.getCategoryById(category.getCategoryId());
          if (parentCategorywithTransactions == null) {
              return BigDecimal.ZERO;

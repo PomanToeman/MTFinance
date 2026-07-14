@@ -189,7 +189,7 @@ public class TransactionFormViewModelTest {
 
         when(trackingRepository.transactionExists(transactionId)).thenReturn(true);
         when(trackingRepository.getTransactionById(transactionId)).thenReturn(existingTransaction);
-        when(trackingRepository.findCategoryIdsByTransactionId(transactionId)).thenReturn(Collections.singletonList(1L));
+        when(trackingRepository.getCategoryIdsByTransactionId(transactionId)).thenReturn(Collections.singletonList(1L));
         when(trackingRepository.categoryExists(1L)).thenReturn(true);
 
         // Act - Load for editing

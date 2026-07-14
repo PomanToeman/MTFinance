@@ -67,14 +67,14 @@ public class TransactionViewModelTest {
         categories.add(new Category("Food", "Eating out", BigDecimal.valueOf(100), TrackingType.EXPENSE));
 
         when(trackingRepository.getTransactionById(transactionId)).thenReturn(transaction);
-        when(trackingRepository.findCategoriesByTransactionId(transactionId)).thenReturn(categories);
+        when(trackingRepository.getCategoriesByTransactionId(transactionId)).thenReturn(categories);
 
         // Act
         viewModel.setSelectedTransaction(transactionId);
 
         // Assert
         verify(trackingRepository).getTransactionById(transactionId);
-        verify(trackingRepository).findCategoriesByTransactionId(transactionId);
+        verify(trackingRepository).getCategoriesByTransactionId(transactionId);
         assertEquals(transaction, viewModel.getSelectedTransaction().getValue());
         assertEquals(categories, viewModel.getCategoriesUnderSelectedTransaction().getValue());
     }

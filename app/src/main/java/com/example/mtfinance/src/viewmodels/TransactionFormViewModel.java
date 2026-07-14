@@ -104,7 +104,7 @@ public class TransactionFormViewModel extends ViewModel {
             Transaction transaction = trackingRepository.getTransactionById(transactionId.getValue());
             setName(transaction.getName());
             setDescription(transaction.getDescription());
-            setCategoryId(trackingRepository.findCategoryIdsByTransactionId(transactionId.getValue()).get(0));
+            setCategoryId(trackingRepository.getCategoryIdsByTransactionId(transactionId.getValue()).get(0));
             setAmount(transaction.getAmount());
             setType(transaction.getType());
             setDate(transaction.getDate());
