@@ -131,6 +131,7 @@ public class CategoryFormViewModelTest {
         Category parent = new Category("Parent", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
         parent.setCategoryId(parentId);
         
+        when(trackingRepository.categoryExists(parentId)).thenReturn(true);
         when(trackingRepository.getCategoryByIdRestored(parentId)).thenReturn(parent);
         
         viewModel.setName("Child");
@@ -151,6 +152,8 @@ public class CategoryFormViewModelTest {
         Category catB = new Category("B", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         catB.setCategoryId(2L);
 
+        when(trackingRepository.categoryExists(1L)).thenReturn(true);
+        when(trackingRepository.categoryExists(2L)).thenReturn(true);
         when(trackingRepository.getCategoryByIdRestored(1L)).thenReturn(catA);
         when(trackingRepository.getCategoryByIdRestored(2L)).thenReturn(catB);
 
@@ -197,6 +200,22 @@ public class CategoryFormViewModelTest {
             assertEquals(0, newBudget.compareTo(cat.getMonthlyBudget()));
             assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue());
         }
+    }
+
+    @Test
+    public void saveCategory_duplicateName_failsValidation() {
+        // Arrange
+        String duplicateName = "Groceries";
+        when(trackingRepository.categoryNameExists(duplicateName)).thenReturn(true);
+        
+        viewModel.setName(duplicateName);
+        viewModel.setMonthlyBudget(BigDecimal.valueOf(100));
+
+        // Act
+        viewModel.saveCategory();
+
+        // Assert
+        assertTrue(viewModel.getErrorMessage().getValue().contains("already exists"));
     }
 
     private void assertTrue(boolean condition) {

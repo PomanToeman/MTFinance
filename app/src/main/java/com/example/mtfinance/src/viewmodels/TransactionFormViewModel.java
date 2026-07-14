@@ -17,6 +17,10 @@ import javax.inject.Inject;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
+/**
+ * Meant to manually enter transactions, Will also be used for the import feature.
+ * Cannot edit fields (will add features to edit description and categories later).
+ */
 @HiltViewModel
 public class TransactionFormViewModel extends ViewModel {
     // instance fields
@@ -91,6 +95,9 @@ public class TransactionFormViewModel extends ViewModel {
 
     }
 
+    /**
+     * Forms must be valid before creating a transaction.
+     */
     public void saveTransaction() {
         try {
             setIsLoading(true);
@@ -100,7 +107,7 @@ public class TransactionFormViewModel extends ViewModel {
             trackingRepository.insertTransaction(newTransaction, categoryId.getValue());
             setErrorMessage("");
             setSuccessMessage("Transaction saved successfully");
-            clear();
+
         }
         catch (Exception e) {
             setErrorMessage("Cannot save transaction: " + e.getMessage());
@@ -119,10 +126,19 @@ public class TransactionFormViewModel extends ViewModel {
         if (categoryId.getValue() == null) {
             throw new IllegalArgumentException("Category cannot be empty.");
         }
-        if (trackingRepository.getCategoryByIdRestored(categoryId.getValue()) == null) {
+        if (!trackingRepository.categoryExists(categoryId.getValue())) {
             throw new IllegalArgumentException("Category does not exist.");
         }
 
+        // Check for identical transaction (duplicate detection)
+        Transaction dummy = new Transaction.Builder(name.getValue(), amount.getValue())
+                .description(description.getValue())
+                .type(type.getValue())
+                .date(date.getValue())
+                .build();
+        if (trackingRepository.transactionHashExists(dummy.getGeneratedHash())) {
+            throw new IllegalArgumentException("Identical transaction already exists.");
+        }
 
     }
 

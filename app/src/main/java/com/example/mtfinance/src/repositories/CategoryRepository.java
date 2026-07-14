@@ -58,7 +58,7 @@ public class CategoryRepository {
             category.setParent(generalCategory); // ensures the greatest parent is the general category
 
         }
-        else if (!getAllCategories().contains(category.getParent())) {
+        else if (!exists(category.getParentId())) {
             insert(category.getParent()); // automatically inserts parent if not already in database.
         }
 
@@ -83,6 +83,16 @@ public class CategoryRepository {
 
     public Category getCategoryById(Long id) {
         return categoryDao.getById(id);
+    }
+
+    public boolean exists(Long id) {
+        if (id == null) return false;
+        return categoryDao.exists(id);
+    }
+
+    public boolean nameExists(String name) {
+        if (name == null || name.isEmpty()) return false;
+        return categoryDao.nameExists(name.trim());
     }
 
     public void deleteCategory(@NonNull Category categoryToDelete) {
@@ -251,6 +261,10 @@ public class CategoryRepository {
         }
         return false;
 
+    }
+
+    public boolean isRoot(Long categoryId) {
+        return isRoot(getCategoryByIdRestored(categoryId));
     }
 
 

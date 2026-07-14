@@ -43,6 +43,19 @@ public interface CategoryDao {
     @Query("SELECT * FROM categories WHERE categoryId IN (:ids)")
     List<Category> getByIds(java.util.Collection<Long> ids);
 
+    @Query("SELECT EXISTS(SELECT 1 FROM categories WHERE parent_id = :id)")
+    Boolean hasChildren(Long id);
+
+    @Query("SELECT EXISTS(SELECT 1 FROM categories WHERE categoryId = :id)")
+    Boolean exists(Long id);
+
+    @Query("SELECT EXISTS(SELECT 1 FROM categories WHERE LOWER(name) = LOWER(:name))")
+    Boolean nameExists(String name);
+
+    @Query("SELECT (SELECT COUNT(*) FROM categories) == 0")
+    boolean isEmpty();
+
+
 
 
 

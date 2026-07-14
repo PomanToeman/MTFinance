@@ -96,7 +96,7 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
     public void setParentId(Long parentId) {
-        if (trackingRepository.getCategoryByIdRestored(parentId) == null) {
+        if (parentId != null && !trackingRepository.categoryExists(parentId)) {
             return;
         }
         this.parentId.setValue(parentId);
@@ -171,9 +171,22 @@ public class CategoryFormViewModel extends ViewModel {
         if (name.getValue() == null || name.getValue().isEmpty()) {
             throw new IllegalArgumentException("Name cannot be empty");
         }
+
+        // Check if name already exists (excluding the current category if editing)
+        if (trackingRepository.categoryNameExists(name.getValue())) {
+            if (editCategoryId == null) {
+                throw new IllegalArgumentException("Category with this name already exists");
+            } else {
+                Category current = trackingRepository.getCategoryByIdRestored(editCategoryId);
+                if (current != null && !current.getName().equalsIgnoreCase(name.getValue().trim())) {
+                    throw new IllegalArgumentException("Category with this name already exists");
+                }
+            }
+        }
+
         TrackingUtlis.checkAmount(monthlyBudget.getValue());
         // if parent category is set, check it exists.
-        if (parentId.getValue() != null && trackingRepository.getCategoryByIdRestored(parentId.getValue()) == null) {
+        if (parentId.getValue() != null && !trackingRepository.categoryExists(parentId.getValue())) {
             throw new IllegalArgumentException("Parent category does not exist");
         }
 

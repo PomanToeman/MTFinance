@@ -209,6 +209,14 @@ public class TrackingRepository {
 
     }
 
+    public boolean categoryExists(Long id) {
+        return categoryRepository.exists(id);
+    }
+
+    public boolean categoryNameExists(String name) {
+        return categoryRepository.nameExists(name);
+    }
+
 
 
     // TRANSACTION METHODS
@@ -225,6 +233,11 @@ public class TrackingRepository {
         return transactionRepository.searchTransactions(query);
     }
 
+    public boolean transactionExists(Long id) {
+        return transactionRepository.exists(id);
+    }
 
-
+    public boolean transactionHashExists(String hash) {
+        return transactionRepository.hashExists(hash);
+    }
 }

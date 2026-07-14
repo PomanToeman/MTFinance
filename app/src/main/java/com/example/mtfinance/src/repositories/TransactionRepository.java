@@ -45,4 +45,13 @@ public class TransactionRepository {
     public void update(Transaction transaction) {
         transactionDao.update(transaction);
     }
+
+    public Boolean exists(Long id) {
+        return transactionDao.exists(id);
+    }
+
+    public boolean hashExists(String hash) {
+        if (hash == null || hash.isEmpty()) return false;
+        return transactionDao.hashExists(hash);
+    }
 }
