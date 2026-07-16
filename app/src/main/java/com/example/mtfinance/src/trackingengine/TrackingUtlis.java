@@ -83,6 +83,17 @@ public class TrackingUtlis {
     }
 
 
+    public static TrackingType determineTypeByAmount(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) > 0) {
+            return TrackingType.INCOME;
+        }
+        else {
+            return TrackingType.EXPENSE;
+        }
+    }
+
+
+
 
 
 }

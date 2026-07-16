@@ -3,10 +3,17 @@ package com.example.mtfinance.src.viewmodels;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 
 import com.example.mtfinance.src.repositories.TrackingRepository;
+import com.example.mtfinance.src.trackingengine.Category;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -102,5 +109,103 @@ public class TransactionImportFormViewModelTest {
 
         // Assert
         assertEquals("Header1", viewModel.getNameHeader().getValue());
+    }
+
+    @Test
+    public void importTransaction_validCsv_successfulImport() throws IOException {
+        // Arrange
+        File tempFile = temporaryFolder.newFile("transactions.csv");
+        try (FileWriter writer = new FileWriter(tempFile)) {
+            writer.write("Date,Name,Amount\n");
+            writer.write("16/07/2026,Lunch,15.50\n");
+        }
+
+        viewModel.setFilePath(tempFile.getAbsolutePath());
+        viewModel.readTransactionFile();
+        viewModel.setDateHeader("Date");
+        viewModel.setNameHeader("Name");
+        viewModel.setAmountHeader("Amount");
+
+        Category mockCategory = mock(Category.class);
+        when(mockCategory.getCategoryId()).thenReturn(1L);
+        when(trackingRepository.getRootCategoryByType(any())).thenReturn(mockCategory);
+        when(trackingRepository.verifyExistingIdsCategories(anySet())).thenReturn(true);
+        when(trackingRepository.transactionHashExists(anyString())).thenReturn(false);
+
+        // Act
+        viewModel.importTransaction();
+
+        // Assert
+        assertEquals("", viewModel.getErrorMessage().getValue());
+        assertTrue(viewModel.getSuccessMessage().getValue().contains("1Transactions successfully imported!"));
+        assertEquals(1, viewModel.getSuccessfulImports().getValue().size());
+    }
+
+    @Test
+    public void importTransaction_incompleteForm_setsErrorMessage() {
+        // Arrange - No headers set
+
+        // Act
+        viewModel.importTransaction();
+
+        // Assert
+        assertTrue(viewModel.getErrorMessage().getValue().contains("Form is not complete"));
+    }
+
+    @Test
+    public void importTransaction_invalidDataInCsv_skipsRecord() throws IOException {
+        // Arrange
+        File tempFile = temporaryFolder.newFile("invalid_transactions.csv");
+        try (FileWriter writer = new FileWriter(tempFile)) {
+            writer.write("Date,Name,Amount\n");
+            writer.write("16/07/2026,Valid,10.00\n");
+            writer.write("16/07/2026,Invalid,ABC\n"); // Invalid amount
+        }
+
+        viewModel.setFilePath(tempFile.getAbsolutePath());
+        viewModel.readTransactionFile();
+        viewModel.setDateHeader("Date");
+        viewModel.setNameHeader("Name");
+        viewModel.setAmountHeader("Amount");
+
+        Category mockCategory = mock(Category.class);
+        when(mockCategory.getCategoryId()).thenReturn(1L);
+        when(trackingRepository.getRootCategoryByType(any())).thenReturn(mockCategory);
+        when(trackingRepository.verifyExistingIdsCategories(anySet())).thenReturn(true);
+        when(trackingRepository.transactionHashExists(anyString())).thenReturn(false);
+
+        // Act
+        viewModel.importTransaction();
+
+        // Assert
+        assertTrue(viewModel.getSuccessMessage().getValue().contains("1Transactions successfully imported!"));
+        assertEquals(1, viewModel.getSuccessfulImports().getValue().size());
+    }
+
+    @Test
+    public void importTransaction_alwaysSendToRoot_usesRootCategory() throws IOException {
+        // Arrange
+        File tempFile = temporaryFolder.newFile("root_test.csv");
+        try (FileWriter writer = new FileWriter(tempFile)) {
+            writer.write("Date,Name,Amount\n");
+            writer.write("16/07/2026,Lunch,15.50\n");
+        }
+
+        viewModel.setFilePath(tempFile.getAbsolutePath());
+        viewModel.readTransactionFile();
+        viewModel.setDateHeader("Date");
+        viewModel.setNameHeader("Name");
+        viewModel.setAmountHeader("Amount");
+
+        Category mockCategory = mock(Category.class);
+        when(mockCategory.getCategoryId()).thenReturn(123L);
+        when(trackingRepository.getRootCategoryByType(any())).thenReturn(mockCategory);
+        when(trackingRepository.verifyExistingIdsCategories(anySet())).thenReturn(true);
+
+        // Act
+        viewModel.importTransaction();
+
+        // Assert
+        verify(trackingRepository, org.mockito.Mockito.atLeastOnce()).getRootCategoryByType(any());
     }
 }

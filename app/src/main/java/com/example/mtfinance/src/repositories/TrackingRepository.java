@@ -8,6 +8,7 @@ import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCr
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
+import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.math.BigDecimal;
@@ -278,6 +279,10 @@ public class TrackingRepository {
 
     public boolean categoryNameExists(String name) {
         return categoryRepository.nameExists(name);
+    }
+
+    public Category getRootCategoryByType(TrackingType type) {
+        return categoryRepository.getRootCategoryByType(type);
     }
 
 
