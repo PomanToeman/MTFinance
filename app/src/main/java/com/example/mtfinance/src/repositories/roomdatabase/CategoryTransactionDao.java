@@ -35,8 +35,8 @@ public interface CategoryTransactionDao {
 
 
     @Transaction
-    @Query("SELECT * FROM categories WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR LOWER(description) LIKE '%' || LOWER(:query) || '%'")
-    LiveData<List<CategoryWithTransactions>> searchCategories(String query);
+    @Query("SELECT * FROM categories WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)")
+    LiveData<List<CategoryWithTransactions>> searchCategories(String query, String defaultDescription);
 
     @Query("SELECT categoryId FROM categoryTransactionCrossRef WHERE transactionId = :transactionId")
     List<Long> getCategoryIdsForTransaction(long transactionId);

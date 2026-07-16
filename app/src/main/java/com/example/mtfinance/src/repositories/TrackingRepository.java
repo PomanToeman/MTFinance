@@ -9,6 +9,7 @@ import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionDa
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
+import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.math.BigDecimal;
@@ -187,7 +188,7 @@ public class TrackingRepository {
     }
 
     public LiveData<List<CategoryWithTransactions>> searchCategories(String query) {
-         return categoryWithTransactionsDao.searchCategories(query);
+         return categoryWithTransactionsDao.searchCategories(query, TrackingUtlis.EMPTY_DESCRIPTION);
     }
 
 

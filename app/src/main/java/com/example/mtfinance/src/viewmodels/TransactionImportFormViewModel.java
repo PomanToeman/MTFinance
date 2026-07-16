@@ -60,7 +60,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         clear();
     }
 
-
+    // Setters
 
     public void setFilePath(String filePath) {
         this.filePath.setValue(filePath);
@@ -85,19 +85,19 @@ public class TransactionImportFormViewModel extends ViewModel {
 
 
     public void setNameHeader(String nameHeader) {
-        if (this.csvHeaders.getValue().contains(nameHeader)) {
+        if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(nameHeader)) {
             this.nameHeader.setValue(nameHeader);
         }
     }
 
     public void setAmountHeader(String amountHeader) {
-        if (this.csvHeaders.getValue().contains(amountHeader)) {
+        if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(amountHeader)) {
             this.amountHeader.setValue(amountHeader);
         }
     }
 
     public void setDateHeader(String dateHeader) {
-        if (this.csvHeaders.getValue().contains(dateHeader)) {
+        if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(dateHeader)) {
             this.dateHeader.setValue(dateHeader);
         }
     }
@@ -106,7 +106,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         try {
             this.dateFormatter.setValue(DateTimeFormatter.ofPattern(dateFormatter));
         }
-        catch (Exception e) {
+        catch (IllegalArgumentException e) {
             setErrorMessage("Invalid Date Formatter: " + e.getMessage());
             this.dateFormatter.setValue(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         }
@@ -140,6 +140,11 @@ public class TransactionImportFormViewModel extends ViewModel {
      */
 
     public void readTransactionFile() {
+        if (filePath.getValue() == null || filePath.getValue().isEmpty()) {
+            setErrorMessage("No File Selected");
+            return;
+        }
+
 
         try {
             Reader reader = new FileReader(this.filePath.getValue());

@@ -32,8 +32,8 @@ public interface TransactionDao {
     @Update
     void update(Transaction transaction);
 
-    @Query("SELECT * FROM transactions WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR LOWER(description) LIKE '%' || LOWER(:query) || '%'")
-    LiveData<List<Transaction>> searchTransactions(String query);
+    @Query("SELECT * FROM transactions WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)")
+    LiveData<List<Transaction>> searchTransactions(String query, String defaultDescription);
 
     @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE transactionId = :id)")
     Boolean exists(Long id);
