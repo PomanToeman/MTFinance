@@ -137,7 +137,7 @@ public class TransactionImportFormViewModelTest {
 
         // Assert
         assertEquals("", viewModel.getErrorMessage().getValue());
-        assertTrue(viewModel.getSuccessMessage().getValue().contains("1Transactions successfully imported!"));
+        assertTrue(viewModel.getSuccessMessage().getValue().contains("1 Transaction/s successfully imported!"));
         assertEquals(1, viewModel.getSuccessfulImports().getValue().size());
     }
 
@@ -178,7 +178,7 @@ public class TransactionImportFormViewModelTest {
         viewModel.importTransaction();
 
         // Assert
-        assertTrue(viewModel.getSuccessMessage().getValue().contains("1Transactions successfully imported!"));
+        assertTrue(viewModel.getSuccessMessage().getValue().contains("1 Transaction/s successfully imported!"));
         assertEquals(1, viewModel.getSuccessfulImports().getValue().size());
     }
 

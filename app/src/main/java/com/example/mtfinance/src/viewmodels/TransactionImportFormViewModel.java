@@ -40,11 +40,12 @@ public class TransactionImportFormViewModel extends ViewModel {
     private final MutableLiveData<String> nameHeader = new MutableLiveData<>();
     private final MutableLiveData<String> amountHeader = new MutableLiveData<>();
     private final MutableLiveData<String> dateHeader = new MutableLiveData<>();
+    private final MutableLiveData<DateTimeFormatter> dateFormatter = new MutableLiveData<>();
 
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final MutableLiveData<String> successMessage = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>();
-    private final MutableLiveData<List<String>> successfulImports = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<String>> successfulImports = new MutableLiveData<>();
 
 
     // TODO - add auto-sorting Categories later.
@@ -83,8 +84,6 @@ public class TransactionImportFormViewModel extends ViewModel {
     }
 
 
-
-
     public void setNameHeader(String nameHeader) {
         if (this.csvHeaders.getValue().contains(nameHeader)) {
             this.nameHeader.setValue(nameHeader);
@@ -103,6 +102,17 @@ public class TransactionImportFormViewModel extends ViewModel {
         }
     }
 
+    public void setDateFormatter(String dateFormatter) {
+        try {
+            this.dateFormatter.setValue(DateTimeFormatter.ofPattern(dateFormatter));
+        }
+        catch (Exception e) {
+            setErrorMessage("Invalid Date Formatter: " + e.getMessage());
+            this.dateFormatter.setValue(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        }
+    }
+
+
     /**
      * Clears the form to their default values
      */
@@ -115,6 +125,10 @@ public class TransactionImportFormViewModel extends ViewModel {
         this.amountHeader.setValue("");
         this.dateHeader.setValue("");
         this.csvHeaders.setValue(new ArrayList<>());
+        this.isLoading.setValue(Boolean.FALSE);
+        this.successfulImports.setValue(new ArrayList<>());
+        this.alwaysSendToRoot.setValue(Boolean.TRUE);
+        this.dateFormatter.setValue(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
     }
 
@@ -169,7 +183,7 @@ public class TransactionImportFormViewModel extends ViewModel {
             String nameHeader = this.nameHeader.getValue();
             String dateHeader = this.dateHeader.getValue();
             String amountHeader = this.amountHeader.getValue();
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter dateFormatter = this.dateFormatter.getValue();
             List<String> successfulImports = new ArrayList<>();
 
 
@@ -195,7 +209,7 @@ public class TransactionImportFormViewModel extends ViewModel {
                     // create and insert instance.
                     transactionForm.saveTransaction();
 
-
+                    // check for success
                     if (!transactionForm.getSuccessMessage().getValue().isEmpty()) {
                         successfulImports.add(record.toString());
 
@@ -216,7 +230,7 @@ public class TransactionImportFormViewModel extends ViewModel {
 
 
 
-            setSuccessMessage(successfulImports.size() + "Transactions successfully imported!");
+            setSuccessMessage(successfulImports.size() + " Transaction/s successfully imported!");
         }
         catch (IllegalArgumentException e) {
             setErrorMessage("Form is not complete:" + e.getMessage());
@@ -289,5 +303,9 @@ public class TransactionImportFormViewModel extends ViewModel {
 
     public LiveData<List<String>> getSuccessfulImports() {
         return successfulImports;
+    }
+
+    public LiveData<DateTimeFormatter> getDateFormatter() {
+        return dateFormatter;
     }
 }
