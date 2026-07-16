@@ -56,8 +56,9 @@ public interface CategoryDao {
 
     @Query(
             "SELECT categoryId FROM categories WHERE " +
-            "LOWER(name) LIKE '%' || LOWER(:query) || '%' " +
-            "OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)" +
+            "(LOWER(name) LIKE '%' || LOWER(:query) || '%' " +
+            "OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)) " +
+             "AND type == :type " +
             "ORDER BY CASE WHEN LOWER(name) == LOWER(:query) THEN 0 " +
             "WHEN LOWER(name) LIKE LOWER(:query) || '%' THEN 1 " +
             "WHEN LOWER(name) LIKE '%' || LOWER(:query) || '%' THEN 2 " +
@@ -66,7 +67,7 @@ public interface CategoryDao {
 
 
     )
-    List<Long> autoSearchBestFittingCategories(String query, String defaultDescription);
+    List<Long> autoSearchBestFittingCategories(String query, String defaultDescription, String type);
 
 
 

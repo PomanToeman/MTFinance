@@ -284,7 +284,7 @@ public class TransactionImportFormViewModel extends ViewModel {
             return trackingRepository.getRootCategoryByType(type).getCategoryId();
 
         }
-        List<Long> foundCategories = trackingRepository.autoSearchCategoryIds(name);
+        List<Long> foundCategories = trackingRepository.autoSearchCategoryIds(name, type);
         if (!foundCategories.isEmpty()) {
             return foundCategories.get(0);
         }

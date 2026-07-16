@@ -283,4 +283,53 @@ public class CategoryRepositoryTest {
         long id2 = repository.insert(transferSub);
         assertEquals(-1L, id2);
     }
+
+    @Test
+    public void testAutoSearchCategoryIds() {
+        // Arrange
+        Category entertainment = new Category("Entertainment", "Fun activities and movies", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category food = new Category("Fast Food", "Burgers and fries", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        repository.insert(entertainment);
+        repository.insert(food);
+
+        // 1. Exact Match
+        List<Long> exactMatch = repository.autoSearchCategoryIds("Entertainment", TrackingType.EXPENSE);
+        assertFalse(exactMatch.isEmpty());
+        assertEquals("Entertainment", repository.getCategoryById(exactMatch.get(0)).getName());
+
+        // 2. Partial Match (Prefix)
+        List<Long> prefixMatch = repository.autoSearchCategoryIds("Entertain", TrackingType.EXPENSE);
+        assertFalse(prefixMatch.isEmpty());
+        assertEquals("Entertainment", repository.getCategoryById(prefixMatch.get(0)).getName());
+
+        // 3. Contains Match
+        List<Long> containsMatch = repository.autoSearchCategoryIds("rtain", TrackingType.EXPENSE);
+        assertFalse(containsMatch.isEmpty());
+        assertEquals("Entertainment", repository.getCategoryById(containsMatch.get(0)).getName());
+
+        // 4. Description Match
+        List<Long> descriptionMatch = repository.autoSearchCategoryIds("movies", TrackingType.EXPENSE);
+        assertFalse(descriptionMatch.isEmpty());
+        assertEquals("Entertainment", repository.getCategoryById(descriptionMatch.get(0)).getName());
+
+        // 5. Case Insensitivity
+        List<Long> caseInsensitive = repository.autoSearchCategoryIds("entertainment", TrackingType.EXPENSE);
+        assertFalse(caseInsensitive.isEmpty());
+        assertEquals("Entertainment", repository.getCategoryById(caseInsensitive.get(0)).getName());
+
+        // 6. Type Filtering
+        List<Long> wrongType = repository.autoSearchCategoryIds("Entertainment", TrackingType.INCOME);
+        assertTrue(wrongType.isEmpty());
+
+        // 7. Ordering (Exact > Prefix > Contains > Description)
+        // Add another category that might match "Food" in description but "Food" is in name for the other
+        Category otherFood = new Category("Other", "Great Food here", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        repository.insert(otherFood);
+
+        List<Long> ordered = repository.autoSearchCategoryIds("Food", TrackingType.EXPENSE);
+        assertFalse(ordered.isEmpty());
+        // "Fast Food" contains "Food" in name, "Other" contains it in description.
+        // Fast Food should be first.
+        assertEquals("Fast Food", repository.getCategoryById(ordered.get(0)).getName());
+    }
 }

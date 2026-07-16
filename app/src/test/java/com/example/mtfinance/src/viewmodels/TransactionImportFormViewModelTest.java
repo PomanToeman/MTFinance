@@ -208,4 +208,71 @@ public class TransactionImportFormViewModelTest {
         // Assert
         verify(trackingRepository, org.mockito.Mockito.atLeastOnce()).getRootCategoryByType(any());
     }
+
+    @Test
+    public void importTransaction_autoSortCategories_assignsFoundCategory() throws IOException {
+        // Arrange
+        File tempFile = temporaryFolder.newFile("auto_sort_test.csv");
+        try (FileWriter writer = new FileWriter(tempFile)) {
+            writer.write("Date,Name,Amount\n");
+            writer.write("16/07/2026,Coffee,-4.50\n"); // Negative means Expense
+        }
+
+        viewModel.setFilePath(tempFile.getAbsolutePath());
+        viewModel.readTransactionFile();
+        viewModel.setDateHeader("Date");
+        viewModel.setNameHeader("Name");
+        viewModel.setAmountHeader("Amount");
+        viewModel.setAlwaysSendToRoot(false);
+
+        Category mockRootCategory = mock(Category.class);
+        when(mockRootCategory.getCategoryId()).thenReturn(1L);
+        when(trackingRepository.getRootCategoryByType(any())).thenReturn(mockRootCategory);
+        
+        // Mock finding a specific category for "Coffee"
+        java.util.List<Long> foundIds = java.util.List.of(101L);
+        when(trackingRepository.autoSearchCategoryIds("Coffee", com.example.mtfinance.src.trackingengine.TrackingType.EXPENSE)).thenReturn(foundIds);
+        when(trackingRepository.verifyExistingIdsCategories(anySet())).thenReturn(true);
+        when(trackingRepository.transactionHashExists(anyString())).thenReturn(false);
+
+        // Act
+        viewModel.importTransaction();
+
+        // Assert
+        // We verify that insertTransaction was called with the found category ID (101L)
+        verify(trackingRepository).insertTransaction(any(), org.mockito.ArgumentMatchers.eq(101L));
+    }
+
+    @Test
+    public void importTransaction_autoSortCategories_fallbackToRoot() throws IOException {
+        // Arrange
+        File tempFile = temporaryFolder.newFile("fallback_test.csv");
+        try (FileWriter writer = new FileWriter(tempFile)) {
+            writer.write("Date,Name,Amount\n");
+            writer.write("16/07/2026,Unknown,-10.00\n"); // Negative means Expense
+        }
+
+        viewModel.setFilePath(tempFile.getAbsolutePath());
+        viewModel.readTransactionFile();
+        viewModel.setDateHeader("Date");
+        viewModel.setNameHeader("Name");
+        viewModel.setAmountHeader("Amount");
+        viewModel.setAlwaysSendToRoot(false);
+
+        Category mockRootCategory = mock(Category.class);
+        when(mockRootCategory.getCategoryId()).thenReturn(1L);
+        when(trackingRepository.getRootCategoryByType(any())).thenReturn(mockRootCategory);
+        
+        // Mock finding NO category
+        when(trackingRepository.autoSearchCategoryIds("Unknown", com.example.mtfinance.src.trackingengine.TrackingType.EXPENSE)).thenReturn(java.util.Collections.emptyList());
+        when(trackingRepository.verifyExistingIdsCategories(anySet())).thenReturn(true);
+        when(trackingRepository.transactionHashExists(anyString())).thenReturn(false);
+
+        // Act
+        viewModel.importTransaction();
+
+        // Assert
+        // Should fall back to root category (1L)
+        verify(trackingRepository).insertTransaction(any(), org.mockito.ArgumentMatchers.eq(1L));
+    }
 }

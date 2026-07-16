@@ -278,8 +278,8 @@ public class CategoryRepository {
     /**
      * meant for auto sorting the best categories for a given transaction (or query)
      */
-    public List<Long> autoSearchCategoryIds(String query) {
-        return categoryDao.autoSearchBestFittingCategories(query, TrackingUtlis.EMPTY_DESCRIPTION);
+    public List<Long> autoSearchCategoryIds(String query, TrackingType type) {
+        return categoryDao.autoSearchBestFittingCategories(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
     }
 
 
