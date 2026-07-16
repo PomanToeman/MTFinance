@@ -1,17 +1,13 @@
 package com.example.mtfinance.src.repositories.roomdatabase;
 
-import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
-import androidx.room.Transaction;
 import androidx.room.Update;
-import androidx.room.Upsert;
 
 
 import com.example.mtfinance.src.trackingengine.Category;
-import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 
 import java.util.Collection;
 import java.util.List;
@@ -57,6 +53,20 @@ public interface CategoryDao {
 
     @Query("SELECT categoryId FROM categories WHERE categoryId IN (:ids)")
     List<Long> veifyExitsingIds(Collection<Long> ids);
+
+    @Query(
+            "SELECT categoryId FROM categories WHERE " +
+            "LOWER(name) LIKE '%' || LOWER(:query) || '%' " +
+            "OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)" +
+            "ORDER BY CASE WHEN LOWER(name) == LOWER(:query) THEN 0 " +
+            "WHEN LOWER(name) LIKE LOWER(:query) || '%' THEN 1 " +
+            "WHEN LOWER(name) LIKE '%' || LOWER(:query) || '%' THEN 2 " +
+            "WHEN description LIKE '%' || :query || '%' THEN 3 " +
+            "ELSE 4 END"
+
+
+    )
+    List<Long> autoSearchBestFittingCategories(String query, String defaultDescription);
 
 
 

@@ -191,6 +191,10 @@ public class TrackingRepository {
          return categoryWithTransactionsDao.searchCategories(query, TrackingUtlis.EMPTY_DESCRIPTION);
     }
 
+    public List<Long> autoSearchCategoryIds(String query) {
+        return categoryRepository.autoSearchCategoryIds(query);
+    }
+
 
 
     public void updateCategory(Category category) {

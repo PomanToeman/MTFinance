@@ -266,6 +266,8 @@ public class TransactionFormViewModel extends ViewModel {
 
     }
 
+
+
     // public getters
     public LiveData<String> getName() { return name; }
     public LiveData<String> getDescription() { return description; }

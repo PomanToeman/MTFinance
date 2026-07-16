@@ -6,6 +6,7 @@ import androidx.annotation.VisibleForTesting;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
+import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -272,6 +273,13 @@ public class CategoryRepository {
             return isRoot(getCategoryByIdRestored(categoryId));
         }
         return false;
+    }
+
+    /**
+     * meant for auto sorting the best categories for a given transaction (or query)
+     */
+    public List<Long> autoSearchCategoryIds(String query) {
+        return categoryDao.autoSearchBestFittingCategories(query, TrackingUtlis.EMPTY_DESCRIPTION);
     }
 
 

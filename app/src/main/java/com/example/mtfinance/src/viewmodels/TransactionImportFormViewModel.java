@@ -112,6 +112,15 @@ public class TransactionImportFormViewModel extends ViewModel {
         }
     }
 
+    /**
+     * When false, The import method will try to auto find a category for it (with the root as a fallback).
+     * @param alwaysSendToRoot
+     */
+    public void setAlwaysSendToRoot(Boolean alwaysSendToRoot) {
+        this.alwaysSendToRoot.setValue(alwaysSendToRoot);
+    }
+
+
 
     /**
      * Clears the form to their default values
@@ -181,8 +190,8 @@ public class TransactionImportFormViewModel extends ViewModel {
      */
     public void importTransaction() {
         try {
-            validateImport();
             setIsLoading(Boolean.TRUE);
+            validateImport();
             TransactionFormViewModel transactionForm = new TransactionFormViewModel(this.trackingRepository);
             CSVParser csvParser = this.csvParser.getValue();
             String nameHeader = this.nameHeader.getValue();
@@ -202,14 +211,7 @@ public class TransactionImportFormViewModel extends ViewModel {
                     transactionForm.setAmount(amount.abs());
                     transactionForm.setType(type);
                     transactionForm.setDate(LocalDate.parse(record.get(dateHeader), dateFormatter));
-
-                    if (Boolean.TRUE.equals(alwaysSendToRoot.getValue())) {
-                        Long categoryId = trackingRepository.getRootCategoryByType(type).getCategoryId();
-                        transactionForm.addCategoryId(categoryId);
-                    }
-                    else {
-                        transactionForm.addCategoryId(1L);
-                    }
+                    transactionForm.addCategoryId(findCategoryIdForTransaction(type, record.get(nameHeader)));
 
                     // create and insert instance.
                     transactionForm.saveTransaction();
@@ -268,6 +270,28 @@ public class TransactionImportFormViewModel extends ViewModel {
         if (amountHeader.getValue() == null || amountHeader.getValue().isEmpty()) {
             throw new IllegalArgumentException("");
         }
+    }
+
+    /**
+     * Tries to find the best category (via id) for the transaction.
+     * Will fallback to root if none is found or alwaysSendToRoot is true.
+     * @param type - type of transaction
+     * @param name - name of transaction
+     * @return - id of category
+     */
+    private Long findCategoryIdForTransaction(TrackingType type, String name) {
+        if (Boolean.TRUE.equals(alwaysSendToRoot.getValue())) {
+            return trackingRepository.getRootCategoryByType(type).getCategoryId();
+
+        }
+        List<Long> foundCategories = trackingRepository.autoSearchCategoryIds(name);
+        if (!foundCategories.isEmpty()) {
+            return foundCategories.get(0);
+        }
+
+        // fallback to root if no category found.
+       return trackingRepository.getRootCategoryByType(type).getCategoryId();
+
     }
 
 
