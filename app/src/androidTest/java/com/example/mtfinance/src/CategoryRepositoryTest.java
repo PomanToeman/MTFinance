@@ -54,7 +54,7 @@ public class CategoryRepositoryTest {
         // Repository constructor calls populateDefaultCategories
         List<Category> all = repository.getAllCategories();
         // General Category + 2 default categories
-        assertEquals(5, all.size());
+        assertEquals(6, all.size());
         
         Category general = repository.getGeneralCategory();
         assertNotNull(general);
@@ -68,7 +68,7 @@ public class CategoryRepositoryTest {
         assertTrue(id > 0);
         
         List<Category> all = repository.getAllCategories();
-        assertEquals(6, all.size());
+        assertEquals(7, all.size());
     }
 
     @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
@@ -179,7 +179,7 @@ public class CategoryRepositoryTest {
 
         repository.insert(child); // Inserts both
 
-        assertEquals(7, repository.getAllCategories().size());
+        assertEquals(8, repository.getAllCategories().size());
 
 
         // Find the parent object with its ID

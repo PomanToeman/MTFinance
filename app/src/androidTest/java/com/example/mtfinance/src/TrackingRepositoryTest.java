@@ -64,7 +64,7 @@ public class TrackingRepositoryTest {
 
         List<Category> allCategories = categoryRepository.getAllCategories();
         // 3 default (General, Groceries, Utilities) + 1 new
-        assertEquals(6, allCategories.size());
+        assertEquals(7, allCategories.size());
 
         boolean found = false;
         for (Category c : allCategories) {
@@ -239,7 +239,7 @@ public class TrackingRepositoryTest {
         List<CategoryWithTransactions> result = getValue(trackingRepository.getAllCategoriesWithTransactions());
         assertNotNull(result);
         // 5 default + 1 new = 4
-        assertEquals(6, result.size());
+        assertEquals(7, result.size());
     }
 
     @Test

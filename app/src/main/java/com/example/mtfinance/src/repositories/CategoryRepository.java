@@ -23,6 +23,7 @@ public class CategoryRepository {
     public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
     public final Category IncomeCategory = new Category("Income", "Tracks income transactions", BigDecimal.valueOf(1000), TrackingType.INCOME);
     public final Category accountTransferCategory = new Category("Account Transfer", "Account Transfers", BigDecimal.valueOf(1000), TrackingType.ACCOUNT_TRANSFERS);
+    public final Category otherCategory = new Category("Other Category (only for errors)", "Use this as a log for erroneous transactions", BigDecimal.valueOf(1000), TrackingType.OTHER);
 
     public final List<Category> defaultExpenseCategories = List.of(
             new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE),
@@ -77,6 +78,11 @@ public class CategoryRepository {
     public Category getAccountTransferCategory() {
         return accountTransferCategory;
     }
+
+    public Category getOtherCategory() {
+        return otherCategory;
+    }
+
 
     public List<Category> getAllCategories() {
         return categoryDao.getAll();
@@ -143,6 +149,7 @@ public class CategoryRepository {
             categoryDao.insert(generalCategory);
             categoryDao.insert(IncomeCategory);
             categoryDao.insert(accountTransferCategory);
+            categoryDao.insert(otherCategory);
 
 
             for (Category category : defaultExpenseCategories) {
@@ -254,17 +261,15 @@ public class CategoryRepository {
             case ACCOUNT_TRANSFERS:
                 return getAccountTransferCategory();
             default:
-                return null;
+                return getOtherCategory();
         }
     }
 
     public boolean isRoot(Category category) {
-        for (TrackingType type : TrackingType.values()) {
-            if (category.equals(getRootCategoryByType(type))) {
-                return true;
-            }
+        if (category == null) {
+            return false;
         }
-        return false;
+        return category.equals(getRootCategoryByType(category.getType()));
 
     }
 
