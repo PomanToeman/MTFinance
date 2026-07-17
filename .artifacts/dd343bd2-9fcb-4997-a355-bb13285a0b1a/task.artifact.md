@@ -1,7 +1,5 @@
-- `[ ]` Update `MessageCli.java` with new enums
-- `[ ]` Refactor `CategoryFormViewModel.java`
-- `[ ]` Refactor `TransactionFormViewModel.java`
-- `[ ]` Refactor `TransactionImportFormViewModel.java`
-- `[ ]` Refactor `TrackingRepository.java`
-- `[ ]` Refactor `TrackingUtlis.java`
-- `[ ]` Verify changes with unit tests
+- `[x]` Update `libs.versions.toml` with latest stable versions
+- `[x]` Finalize root `build.gradle.kts`
+- `[x]` Finalize `app/build.gradle.kts`
+- `[x]` Perform Gradle Sync
+- `[x]` Verify build
