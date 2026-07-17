@@ -9,11 +9,23 @@ The main feature of the tracking app! Allows you to put transactions in specific
 
 ### Default Categories (these are automatically in place)
 - **General Category** - A general Expense style category. All expense categories are sub-categories of this.
+- **Groceries and Utilities** - Expense categories under General Categories.
 - **Income Category** - Separate category to track income. Mainly meant to exclude them from expense style categories.
-- **Account Transfers** - Separate category for organisation purposes.
+- **Account Transfers** - Separate category for organization purposes.
 
 ### Transactions
-The actual transactions you get from banking apps (via CSV import), or manual entry. Will be able to store and track all necessary details like date, type (expense or income), and more.
+The actual transactions you get from banking apps (via CSV import), or manual entry. Will be able to store and track all necessary details like name, amount, date, type (i.e. expense), and more.
+
+### Forms
+These forms allow you to enter, save, edit, and delete data.
+- **Category Form** - Allows you to create, edit, and delete your categories (cannot edit or delete root categories).
+- **Transaction Form** - Allows you to create, edit, and delete transactions (including putting them under categories).
+- **Import Form** - Allows you to import transactions from CSV files exported by banking apps.
+
+### Lists and dashboards
+ Lists all of a certain data, ability to search filter and bring up a dashboard when selecting one.
+- **Category List** - A list of all categories, can see extra details like sub-categories and total spending upon selection.
+- **Transaction List** - A list of all transactions, can see extra details like categories under upon selection.
 
 # User Guide
 None for now as no front-end has been developed.
@@ -25,7 +37,7 @@ None for now as no front-end has been developed.
 - **Architecture**: MVVM (Model-View-ViewModel)
 - **Dependency Injection**: Hilt
 - **UI**: Jetpack Compose
-- **Testing**: JUnit
+- **Testing**: JUnit, Mockito
 - **Other**: ViewModel, LiveData, Gradle.
 
 
