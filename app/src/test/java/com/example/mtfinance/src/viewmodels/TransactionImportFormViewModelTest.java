@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 
+import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
 
@@ -26,6 +27,7 @@ import org.mockito.MockitoAnnotations;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+
 
 public class TransactionImportFormViewModelTest {
 
@@ -90,7 +92,7 @@ public class TransactionImportFormViewModelTest {
         viewModel.readTransactionFile();
 
         // Assert
-        assertTrue(viewModel.getErrorMessage().getValue().contains("Invalid Transaction File"));
+        assertTrue(viewModel.getErrorMessage().getValue().contains(MessageCli.IMPORT_FILE_INVALID.getMessage("")));
     }
 
     @Test
@@ -137,7 +139,7 @@ public class TransactionImportFormViewModelTest {
 
         // Assert
         assertEquals("", viewModel.getErrorMessage().getValue());
-        assertTrue(viewModel.getSuccessMessage().getValue().contains("1 Transaction/s successfully imported!"));
+        assertTrue(viewModel.getSuccessMessage().getValue().contains(MessageCli.IMPORT_SUCCESS.getMessage(1)));
         assertEquals(1, viewModel.getSuccessfulImports().getValue().size());
     }
 
@@ -149,7 +151,7 @@ public class TransactionImportFormViewModelTest {
         viewModel.importTransaction();
 
         // Assert
-        assertTrue(viewModel.getErrorMessage().getValue().contains("Form is not complete"));
+        assertTrue(viewModel.getErrorMessage().getValue().contains(MessageCli.FORM_INCOMPLETE.getMessage("")));
     }
 
     @Test
@@ -178,7 +180,7 @@ public class TransactionImportFormViewModelTest {
         viewModel.importTransaction();
 
         // Assert
-        assertTrue(viewModel.getSuccessMessage().getValue().contains("1 Transaction/s successfully imported!"));
+        assertTrue(viewModel.getSuccessMessage().getValue().contains(MessageCli.IMPORT_SUCCESS.getMessage(1)));
         assertEquals(1, viewModel.getSuccessfulImports().getValue().size());
     }
 

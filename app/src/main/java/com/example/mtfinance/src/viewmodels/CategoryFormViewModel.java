@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
@@ -62,12 +63,12 @@ public class CategoryFormViewModel extends ViewModel {
      */
     private void loadCategoryForEditing() {
         if (!trackingRepository.categoryExists(editCategoryId)) {
-            setErrorMessage("Cannot find category");
+            setErrorMessage(MessageCli.CATEGORY_NOT_FOUND.getMessage());
             return;
         }
         Category category = trackingRepository.getCategoryByIdRestored(editCategoryId);
         if (category == null || trackingRepository.isRoot(category)) {
-            setErrorMessage("cannot edit root categories");
+            setErrorMessage(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
             setEditCategory(null);
             return;
         }
@@ -142,7 +143,7 @@ public class CategoryFormViewModel extends ViewModel {
      */
     public void deleteCategory(boolean deleteTransactions) {
         if (!trackingRepository.categoryExists(editCategoryId)) {
-            setErrorMessage("No category to delete");
+            setErrorMessage(MessageCli.CATEGORY_DELETE_NONE.getMessage());
             return;
         }
         try {
@@ -150,20 +151,17 @@ public class CategoryFormViewModel extends ViewModel {
             trackingRepository.deleteCategory(editCategoryId, deleteTransactions);
             setEditCategory(null);
             clear();
-            setSuccessMessage("Category deleted successfully");
+            setSuccessMessage(MessageCli.CATEGORY_DELETED.getMessage());
             setErrorMessage("");
         }
         catch (Exception e) {
-            setErrorMessage("Cannot delete category: " + e.getMessage());
+            setErrorMessage(MessageCli.CATEGORY_DELETE_FAILED.getMessage(e.getMessage()));
             setSuccessMessage("");
             return;
         }
         finally {
             setIsLoading(false);
         }
-
-
-
     }
 
     /**
@@ -204,11 +202,11 @@ public class CategoryFormViewModel extends ViewModel {
                trackingRepository.updateCategoryTree(category);
            }
 
-           setSuccessMessage("Category saved successfully");
+           setSuccessMessage(MessageCli.CATEGORY_SAVED.getMessage());
 
        }
        catch (Exception e) {
-           setErrorMessage("Cannot save category: " + e.getMessage());
+           setErrorMessage(MessageCli.CATEGORY_SAVE_FAILED.getMessage(e.getMessage()));
 
        }
        finally {
@@ -220,17 +218,17 @@ public class CategoryFormViewModel extends ViewModel {
 
     private void validateForm() throws IllegalArgumentException{
         if (name.getValue() == null || name.getValue().isEmpty()) {
-            throw new IllegalArgumentException("Name cannot be empty");
+            throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EMPTY.getMessage());
         }
 
         // Check if name already exists (excluding the current category if editing)
         if (trackingRepository.categoryNameExists(name.getValue())) {
             if (editCategoryId == null) {
-                throw new IllegalArgumentException("Category with this name already exists");
+                throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
             } else {
                 Category current = trackingRepository.getCategoryByIdRestored(editCategoryId);
                 if (current != null && !current.getName().equalsIgnoreCase(name.getValue().trim())) {
-                    throw new IllegalArgumentException("Category with this name already exists");
+                    throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
                 }
             }
         }
@@ -238,7 +236,7 @@ public class CategoryFormViewModel extends ViewModel {
         TrackingUtlis.checkAmount(monthlyBudget.getValue());
         // if parent category is set, check it exists.
         if (parentId.getValue() != null && !trackingRepository.categoryExists(parentId.getValue())) {
-            throw new IllegalArgumentException("Parent category does not exist");
+            throw new IllegalArgumentException(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
         }
 
     }

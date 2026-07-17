@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
@@ -83,13 +84,20 @@ public class TransactionImportFormViewModel extends ViewModel {
         this.isLoading.setValue(booleanValue);
     }
 
-
+    /**
+     * Required header
+     * @param nameHeader - header name (must be in csvHeaders).
+     */
     public void setNameHeader(String nameHeader) {
         if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(nameHeader)) {
             this.nameHeader.setValue(nameHeader);
         }
     }
 
+    /**
+     * Required header
+     * @param amountHeader - header name (must be in csvHeaders).
+     */
     public void setAmountHeader(String amountHeader) {
         if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(amountHeader)) {
             this.amountHeader.setValue(amountHeader);
@@ -98,7 +106,7 @@ public class TransactionImportFormViewModel extends ViewModel {
 
     /**
      * optional Header. Only set when there is an explicit type header.
-     * @param typeHeader
+     * @param typeHeader - header name (must be in csvHeaders).
      */
     public void setTypeHeader(String typeHeader) {
         if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(typeHeader)) {
@@ -106,6 +114,10 @@ public class TransactionImportFormViewModel extends ViewModel {
         }
     }
 
+    /**
+     * Required header
+     * @param dateHeader - header name (must be in csvHeaders).
+     */
     public void setDateHeader(String dateHeader) {
         if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(dateHeader)) {
             this.dateHeader.setValue(dateHeader);
@@ -121,14 +133,14 @@ public class TransactionImportFormViewModel extends ViewModel {
             this.dateFormatter.setValue(DateTimeFormatter.ofPattern(dateFormatter));
         }
         catch (IllegalArgumentException e) {
-            setErrorMessage("Invalid Date Formatter: " + e.getMessage());
+            setErrorMessage(MessageCli.IMPORT_DATE_FORMAT_INVALID.getMessage(e.getMessage()));
             this.dateFormatter.setValue(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         }
     }
 
     /**
      * When false, The import method will try to auto find a category for it (with the root as a fallback).
-     * @param alwaysSendToRoot
+     * @param alwaysSendToRoot - The truth value.
      */
     public void setAlwaysSendToRoot(Boolean alwaysSendToRoot) {
         this.alwaysSendToRoot.setValue(alwaysSendToRoot);
@@ -147,6 +159,8 @@ public class TransactionImportFormViewModel extends ViewModel {
         this.nameHeader.setValue("");
         this.amountHeader.setValue("");
         this.dateHeader.setValue("");
+        this.typeHeader.setValue("");
+        this.failedImports.setValue(new ArrayList<>());
         this.csvHeaders.setValue(new ArrayList<>());
         this.isLoading.setValue(Boolean.FALSE);
         this.successfulImports.setValue(new ArrayList<>());
@@ -157,14 +171,15 @@ public class TransactionImportFormViewModel extends ViewModel {
 
 
     /**
-     * Reads the CSV file and headers and phases to prepare for importing
+     * Reads the CSV file and sets the csv headers and phases to prepare for importing.
+     * User needs to manually set each field header before importing.
      * You must do this before importing!
      *
      */
 
     public void readTransactionFile() {
         if (filePath.getValue() == null || filePath.getValue().isEmpty()) {
-            setErrorMessage("No File Selected");
+            setErrorMessage(MessageCli.NO_FILE_FOUND.getMessage());
             return;
         }
 
@@ -188,10 +203,10 @@ public class TransactionImportFormViewModel extends ViewModel {
 
         }
         catch (IOException e) {
-            setErrorMessage("Invalid Transaction File: " + e.getMessage());
+            setErrorMessage(MessageCli.IMPORT_FILE_INVALID.getMessage(e.getMessage()));
         }
         catch (Exception e) {
-            setErrorMessage("Couldn't read transaction File: " + e.getMessage());
+            setErrorMessage(MessageCli.IMPORT_FILE_READ_FAILED.getMessage(e.getMessage()));
         }
 
 
@@ -262,16 +277,16 @@ public class TransactionImportFormViewModel extends ViewModel {
 
 
 
-            setSuccessMessage(successfulImports.size() + " Transaction/s successfully imported!");
+            setSuccessMessage(MessageCli.IMPORT_SUCCESS.getMessage(successfulImports.size()));
             if (!failedImports.isEmpty()) {
-                setErrorMessage(failedImports.size() + " Transaction/s failed to import!");
+                setErrorMessage(MessageCli.IMPORT_FAILED.getMessage(failedImports.size()));
             }
 
         }
         catch (IllegalArgumentException e) {
-            setErrorMessage("Form is not complete:" + e.getMessage());
+            setErrorMessage(MessageCli.FORM_INCOMPLETE.getMessage(e.getMessage()));
         } catch (Exception e) {
-            setErrorMessage("Seems import stopped working.");
+            setErrorMessage(MessageCli.IMPORT_STOPPED.getMessage());
         }
         finally {
             setIsLoading(Boolean.FALSE);
@@ -303,16 +318,16 @@ public class TransactionImportFormViewModel extends ViewModel {
 
     private void validateImport() throws IllegalArgumentException {
         if (csvParser.getValue() == null) {
-            throw new IllegalArgumentException("");
+            throw new IllegalArgumentException(MessageCli.IMPORT_PARSER_MISSING.getMessage());
         }
         if (nameHeader.getValue() == null || nameHeader.getValue().isEmpty()) {
-            throw new IllegalArgumentException("");
+            throw new IllegalArgumentException(MessageCli.IMPORT_NAME_HEADER_MISSING.getMessage());
         }
         if (dateHeader.getValue() == null || dateHeader.getValue().isEmpty()) {
-            throw new IllegalArgumentException("");
+            throw new IllegalArgumentException(MessageCli.IMPORT_DATE_HEADER_MISSING.getMessage());
         }
         if (amountHeader.getValue() == null || amountHeader.getValue().isEmpty()) {
-            throw new IllegalArgumentException("");
+            throw new IllegalArgumentException(MessageCli.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
         }
     }
 
@@ -360,6 +375,10 @@ public class TransactionImportFormViewModel extends ViewModel {
     }
     public LiveData<String> getDateHeader() {
         return dateHeader;
+    }
+
+    public LiveData<String> getTypeHeader() {
+        return typeHeader;
     }
     public LiveData<String> getErrorMessage() {
         return errorMessage;

@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
@@ -131,7 +132,7 @@ public class TransactionFormViewModel extends ViewModel {
             editMode.setValue(true);
         }
         else {
-            setErrorMessage("Transaction not found.");
+            setErrorMessage(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
             transactionId.setValue(null);
             editMode.setValue(false);
         }
@@ -187,7 +188,7 @@ public class TransactionFormViewModel extends ViewModel {
                 }
 
                 setErrorMessage("");
-                setSuccessMessage("Transaction Updated successfully");
+                setSuccessMessage(MessageCli.TRANSACTION_UPDATED.getMessage());
 
             }
             else {
@@ -209,13 +210,13 @@ public class TransactionFormViewModel extends ViewModel {
                 }
                 
                 setErrorMessage("");
-                setSuccessMessage("Transaction saved successfully");
+                setSuccessMessage(MessageCli.TRANSACTION_SAVED.getMessage());
             }
 
 
         }
         catch (Exception e) {
-            setErrorMessage("Cannot save transaction: " + e.getMessage());
+            setErrorMessage(MessageCli.TRANSACTION_SAVE_FAILED.getMessage(e.getMessage()));
             setSuccessMessage("");
         }
         finally {
@@ -225,16 +226,16 @@ public class TransactionFormViewModel extends ViewModel {
 
     public void deleteTransaction() {
         if (transactionId.getValue() == null) {
-            setErrorMessage("No transaction to delete.");
+            setErrorMessage(MessageCli.TRANSACTION_DELETE_NONE.getMessage());
             return;
         }
         try {
             setIsLoading(true);
             trackingRepository.deleteTransaction(transactionId.getValue());
             clear();
-            setSuccessMessage("Transaction deleted successfully");
+            setSuccessMessage(MessageCli.TRANSACTION_DELETED.getMessage());
         } catch (Exception e) {
-            setErrorMessage("Failed to delete transaction: " + e.getMessage());
+            setErrorMessage(MessageCli.TRANSACTION_DELETE_FAILED.getMessage(e.getMessage()));
         } finally {
             setIsLoading(false);
         }
@@ -242,14 +243,14 @@ public class TransactionFormViewModel extends ViewModel {
 
     private void validateForm() throws IllegalArgumentException {
         if (name.getValue() == null || name.getValue().isEmpty()) {
-            throw new IllegalArgumentException("Name cannot be empty.");
+            throw new IllegalArgumentException(MessageCli.TRANSACTION_NAME_EMPTY.getMessage());
         }
         TrackingUtlis.checkAmount(amount.getValue());
         if (categoryIds.getValue() == null || categoryIds.getValue().isEmpty()) {
-            throw new IllegalArgumentException("Category cannot be empty.");
+            throw new IllegalArgumentException(MessageCli.TRANSACTION_CATEGORY_EMPTY.getMessage());
         }
         if (!trackingRepository.verifyExistingIdsCategories(categoryIds.getValue())) {
-            throw new IllegalArgumentException("Some Categories do not exist.");
+            throw new IllegalArgumentException(MessageCli.TRANSACTION_CATEGORIES_NOT_EXIST.getMessage());
         }
 
         if (Boolean.FALSE.equals(editMode.getValue())) {
@@ -260,7 +261,7 @@ public class TransactionFormViewModel extends ViewModel {
                     .date(date.getValue())
                     .build();
             if (trackingRepository.transactionHashExists(dummy.getGeneratedHash())) {
-                throw new IllegalArgumentException("Identical transaction already exists.");
+                throw new IllegalArgumentException(MessageCli.TRANSACTION_DUPLICATE.getMessage());
             }
         }
 

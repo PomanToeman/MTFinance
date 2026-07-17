@@ -1,5 +1,7 @@
 package com.example.mtfinance.src.trackingengine;
 
+import com.example.mtfinance.src.MessageCli;
+
 import java.math.BigDecimal;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -25,7 +27,7 @@ public class TrackingUtlis {
      */
     public static void checkAmount(BigDecimal amount) throws IllegalArgumentException {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Invalid amount: " + amount);
+            throw new IllegalArgumentException(MessageCli.INVALID_AMOUNT.getMessage(amount));
         }
     }
 

@@ -4,6 +4,7 @@ package com.example.mtfinance.src.repositories;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 
+import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCrossRef;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionDao;
 import com.example.mtfinance.src.trackingengine.Category;
@@ -92,7 +93,7 @@ public class TrackingRepository {
     }
     public void deleteRelationship(Long transactionId, Long categoryId) throws IllegalStateException {
         if (getCategoryIdsByTransactionId(transactionId).size() <= 1) {
-            throw new IllegalStateException("Transaction must have at least one category");
+            throw new IllegalStateException(MessageCli.TRANSACTION_MIN_CATEGORY.getMessage());
         }
         categoryWithTransactionsDao.deleteCrossRef(categoryId, transactionId);
     }
