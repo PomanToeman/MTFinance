@@ -14,6 +14,7 @@ import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -242,35 +243,50 @@ public class TrackingRepository {
 
 
     /**
-     *
+     *Includes all given transactions
      * @param category - the category to find the total.
      * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
      * @return returns the total amount of the category.
      */
     public BigDecimal getTotalInCategory(Category category, boolean includeSub) {
-         CategoryWithTransactions parentCategorywithTransactions =categoryWithTransactionsDao.getCategoryById(category.getCategoryId());
-         if (parentCategorywithTransactions == null) {
-             return BigDecimal.ZERO;
-         }
+         return getTotalInCategory(category, includeSub, LocalDate.MIN, LocalDate.MAX);
+    }
+
+    /**
+     *Includes all given transactions within the given date range.
+     * @param category - the category to find the total.
+     * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
+     * @param startDate - the start date to filter by.
+     * @param endDate - the end date to filter by.
+     * @return returns the total amount of the category.
+     */
+    public BigDecimal getTotalInCategory(Category category, boolean includeSub, LocalDate startDate, LocalDate endDate) {
+        CategoryWithTransactions parentCategorywithTransactions =categoryWithTransactionsDao.getCategoryById(category.getCategoryId());
+        if (parentCategorywithTransactions == null) {
+            return BigDecimal.ZERO;
+        }
 
 
-         Set<Transaction> transactions = new HashSet<>(parentCategorywithTransactions.transactions);
+        Set<Transaction> transactions = new HashSet<>(parentCategorywithTransactions.transactions);
 
-         if (includeSub) {
-             // to cache the children of the category.
-             parentCategorywithTransactions.category = categoryRepository.getCategoryRestored(parentCategorywithTransactions.category);
+        if (includeSub) {
+            // to cache the children of the category.
+            parentCategorywithTransactions.category = categoryRepository.getCategoryRestored(parentCategorywithTransactions.category);
 
-             for (Category child : parentCategorywithTransactions.category.getChildren(true)) {
-                 CategoryWithTransactions childCategory = categoryWithTransactionsDao.getCategoryById(child.getCategoryId());
-                 transactions.addAll(childCategory.transactions);
-             }
-         }
+            for (Category child : parentCategorywithTransactions.category.getChildren(true)) {
+                CategoryWithTransactions childCategory = categoryWithTransactionsDao.getCategoryById(child.getCategoryId());
+                transactions.addAll(childCategory.transactions);
+            }
+        }
 
-         BigDecimal total = new BigDecimal("0");
-         for (Transaction transaction : transactions) {
-             total = total.add(transaction.getAmount());
-         }
-         return total;
+        transactions.removeIf(t -> t.getDate().isBefore(startDate.atStartOfDay()) || t.getDate().isAfter(endDate.atStartOfDay()));
+
+
+        BigDecimal total = new BigDecimal("0");
+        for (Transaction transaction : transactions) {
+            total = total.add(transaction.getAmount());
+        }
+        return total;
 
 
     }

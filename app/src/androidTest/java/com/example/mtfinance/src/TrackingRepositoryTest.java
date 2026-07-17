@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -665,5 +666,75 @@ public class TrackingRepositoryTest {
 
         assertFalse(trackingRepository.categoryExists(catId));
         assertFalse(trackingRepository.transactionExists(transId));
+    }
+
+    @Test
+    public void testFindTotalInCategoryWithDateRange() {
+        Category category = new Category("GroceriesRangeTest", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
+        categoryRepository.insert(category);
+
+        LocalDate startDate = LocalDate.of(2023, 1, 10);
+        LocalDate endDate = LocalDate.of(2023, 1, 20);
+
+        // Within range
+        Transaction t1 = new Transaction.Builder("Bread", BigDecimal.valueOf(3.0))
+                .date(LocalDate.of(2023, 1, 15))
+                .build();
+        // Before range
+        Transaction t2 = new Transaction.Builder("Milk", BigDecimal.valueOf(4.0))
+                .date(LocalDate.of(2023, 1, 5))
+                .build();
+        // After range
+        Transaction t3 = new Transaction.Builder("Eggs", BigDecimal.valueOf(5.0))
+                .date(LocalDate.of(2023, 1, 25))
+                .build();
+        // Boundary (start)
+        Transaction t4 = new Transaction.Builder("Butter", BigDecimal.valueOf(6.0))
+                .date(startDate)
+                .build();
+        // Boundary (end)
+        Transaction t5 = new Transaction.Builder("Cheese", BigDecimal.valueOf(7.0))
+                .date(endDate)
+                .build();
+
+        trackingRepository.insertTransaction(t1, category.getCategoryId());
+        trackingRepository.insertTransaction(t2, category.getCategoryId());
+        trackingRepository.insertTransaction(t3, category.getCategoryId());
+        trackingRepository.insertTransaction(t4, category.getCategoryId());
+        trackingRepository.insertTransaction(t5, category.getCategoryId());
+
+        // Expected total = t1(3) + t4(6) + t5(7) = 16
+        BigDecimal total = trackingRepository.getTotalInCategory(category, false, startDate, endDate);
+        assertEquals(0, BigDecimal.valueOf(16.0).compareTo(total));
+    }
+
+    @Test
+    public void testFindTotalInCategoryWithDateRangeAndSubs() {
+        Category parent = new Category("ShoppingRangeTest", "", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
+        Category child = new Category("ClothesRangeTest", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
+        categoryRepository.insert(parent);
+        child.setParent(parent);
+        categoryRepository.insert(child);
+
+        LocalDate startDate = LocalDate.of(2023, 1, 1);
+        LocalDate endDate = LocalDate.of(2023, 1, 31);
+
+        Transaction tParentInRange = new Transaction.Builder("Shoes", BigDecimal.valueOf(100))
+                .date(LocalDate.of(2023, 1, 15))
+                .build();
+        Transaction tChildInRange = new Transaction.Builder("Shirt", BigDecimal.valueOf(50))
+                .date(LocalDate.of(2023, 1, 20))
+                .build();
+        Transaction tChildOutRange = new Transaction.Builder("Jacket", BigDecimal.valueOf(200))
+                .date(LocalDate.of(2023, 2, 1))
+                .build();
+
+        trackingRepository.insertTransaction(tParentInRange, parent.getCategoryId());
+        trackingRepository.insertTransaction(tChildInRange, child.getCategoryId());
+        trackingRepository.insertTransaction(tChildOutRange, child.getCategoryId());
+
+        // Total for parent including subs in Jan: 100 + 50 = 150
+        BigDecimal total = trackingRepository.getTotalInCategory(parent, true, startDate, endDate);
+        assertEquals(0, BigDecimal.valueOf(150.0).compareTo(total));
     }
 }

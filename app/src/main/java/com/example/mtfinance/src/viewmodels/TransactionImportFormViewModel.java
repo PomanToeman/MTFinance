@@ -115,7 +115,7 @@ public class TransactionImportFormViewModel extends ViewModel {
     }
 
     /**
-     * Required header
+     * Required header. Please format to what the actual records are formatted in the file.
      * @param dateHeader - header name (must be in csvHeaders).
      */
     public void setDateHeader(String dateHeader) {
@@ -125,8 +125,9 @@ public class TransactionImportFormViewModel extends ViewModel {
     }
 
     /**
-     * Set to the specific format of the date (and time if possible).
-     * @param dateFormatter
+     * Set to the specific format of the date (and time if possible). Will ignore if invalid format.
+     *
+     * @param dateFormatter - What the format looks like.
      */
     public void setDateFormatter(String dateFormatter) {
         try {

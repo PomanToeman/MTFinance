@@ -24,7 +24,7 @@ public enum MessageCli {
     CATEGORY_DELETED("Category deleted successfully"),
     CATEGORY_SAVED("Category saved successfully"),
     CATEGORY_NOT_FOUND("Cannot find category"),
-    CATEGORY_ROOT_EDIT_DENIED("cannot edit root categories"),
+    CATEGORY_ROOT_EDIT_DENIED("Cannot edit root categories"),
     CATEGORY_DELETE_NONE("No category to delete"),
     CATEGORY_DELETE_FAILED("Cannot delete category: %s"),
     CATEGORY_SAVE_FAILED("Cannot save category: %s"),
