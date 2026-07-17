@@ -22,7 +22,7 @@ import jakarta.inject.Singleton;
 
 @Module
 @InstallIn(SingletonComponent.class)
-abstract public class databaseModule {
+public class databaseModule {
 
     @Provides
     @Singleton

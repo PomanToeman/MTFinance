@@ -110,4 +110,38 @@ public class TransactionRepositoryTest {
         Transaction retrieved = repository.getById(999L);
         assertNull(retrieved);
     }
+
+    // ========================================
+    // HASH TESTS
+    // ========================================
+
+    @Test
+    public void testGeneratedHash() {
+        Transaction t1 = new Transaction.Builder("Dinner", BigDecimal.valueOf(50.0)).build();
+        String hash = t1.getGeneratedHash();
+        
+        assertNotNull(hash);
+        assertTrue(hash.contains("dinner"));
+        assertTrue(hash.contains("50.0"));
+        
+        // Two identical transactions should have same hash
+        Transaction t2 = new Transaction.Builder("Dinner", BigDecimal.valueOf(50.0))
+                .date(t1.getDate())
+                .build();
+        assertEquals(hash, t2.getGeneratedHash());
+    }
+
+    @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
+    public void testInsertDuplicateHashFails() {
+        Transaction t1 = new Transaction.Builder("Dinner", BigDecimal.valueOf(50.0)).build();
+        repository.insert(t1);
+
+        // Identical content => same hash
+        Transaction t2 = new Transaction.Builder("Dinner", BigDecimal.valueOf(50.0))
+                .date(t1.getDate())
+                .build();
+        
+        // This should throw SQLiteConstraintException due to UNIQUE constraint on 'hash'
+        repository.insert(t2);
+    }
 }

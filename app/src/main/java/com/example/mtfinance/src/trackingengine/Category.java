@@ -60,7 +60,7 @@ public class Category implements Details {
         this.categoryId = categoryId;
     }
 
-    public void setDescription(@NonNull String description) {
+    public void setDescription( String description) {
         this.description = TrackingUtlis.determineDescription(description);
     }
 

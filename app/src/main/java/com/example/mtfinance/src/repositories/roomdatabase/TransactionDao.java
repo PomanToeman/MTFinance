@@ -1,5 +1,6 @@
 package com.example.mtfinance.src.repositories.roomdatabase;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
@@ -18,6 +19,10 @@ public interface TransactionDao {
     @Query("SELECT * FROM transactions")
     List<Transaction> getAll();
 
+    @Query("SELECT * FROM transactions")
+    LiveData<List<Transaction>> getAllLive();
+
+
     @Query("SELECT * FROM transactions WHERE transactionId = :id")
     Transaction getById(Long id);
 
@@ -26,4 +31,18 @@ public interface TransactionDao {
 
     @Update
     void update(Transaction transaction);
+
+    @Query("SELECT * FROM transactions WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)")
+    LiveData<List<Transaction>> searchTransactions(String query, String defaultDescription);
+
+    @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE transactionId = :id)")
+    Boolean exists(Long id);
+
+    @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE hash = :hash)")
+    Boolean hashExists(String hash);
+
+    @Query("DELETE FROM transactions WHERE transactionId = :id")
+    void delete(Long id);
+
+
 }

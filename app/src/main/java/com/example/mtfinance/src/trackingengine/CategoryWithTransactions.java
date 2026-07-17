@@ -14,7 +14,7 @@ import java.util.Set;
 /**
  * POJO. Defines the relation between Categories and Transactions (many-to-many).
  */
-public class CategoryWithTransactions {
+public class CategoryWithTransactions implements Details {
     @Embedded
     public Category category;
 
@@ -40,6 +40,13 @@ public class CategoryWithTransactions {
        }
        return total;
    }
+
+   @Override
+    public String getDetails() {
+       return category.getDetails() + "\n" + transactions + "\nTotal: " + findTotal();
+   }
+
+
 
 
 

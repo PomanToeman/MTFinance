@@ -1,10 +1,12 @@
 package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
+import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -17,22 +19,36 @@ import javax.inject.Inject;
 
 public class CategoryRepository {
 
-    public final List<Category> defaultExpenseCategories = new ArrayList<>();
+    // default categories
     public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
     public final Category IncomeCategory = new Category("Income", "Tracks income transactions", BigDecimal.valueOf(1000), TrackingType.INCOME);
     public final Category accountTransferCategory = new Category("Account Transfer", "Account Transfers", BigDecimal.valueOf(1000), TrackingType.ACCOUNT_TRANSFERS);
+    public final Category otherCategory = new Category("Other Category (only for errors)", "Use this as a log for erroneous transactions", BigDecimal.valueOf(1000), TrackingType.OTHER);
+
+    public final List<Category> defaultExpenseCategories = List.of(
+            new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE),
+            new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
 
     private final CategoryDao categoryDao;
 
     @Inject
     public CategoryRepository(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
-        // default categories
-        defaultExpenseCategories.add(new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE));
-        defaultExpenseCategories.add(new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
 
-        populateDefaultCategories();
+
+        new Thread(this::populateDefaultCategories).start();
     }
+
+    @VisibleForTesting
+    public CategoryRepository(CategoryDao categoryDao, boolean populateDefaultCategories) {
+        this.categoryDao = categoryDao;
+
+
+        if (populateDefaultCategories) populateDefaultCategories();
+
+    }
+
+
 
 
     public Long insert(@NonNull Category category) {
@@ -41,10 +57,10 @@ public class CategoryRepository {
         }
 
         if (category.getParentId() == null) {
-            category.setParent(getGeneralCategory()); // ensures the greatest parent is the general category
+            category.setParent(generalCategory); // ensures the greatest parent is the general category
 
         }
-        else if (!getAllCategories().contains(category.getParent())) {
+        else if (!exists(category.getParentId())) {
             insert(category.getParent()); // automatically inserts parent if not already in database.
         }
 
@@ -63,12 +79,37 @@ public class CategoryRepository {
         return accountTransferCategory;
     }
 
+    public Category getOtherCategory() {
+        return otherCategory;
+    }
+
+
     public List<Category> getAllCategories() {
         return categoryDao.getAll();
     }
 
     public Category getCategoryById(Long id) {
         return categoryDao.getById(id);
+    }
+
+    public boolean exists(Long id) {
+        if (id == null) return false;
+        return categoryDao.exists(id);
+    }
+
+    public boolean verifyExistingIds(Collection<Long> ids) {
+        if (ids == null)  {
+            return false;
+        }
+        List<Long> existingIds = categoryDao.veifyExitsingIds(ids);
+        return existingIds.size() == ids.size();
+
+
+    }
+
+    public boolean nameExists(String name) {
+        if (name == null || name.isEmpty()) return false;
+        return categoryDao.nameExists(name.trim());
     }
 
     public void deleteCategory(@NonNull Category categoryToDelete) {
@@ -102,11 +143,13 @@ public class CategoryRepository {
      * Meant to add all necessary categories to the database that are needed for the app to work.
      * This includes the root categories for each type, and the default expense categories.
      */
+
     private void populateDefaultCategories() {
         if (categoryDao.getAll().isEmpty()) {
             categoryDao.insert(generalCategory);
             categoryDao.insert(IncomeCategory);
             categoryDao.insert(accountTransferCategory);
+            categoryDao.insert(otherCategory);
 
 
             for (Category category : defaultExpenseCategories) {
@@ -206,13 +249,7 @@ public class CategoryRepository {
     }
 
 
-    /**
-     * Meant for repositories
-     * @return
-     */
-    protected CategoryDao getCategoryDao() {
-        return categoryDao;
-    }
+
 
 
     public Category getRootCategoryByType(TrackingType type) {
@@ -224,9 +261,33 @@ public class CategoryRepository {
             case ACCOUNT_TRANSFERS:
                 return getAccountTransferCategory();
             default:
-                return null;
+                return getOtherCategory();
         }
     }
+
+    public boolean isRoot(Category category) {
+        if (category == null) {
+            return false;
+        }
+        return category.equals(getRootCategoryByType(category.getType()));
+
+    }
+
+    public boolean isRoot(Long categoryId) {
+        if (exists(categoryId)) {
+            return isRoot(getCategoryById(categoryId));
+        }
+        return false;
+    }
+
+    /**
+     * meant for auto sorting the best categories for a given transaction (or query)
+     */
+    public List<Long> autoSearchCategoryIds(String query, TrackingType type) {
+        return categoryDao.autoSearchBestFittingCategories(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
+    }
+
+
 
 
 

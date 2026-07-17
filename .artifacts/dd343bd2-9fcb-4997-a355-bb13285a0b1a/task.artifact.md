@@ -1,0 +1,7 @@
+- `[ ]` Update `MessageCli.java` with new enums
+- `[ ]` Refactor `CategoryFormViewModel.java`
+- `[ ]` Refactor `TransactionFormViewModel.java`
+- `[ ]` Refactor `TransactionImportFormViewModel.java`
+- `[ ]` Refactor `TrackingRepository.java`
+- `[ ]` Refactor `TrackingUtlis.java`
+- `[ ]` Verify changes with unit tests

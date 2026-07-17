@@ -9,6 +9,7 @@ import androidx.room.Transaction;
 
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 
+import java.util.Collection;
 import java.util.List;
 
 @Dao
@@ -29,7 +30,13 @@ public interface CategoryTransactionDao {
     @Query("DELETE FROM categoryTransactionCrossRef WHERE categoryId = :categoryId")
     void deleteCrossRefsForCategory(long categoryId);
 
+    @Query("DELETE FROM categoryTransactionCrossRef WHERE categoryId = :categoryId AND transactionId = :transactionId")
+    void deleteCrossRef(long categoryId, long transactionId);
 
+
+    @Transaction
+    @Query("SELECT * FROM categories WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)")
+    LiveData<List<CategoryWithTransactions>> searchCategories(String query, String defaultDescription);
 
     @Query("SELECT categoryId FROM categoryTransactionCrossRef WHERE transactionId = :transactionId")
     List<Long> getCategoryIdsForTransaction(long transactionId);
@@ -43,7 +50,7 @@ public interface CategoryTransactionDao {
 
     @Transaction
     @Query("SELECT * FROM categories WHERE categoryId IN (:categoryIds)")
-    LiveData<List<CategoryWithTransactions>> getCategoriesByIds(java.util.Collection<Long> categoryIds);
+    LiveData<List<CategoryWithTransactions>> getCategoriesByIds(Collection<Long> categoryIds);
 
 
 
