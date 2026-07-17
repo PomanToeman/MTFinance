@@ -7,6 +7,8 @@ import androidx.room.Index;
 import androidx.room.PrimaryKey;
 import androidx.room.ColumnInfo;
 
+import com.example.mtfinance.src.MessageCli;
+
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashSet;
@@ -15,6 +17,7 @@ import java.util.Set;
         tableName = "categories",
         indices = {@Index(value = {"name"}, unique = true)} )
 public class Category implements Details {
+    public final static int MAX_DEPTH = 5;
 
 
     // instance fields
@@ -82,7 +85,10 @@ public class Category implements Details {
      * if given category is a grandparent or above, this category will move up until it is a child to preserve the structure.
      * @param parent - the parent to be set for this category (if possible)
      */
-    public void setParent(@NonNull Category parent) {
+    public void setParent(@NonNull Category parent) throws IllegalStateException {
+        if (parent.getAncestors().size() >= MAX_DEPTH) {
+            throw new IllegalStateException(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(MAX_DEPTH));
+        }
 
         if (this.equals(parent) || !isSameType(parent.getType())) {
             return;

@@ -1,7 +1,6 @@
 package com.example.mtfinance;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -20,7 +19,7 @@ import java.math.BigDecimal;
  */
 
 
-public class ExampleUnitTest {
+public class TrackingEngineUnitTests {
 
     public static final BigDecimal DEFAULT_BUDGET = BigDecimal.valueOf(0.1);
 
@@ -160,6 +159,33 @@ public class ExampleUnitTest {
         cat.setParent(cat);
 
         assertNull(cat.getParent());
+    }
+
+    @Test
+    public void testing_categories_max_depth_reached() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category current = root;
+
+        // Create levels 2 to 6 (MAX_DEPTH is 5, check is parent.getAncestors().size() >= MAX_DEPTH)
+        // Level 1: root (0 ancestors)
+        // Level 2: l1 (1 ancestor)
+        // Level 3: l2 (2 ancestors)
+        // Level 4: l3 (3 ancestors)
+        // Level 5: l4 (4 ancestors)
+        // Level 6: l5 (5 ancestors)
+        for (int i = 1; i <= Category.MAX_DEPTH; i++) {
+            Category child = new Category("Level " + (i + 1), "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+            child.setParent(current);
+            current = child;
+        }
+
+        // Now 'current' is at Level 6 and has 5 ancestors.
+        assertEquals(Category.MAX_DEPTH, current.getAncestors().size());
+
+        // Trying to add Level 7 should throw
+        Category tooDeep = new Category("Level 7", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category finalCurrent = current;
+        assertThrows(IllegalStateException.class, () -> tooDeep.setParent(finalCurrent));
     }
 
     // ========================================

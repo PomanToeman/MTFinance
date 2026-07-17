@@ -101,6 +101,11 @@ public class CategoryFormViewModel extends ViewModel {
 
     public void setParentId(Long parentId) {
         if (!trackingRepository.categoryExists(parentId)) {
+            setErrorMessage(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
+            return;
+        }
+        if (trackingRepository.getCategoryByIdRestored(parentId).getAncestors().size() >= Category.MAX_DEPTH) {
+            setErrorMessage(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
             return;
         }
         this.parentId.setValue(parentId);
@@ -205,6 +210,7 @@ public class CategoryFormViewModel extends ViewModel {
            setSuccessMessage(MessageCli.CATEGORY_SAVED.getMessage());
 
        }
+
        catch (Exception e) {
            setErrorMessage(MessageCli.CATEGORY_SAVE_FAILED.getMessage(e.getMessage()));
 
@@ -216,6 +222,10 @@ public class CategoryFormViewModel extends ViewModel {
 
     }
 
+    /**
+     * Checks if the fields are filled out correctly.
+     * @throws IllegalArgumentException
+     */
     private void validateForm() throws IllegalArgumentException{
         if (name.getValue() == null || name.getValue().isEmpty()) {
             throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EMPTY.getMessage());
@@ -237,7 +247,9 @@ public class CategoryFormViewModel extends ViewModel {
         // if parent category is set, check it exists.
         if (parentId.getValue() != null && !trackingRepository.categoryExists(parentId.getValue())) {
             throw new IllegalArgumentException(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
+
         }
+
 
     }
 

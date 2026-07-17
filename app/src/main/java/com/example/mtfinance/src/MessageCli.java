@@ -31,6 +31,7 @@ public enum MessageCli {
     CATEGORY_NAME_EMPTY("Name cannot be empty"),
     CATEGORY_NAME_EXISTS("Category with this name already exists"),
     CATEGORY_PARENT_NOT_FOUND("Parent category does not exist"),
+    CATEGORY_MAX_DEPTH_REACHED("Cannot exceed Maximum Depth of %d"),
 
     // Transaction
     TRANSACTION_UPDATED("Transaction Updated successfully"),
