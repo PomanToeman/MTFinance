@@ -275,7 +275,7 @@ public class CategoryRepository {
 
     public boolean isRoot(Long categoryId) {
         if (exists(categoryId)) {
-            return isRoot(getCategoryByIdRestored(categoryId));
+            return isRoot(getCategoryById(categoryId));
         }
         return false;
     }

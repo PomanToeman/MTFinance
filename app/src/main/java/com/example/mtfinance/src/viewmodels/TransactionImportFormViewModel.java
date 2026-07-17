@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import java.util.ArrayList;
@@ -40,15 +41,14 @@ public class TransactionImportFormViewModel extends ViewModel {
     private final MutableLiveData<String> nameHeader = new MutableLiveData<>();
     private final MutableLiveData<String> amountHeader = new MutableLiveData<>();
     private final MutableLiveData<String> dateHeader = new MutableLiveData<>();
+    private final MutableLiveData<String> typeHeader = new MutableLiveData<>();
     private final MutableLiveData<DateTimeFormatter> dateFormatter = new MutableLiveData<>();
 
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final MutableLiveData<String> successMessage = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>();
     private final MutableLiveData<List<String>> successfulImports = new MutableLiveData<>();
-
-
-    // TODO - add auto-sorting Categories later.
+    private final MutableLiveData<List<String>> failedImports = new MutableLiveData<>();
     private final MutableLiveData<Boolean> alwaysSendToRoot = new MutableLiveData<>(Boolean.TRUE);
 
     private final MutableLiveData<List<String>> csvHeaders = new MutableLiveData<>();
@@ -96,12 +96,26 @@ public class TransactionImportFormViewModel extends ViewModel {
         }
     }
 
+    /**
+     * optional Header. Only set when there is an explicit type header.
+     * @param typeHeader
+     */
+    public void setTypeHeader(String typeHeader) {
+        if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(typeHeader)) {
+            this.typeHeader.setValue(typeHeader);
+        }
+    }
+
     public void setDateHeader(String dateHeader) {
         if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(dateHeader)) {
             this.dateHeader.setValue(dateHeader);
         }
     }
 
+    /**
+     * Set to the specific format of the date (and time if possible).
+     * @param dateFormatter
+     */
     public void setDateFormatter(String dateFormatter) {
         try {
             this.dateFormatter.setValue(DateTimeFormatter.ofPattern(dateFormatter));
@@ -185,7 +199,7 @@ public class TransactionImportFormViewModel extends ViewModel {
 
     /**
      * This will import a csv transaction file for automatic insertion in database.
-     *
+     * All required fields must be set before importing.
      *
      */
     public void importTransaction() {
@@ -199,6 +213,8 @@ public class TransactionImportFormViewModel extends ViewModel {
             String amountHeader = this.amountHeader.getValue();
             DateTimeFormatter dateFormatter = this.dateFormatter.getValue();
             List<String> successfulImports = new ArrayList<>();
+            List<String> failedImports = new ArrayList<>();
+            String typeHeader = this.typeHeader.getValue();
 
 
             // imports each record (if possible)
@@ -207,10 +223,18 @@ public class TransactionImportFormViewModel extends ViewModel {
                 try {
                     transactionForm.setName(record.get(nameHeader));
                     BigDecimal amount = new BigDecimal(record.get(amountHeader));
-                    TrackingType type = TrackingUtlis.determineTypeByAmount(amount);
+                    String typeValue = (typeHeader != null && !typeHeader.isEmpty()) ? record.get(typeHeader) : null;
+                    TrackingType type = determineType(amount, typeValue);
                     transactionForm.setAmount(amount.abs());
                     transactionForm.setType(type);
-                    transactionForm.setDate(LocalDate.parse(record.get(dateHeader), dateFormatter));
+                    
+                    try {
+                        transactionForm.setDate(LocalDateTime.parse(record.get(dateHeader), dateFormatter));
+                    } catch (Exception e) {
+                        // try as LocalDate if LocalDateTime fails (in case no time in pattern/record)
+                        transactionForm.setDate(LocalDate.parse(record.get(dateHeader), dateFormatter));
+                    }
+
                     transactionForm.addCategoryId(findCategoryIdForTransaction(type, record.get(nameHeader)));
 
                     // create and insert instance.
@@ -224,7 +248,8 @@ public class TransactionImportFormViewModel extends ViewModel {
 
 
                 } catch (Exception e) {
-                    // just skip transaction
+                    // record and skip transactions
+                    failedImports.add(record.toString());
 
                 }
                 finally {
@@ -238,6 +263,10 @@ public class TransactionImportFormViewModel extends ViewModel {
 
 
             setSuccessMessage(successfulImports.size() + " Transaction/s successfully imported!");
+            if (!failedImports.isEmpty()) {
+                setErrorMessage(failedImports.size() + " Transaction/s failed to import!");
+            }
+
         }
         catch (IllegalArgumentException e) {
             setErrorMessage("Form is not complete:" + e.getMessage());
@@ -248,6 +277,21 @@ public class TransactionImportFormViewModel extends ViewModel {
             setIsLoading(Boolean.FALSE);
         }
 
+    }
+
+    /**
+     * Determines the type of transaction based type record if there is a type header.
+     * Else it will determine the type based on the amount.
+     * @param amount - amount of transaction.
+     * @param typeValue - value of the type record.
+     * @return - type of transaction.
+     */
+    private TrackingType determineType(BigDecimal amount, String typeValue) {
+        if (typeValue != null && !typeValue.isEmpty()) {
+            return TrackingType.fromString(typeValue);
+        } else {
+            return TrackingUtlis.determineTypeByAmount(amount);
+        }
     }
 
     /**
@@ -332,6 +376,10 @@ public class TransactionImportFormViewModel extends ViewModel {
 
     public LiveData<List<String>> getSuccessfulImports() {
         return successfulImports;
+    }
+
+    public LiveData<List<String>> getFailedImports() {
+        return failedImports;
     }
 
     public LiveData<DateTimeFormatter> getDateFormatter() {

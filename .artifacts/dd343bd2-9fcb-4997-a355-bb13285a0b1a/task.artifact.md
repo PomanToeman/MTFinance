@@ -1,0 +1,4 @@
+- `[x]` Fix bugs in `TransactionImportFormViewModel.java` (type value extraction and date-time parsing)
+- `[x]` Add `importTransaction_withTypeHeader_usesTypeFromCsv` to `TransactionImportFormViewModelTest.java`
+- `[x]` Add `importTransaction_withDateTime_parsesCorrectly` to `TransactionImportFormViewModelTest.java`
+- `[x]` Run unit tests to verify
