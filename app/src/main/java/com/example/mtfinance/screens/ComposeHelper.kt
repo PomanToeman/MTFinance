@@ -41,9 +41,7 @@ fun setScafolding(content: @Composable () -> Unit, homeViewModel: HomeViewModel 
             // Fixed Bottom Footer
             BottomAppBar {
                 Text("Bottom Bar", Modifier.padding(16.dp))
-                Button(onClick = { homeViewModel }) {
-                    Text("Test")
-                }
+
             }
         }
 

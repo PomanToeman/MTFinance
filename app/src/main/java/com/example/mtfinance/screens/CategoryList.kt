@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.example.mtfinance.src.trackingengine.Category
 
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
@@ -33,7 +34,10 @@ import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 
 @Composable
 fun CategoryListScreen(
+    NavHostController: NavHostController,
     categoryViewModel: CategoryViewModel = hiltViewModel()
+
+
 
 ) {
     val categories by categoryViewModel.filteredCategories.observeAsState()
@@ -59,7 +63,11 @@ fun CategoryListScreen(
         else {
             CategoryDashBoard()
         }
+        Button(onClick = { NavHostController.navigate("home") }) {
+            Text(text = "Go to Home", color = Color.Yellow)
+        }
     }
+
 
 
 }
