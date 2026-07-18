@@ -11,6 +11,7 @@ import androidx.compose.material3.Button
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -25,9 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.mtfinance.src.trackingengine.Category
 
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
-import okhttp3.internal.http2.Header
 
 
 @Composable
@@ -35,27 +36,49 @@ fun CategoryListScreen(
     categoryViewModel: CategoryViewModel = hiltViewModel()
 
 ) {
-    val categories by categoryViewModel.allCategories.observeAsState()
-    Header
+    val categories by categoryViewModel.filteredCategories.observeAsState()
+    val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
+
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        CategoryHeader()
-        if (categories != null) {
-            CategoryList(categories!!)
+        if (selectedCategory == null) {
+
+
+            CategoryHeader()
+            CategorySearch()
+            if (categories != null && categories!!.isNotEmpty()) {
+                CategoryList(categories!!)
+            } else {
+                Text("No categories Found", color = MaterialTheme.colorScheme.primary)
+            }
         }
         else {
-            Text("No categories", color = Color.White)
+            CategoryDashBoard()
         }
-        CategoryDashBoard()
-
     }
 
 
 }
 
+@Composable
+fun CategorySearch(categoryViewModel: CategoryViewModel = hiltViewModel()) {
+    val searchQuery by categoryViewModel.getSearchQuery().observeAsState()
+    Row(
+        modifier = Modifier.padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(text = "Search: ", color = MaterialTheme.colorScheme.primary)
+        TextField(searchQuery ?: "", onValueChange = {
+            categoryViewModel.setSearchQuery(it)
+        })
+
+    }
+}
 @Composable
 fun CategoryDashBoard(
     categoryViewModel: CategoryViewModel = hiltViewModel()
@@ -68,32 +91,40 @@ fun CategoryDashBoard(
         horizontalAlignment = Alignment.CenterHorizontally
 
     ) {
-        Text(text = "Category Dashboard", color = Color.White)
+        Text(text = "Category Dashboard", color = MaterialTheme.colorScheme.primary)
         if (selectedCategory != null) {
-            Text(text = selectedCategory!!.category.name, color = Color.White)
+            Text(text = selectedCategory!!.category.name, color = MaterialTheme.colorScheme.primary)
             CategoryDetails(selectedCategory!!)
+            SubCategoryList(selectedCategory!!.category.getChildren(false).toList())
             TransactionList(selectedCategory!!)
+            Button(onClick = { categoryViewModel.resetSelectedCategory() }) {
+                Text(text = "Back", color = Color.Yellow)
+            }
         }
         else {
-            Text(text = "No category selected", color = Color.White)
+            Text(text = "No category selected", color = MaterialTheme.colorScheme.primary)
         }
     }
 }
 
+
+
 @Composable
-fun CategoryListItem(categoryItem: CategoryWithTransactions?, categoryViewModel: CategoryViewModel = hiltViewModel()) {
+fun CategoryListItem(categoryItem: Category?, categoryViewModel: CategoryViewModel = hiltViewModel()) {
     val expanded = remember { mutableStateOf(false) }
     if (categoryItem != null) {
 
         Row(content = {
 
             Button(
-                content = { Text(text = categoryItem.details,
+                content = { Text(text = categoryItem.name,
                     color = Color.Yellow,
                     fontSize = 14.sp) },
                 onClick = { expanded.value = !expanded.value
-                    categoryViewModel.setSelectedCategory(categoryItem.category.categoryId)
+                    categoryViewModel.setSelectedCategory(categoryItem.categoryId)
                 }
+
+
 
             )
 
@@ -108,21 +139,21 @@ fun TransactionList(categoryItem: CategoryWithTransactions) {
         Text(categoryItem.transactions.toString(), color = Color.White)
     }
     else {
-        Text("No transactions", color = Color.White)
+        Text("No transactions", color = MaterialTheme.colorScheme.primary)
     }
 
 }
 
 @Composable
 fun CategoryDetails(categoryItem: CategoryWithTransactions) {
-    Text(categoryItem.category.description, color = Color.White)
-    Text(categoryItem.category.monthlyBudget.toString(), color = Color.White)
-    Text(categoryItem.category.type.toString(), color = Color.White)
+    Text(categoryItem.category.description, color = MaterialTheme.colorScheme.primary)
+    Text(categoryItem.category.monthlyBudget.toString(), color = MaterialTheme.colorScheme.primary)
+    Text(categoryItem.category.type.toString(), color = MaterialTheme.colorScheme.primary)
     if (categoryItem.category.parent != null) {
-        Text(categoryItem.category.parent.toString(), color = Color.White)
+        CategoryListItem(categoryItem.category.parent)
     }
     else {
-        Text("No parent", color = Color.White)
+        Text("No parent", color = MaterialTheme.colorScheme.primary)
     }
 
 
@@ -149,6 +180,15 @@ fun CategoryHeader() {
 
 @Composable
 fun CategoryList(categories: List<CategoryWithTransactions>) {
+    LazyColumn {
+        items(categories.size) { index ->
+            CategoryListItem(categories[index].category)
+        }
+    }
+}
+
+@Composable
+fun SubCategoryList(categories: List<Category>) {
     LazyColumn {
         items(categories.size) { index ->
             CategoryListItem(categories[index])
