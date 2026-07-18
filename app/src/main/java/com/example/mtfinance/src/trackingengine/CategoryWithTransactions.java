@@ -43,7 +43,7 @@ public class CategoryWithTransactions implements Details {
 
    @Override
     public String getDetails() {
-       return category.getName() + " - " + category.getType();
+       return category.getName();
    }
 
 
