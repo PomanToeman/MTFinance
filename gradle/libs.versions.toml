@@ -21,8 +21,10 @@ ksp = "2.3.2"
 mockito = "5.23.0"
 coreTesting = "2.2.0"
 material3 = "1.4.0"
+runtimeLivedata = "1.11.4"
 
 [libraries]
+androidx-compose-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata", version.ref = "runtimeLivedata" }
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "commonsCsv" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
