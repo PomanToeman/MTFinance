@@ -44,11 +44,7 @@ fun CategoryListScreen(
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
 
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+   DefaultColumn {
         if (selectedCategory == null) {
 
 
