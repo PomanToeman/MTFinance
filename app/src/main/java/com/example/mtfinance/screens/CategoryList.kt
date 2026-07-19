@@ -51,7 +51,7 @@ fun CategoryListScreen(
             CategoryHeader()
             CategorySearch()
             if (categories != null && categories!!.isNotEmpty()) {
-                CategoryList(categories!!)
+                CategoryList(categories!!, action = {Long -> categoryViewModel.setSelectedCategory(Long)})
             } else {
                 Text("No categories Found", color = MaterialTheme.colorScheme.primary)
             }
@@ -99,7 +99,13 @@ fun CategoryDashBoard(
         if (selectedCategory != null) {
             Text(text = selectedCategory!!.category.name, color = MaterialTheme.colorScheme.primary)
             CategoryDetails(selectedCategory!!)
-            SubCategoryList(selectedCategory!!.category.getChildren(false).toList())
+            if (selectedCategory?.category?.parent != null) {
+                CategoryListItem(selectedCategory?.category?.parent, action = {Long -> categoryViewModel.setSelectedCategory(Long)})
+            }
+            else {
+                Text("No parent", color = MaterialTheme.colorScheme.primary)
+            }
+            SubCategoryList(selectedCategory!!.category.getChildren(false).toList(), action = {Long -> categoryViewModel.setSelectedCategory(Long)})
             TransactionList(selectedCategory!!)
             Button(onClick = { categoryViewModel.resetSelectedCategory() }) {
                 Text(text = "Back", color = Color.Yellow)
@@ -114,7 +120,9 @@ fun CategoryDashBoard(
 
 
 @Composable
-fun CategoryListItem(categoryItem: Category?, categoryViewModel: CategoryViewModel = hiltViewModel()) {
+fun CategoryListItem(categoryItem: Category?, action: (Long) -> Unit = {
+
+} ){
     val expanded = remember { mutableStateOf(false) }
     if (categoryItem != null) {
 
@@ -125,7 +133,7 @@ fun CategoryListItem(categoryItem: Category?, categoryViewModel: CategoryViewMod
                     color = Color.Yellow,
                     fontSize = 14.sp) },
                 onClick = { expanded.value = !expanded.value
-                    categoryViewModel.setSelectedCategory(categoryItem.categoryId)
+                    action(categoryItem.categoryId)
                 }
 
 
@@ -153,12 +161,7 @@ fun CategoryDetails(categoryItem: CategoryWithTransactions) {
     Text(categoryItem.category.description, color = MaterialTheme.colorScheme.primary)
     Text(categoryItem.category.monthlyBudget.toString(), color = MaterialTheme.colorScheme.primary)
     Text(categoryItem.category.type.toString(), color = MaterialTheme.colorScheme.primary)
-    if (categoryItem.category.parent != null) {
-        CategoryListItem(categoryItem.category.parent)
-    }
-    else {
-        Text("No parent", color = MaterialTheme.colorScheme.primary)
-    }
+
 
 
 }
@@ -183,19 +186,19 @@ fun CategoryHeader() {
 }
 
 @Composable
-fun CategoryList(categories: List<CategoryWithTransactions>) {
+fun CategoryList(categories: List<CategoryWithTransactions>,  action: (Long) -> Unit) {
     LazyColumn {
         items(categories.size) { index ->
-            CategoryListItem(categories[index].category)
+            CategoryListItem(categories[index].category, action)
         }
     }
 }
 
 @Composable
-fun SubCategoryList(categories: List<Category>) {
+fun SubCategoryList(categories: List<Category>,  action: (Long) -> Unit = {}) {
     LazyColumn {
         items(categories.size) { index ->
-            CategoryListItem(categories[index])
+            CategoryListItem(categories[index], action)
         }
     }
 }

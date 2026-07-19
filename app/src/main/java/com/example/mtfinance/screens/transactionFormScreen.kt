@@ -19,6 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
 import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 
 @Composable
@@ -32,6 +34,9 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val editMode by transactionFormViewModel.editMode.observeAsState()
     val successMessage by transactionFormViewModel.successMessage.observeAsState()
     val errorMessage by transactionFormViewModel.errorMessage.observeAsState()
+    val isLoading by transactionFormViewModel.isLoading.observeAsState()
+
+
 
 
     DefaultColumn {
@@ -39,7 +44,9 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         TextFieldForm("Name", transactionName, onValueChange = {transactionFormViewModel.setName(it)})
         NumbereFieldForm("Amount", transactionAmount, setter = {transactionFormViewModel.setAmount(it)})
 
-        DialogDatePickerExample()
+        Text(transactionDate?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString())
+        DatePickerField(value = transactionDate?.toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
+            LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))})
 
         Button(onClick = { transactionFormViewModel.saveTransaction() }) {
             Text("Save")
@@ -62,16 +69,13 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
 
 }
 
-@Composable
-fun DatePickerForm(label: String, value: String?, onValueChange: (String) -> Unit) {
-    // TODO
-}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DialogDatePickerExample() {
+fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange: (Long?) -> Unit) {
     var showDialog by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState()
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = valuelong?.toEpochDay()?.times(1000 * 60 * 60 * 24))
 
     // Button to trigger the dialog
     Button(onClick = { showDialog = true }) {
@@ -82,7 +86,9 @@ fun DialogDatePickerExample() {
         DatePickerDialog(
             onDismissRequest = { showDialog = false },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(onClick = { showDialog = false
+                onValueChange(datePickerState.selectedDateMillis)
+                }) {
                     Text("OK")
                 }
             },
@@ -91,9 +97,11 @@ fun DialogDatePickerExample() {
                     Text("Cancel")
                 }
             }
+
+
         ) {
             // The calendar UI goes inside the dialog content slot
-            DatePicker(state = datePickerState)
+            return@DatePickerDialog DatePicker(state = datePickerState)
         }
     }
 }
