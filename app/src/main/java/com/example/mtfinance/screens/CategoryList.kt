@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 
 import androidx.compose.material3.MaterialTheme
@@ -59,10 +62,9 @@ fun CategoryListScreen(
         else {
             CategoryDashBoard()
         }
-        Button(onClick = { NavHostController.navigate("home") }) {
-            Text(text = "Go to Home", color = Color.Yellow)
-        }
+
     }
+
 
 
 
@@ -86,32 +88,37 @@ fun CategorySearch(categoryViewModel: CategoryViewModel = hiltViewModel()) {
 @Composable
 fun CategoryDashBoard(
     categoryViewModel: CategoryViewModel = hiltViewModel()
-)
-{
+) {
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(7.dp),
         horizontalAlignment = Alignment.CenterHorizontally
-
     ) {
         Text(text = "Category Dashboard", color = MaterialTheme.colorScheme.primary)
         if (selectedCategory != null) {
-            Text(text = selectedCategory!!.category.name, color = MaterialTheme.colorScheme.primary)
+            Text(
+                text = selectedCategory!!.category.name,
+                color = MaterialTheme.colorScheme.primary
+            )
             CategoryDetails(selectedCategory!!)
             if (selectedCategory?.category?.parent != null) {
-                CategoryListItem(selectedCategory?.category?.parent, action = {Long -> categoryViewModel.setSelectedCategory(Long)})
-            }
-            else {
+                CategoryListItem(
+                    selectedCategory?.category?.parent,
+                    action = { Long -> categoryViewModel.setSelectedCategory(Long) })
+            } else {
                 Text("No parent", color = MaterialTheme.colorScheme.primary)
             }
-            SubCategoryList(selectedCategory!!.category.getChildren(false).toList(), action = {Long -> categoryViewModel.setSelectedCategory(Long)})
+            SubCategoryList(
+                selectedCategory!!.category.getChildren(false).toList(),
+                action = { Long -> categoryViewModel.setSelectedCategory(Long) })
             TransactionList(selectedCategory!!)
             Button(onClick = { categoryViewModel.resetSelectedCategory() }) {
                 Text(text = "Back", color = Color.Yellow)
             }
-        }
-        else {
+        } else {
             Text(text = "No category selected", color = MaterialTheme.colorScheme.primary)
         }
     }
@@ -148,7 +155,8 @@ fun CategoryListItem(categoryItem: Category?, action: (Long) -> Unit = {
 @Composable
 fun TransactionList(categoryItem: CategoryWithTransactions) {
     if (categoryItem.transactions != null && categoryItem.transactions.isNotEmpty()) {
-        Text(categoryItem.transactions.toString(), color = Color.White)
+
+        TransactionList(categoryItem.transactions)
     }
     else {
         Text("No transactions", color = MaterialTheme.colorScheme.primary)
@@ -168,37 +176,34 @@ fun CategoryDetails(categoryItem: CategoryWithTransactions) {
 
 @Composable
 fun CategoryHeader() {
-    Column(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Category List!",
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+
+    Text(
+        text = "Category List!",
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.headlineMedium,
+        modifier = Modifier.padding(bottom = 12.dp)
+    )
 
 
 
-    }
+
 }
 
 @Composable
-fun CategoryList(categories: List<CategoryWithTransactions>,  action: (Long) -> Unit) {
-    LazyColumn {
+fun CategoryList(categories: Collection<CategoryWithTransactions>, action: (Long) -> Unit) {
+    LazyColumn(modifier = Modifier.fillMaxSize().height(100.dp)) {
+
         items(categories.size) { index ->
-            CategoryListItem(categories[index].category, action)
+            CategoryListItem(categories.elementAt(index).category, action)
         }
     }
 }
 
 @Composable
-fun SubCategoryList(categories: List<Category>,  action: (Long) -> Unit = {}) {
-    LazyColumn {
-        items(categories.size) { index ->
-            CategoryListItem(categories[index], action)
+fun SubCategoryList(categories: List<Category>, action: (Long) -> Unit = {}) {
+    Column {
+        categories.forEach { category ->
+            CategoryListItem(category, action)
         }
     }
 }

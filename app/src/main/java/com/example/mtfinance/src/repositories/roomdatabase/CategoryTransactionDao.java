@@ -50,7 +50,7 @@ public interface CategoryTransactionDao {
 
     @Transaction
     @Query("SELECT * FROM categories WHERE categoryId IN (:categoryIds)")
-    LiveData<List<CategoryWithTransactions>> getCategoriesByIds(Collection<Long> categoryIds);
+    List<CategoryWithTransactions> getCategoriesByIds(Collection<Long> categoryIds);
 
 
 

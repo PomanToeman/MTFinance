@@ -100,11 +100,11 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
     public void setParentId(Long parentId) {
-        if (!trackingRepository.categoryExists(parentId)) {
+        if (parentId != null && !trackingRepository.categoryExists(parentId)) {
             setErrorMessage(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
             return;
         }
-        if (trackingRepository.getCategoryByIdRestored(parentId).getAncestors().size() >= Category.MAX_DEPTH) {
+        if (parentId != null && trackingRepository.getCategoryByIdRestored(parentId).getAncestors().size() >= Category.MAX_DEPTH) {
             setErrorMessage(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
             return;
         }

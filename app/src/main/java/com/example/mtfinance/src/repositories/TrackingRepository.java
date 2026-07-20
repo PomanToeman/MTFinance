@@ -185,7 +185,7 @@ public class TrackingRepository {
 
 
 
-    public LiveData<List<CategoryWithTransactions>> getCategoriesWithTransactionsByIds(java.util.Collection<Long> ids) {
+    public List<CategoryWithTransactions> getCategoriesWithTransactionsByIds(java.util.Collection<Long> ids) {
          return categoryWithTransactionsDao.getCategoriesByIds(ids);
     }
 

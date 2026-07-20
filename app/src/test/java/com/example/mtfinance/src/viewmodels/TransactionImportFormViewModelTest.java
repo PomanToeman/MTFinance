@@ -65,8 +65,8 @@ public class TransactionImportFormViewModelTest {
         // Arrange
         File tempFile = temporaryFolder.newFile("transactions.csv");
         try (FileWriter writer = new FileWriter(tempFile)) {
-            writer.write("Date,Name,Amount,Description\n");
-            writer.write("2023-01-01,Milk,3.50,Grocery\n");
+            writer.write("Date,Name,Amount\n");
+            writer.write("2023-01-01,Milk,3.50\n");
         }
         
         viewModel.setFilePath(tempFile.getAbsolutePath());
@@ -77,7 +77,7 @@ public class TransactionImportFormViewModelTest {
         // Assert
         assertNotNull(viewModel.getCsvParser().getValue());
         assertNotNull(viewModel.getCsvHeaders().getValue());
-        assertEquals(4, viewModel.getCsvHeaders().getValue().size());
+        assertEquals(3, viewModel.getCsvHeaders().getValue().size());
         assertTrue(viewModel.getCsvHeaders().getValue().contains("Name"));
         assertTrue(viewModel.getCsvHeaders().getValue().contains("Amount"));
         assertEquals("", viewModel.getErrorMessage().getValue());

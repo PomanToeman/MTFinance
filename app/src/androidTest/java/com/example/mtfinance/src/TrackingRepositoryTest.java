@@ -251,7 +251,7 @@ public class TrackingRepositoryTest {
         categoryRepository.insert(cat2);
 
         List<Long> ids = Arrays.asList(cat1.getCategoryId(), cat2.getCategoryId());
-        List<CategoryWithTransactions> result = getValue(trackingRepository.getCategoriesWithTransactionsByIds(ids));
+        List<CategoryWithTransactions> result = trackingRepository.getCategoriesWithTransactionsByIds(ids);
         assertNotNull(result);
         assertEquals(2, result.size());
     }

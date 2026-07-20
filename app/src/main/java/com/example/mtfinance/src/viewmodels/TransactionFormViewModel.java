@@ -2,10 +2,13 @@ package com.example.mtfinance.src.viewmodels;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.TrackingRepository;
+import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
@@ -15,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.inject.Inject;
@@ -39,11 +43,19 @@ public class TransactionFormViewModel extends ViewModel {
     private final MutableLiveData<String> successMessage = new MutableLiveData<>();
     private final MutableLiveData<Long> transactionId = new MutableLiveData<>();
     private final MutableLiveData<Boolean> editMode = new MutableLiveData<>(false);
+    private final LiveData<Set<CategoryWithTransactions>> cachedCategories;
 
 
     @Inject
     public TransactionFormViewModel(TrackingRepository trackingRepository) {
         this.trackingRepository = trackingRepository;
+        cachedCategories = Transformations.switchMap(categoryIds, ids -> {
+            if (ids == null || ids.isEmpty()) {
+                return new MutableLiveData<>(new HashSet<>());
+            }
+            return new MutableLiveData<>(new HashSet<>(trackingRepository.getCategoriesWithTransactionsByIds(ids)));
+        });
+
         clear(); // set default values
 
     }
@@ -161,9 +173,18 @@ public class TransactionFormViewModel extends ViewModel {
      * Forms must be valid before creating a transaction.
      */
     public void saveTransaction() {
+
         try {
             setIsLoading(true);
+
+
+
+
+
+
+
             validateForm();
+
 
             if (Boolean.TRUE.equals(editMode.getValue())) {
                 Transaction transaction = trackingRepository.getTransactionById(transactionId.getValue());
@@ -172,14 +193,14 @@ public class TransactionFormViewModel extends ViewModel {
 
                 List<Long> oldCategoryIds = trackingRepository.getCategoryIdsByTransactionId(transactionId.getValue());
                 Set<Long> newCategoryIds = categoryIds.getValue();
-                
+
                 // Add new relationships
                 for (Long catId : newCategoryIds) {
                     if (!oldCategoryIds.contains(catId)) {
                         trackingRepository.insertRelationship(transactionId.getValue(), catId);
                     }
                 }
-                
+
                 // Remove old relationships
                 for (Long catId : oldCategoryIds) {
                     if (!newCategoryIds.contains(catId)) {
@@ -197,7 +218,7 @@ public class TransactionFormViewModel extends ViewModel {
                         .type(type.getValue())
                         .date(date.getValue())
                         .build();
-                
+
 
                 boolean first = true;
                 for (Long catId : categoryIds.getValue()) {
@@ -208,7 +229,7 @@ public class TransactionFormViewModel extends ViewModel {
                         trackingRepository.insertRelationship(newTransaction.getTransactionId(), catId);
                     }
                 }
-                
+
                 setErrorMessage("");
                 setSuccessMessage(MessageCli.TRANSACTION_SAVED.getMessage());
             }
@@ -280,4 +301,5 @@ public class TransactionFormViewModel extends ViewModel {
     public LiveData<String> getErrorMessage() { return errorMessage; }
     public LiveData<String> getSuccessMessage() { return successMessage; }
     public LiveData<Boolean> getEditMode() { return editMode; }
+    public LiveData<Set<CategoryWithTransactions>> getCachedCategories() { return cachedCategories; }
 }

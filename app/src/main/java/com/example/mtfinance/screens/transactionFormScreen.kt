@@ -1,6 +1,9 @@
 package com.example.mtfinance.screens
 
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -16,7 +19,9 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.mtfinance.src.viewmodels.CategoryViewModel
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -35,11 +40,12 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val successMessage by transactionFormViewModel.successMessage.observeAsState()
     val errorMessage by transactionFormViewModel.errorMessage.observeAsState()
     val isLoading by transactionFormViewModel.isLoading.observeAsState()
+    val cachedCategories by transactionFormViewModel.cachedCategories.observeAsState()
 
 
 
 
-    DefaultColumn {
+    DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
         Text("Transaction Form")
         TextFieldForm("Name", transactionName, onValueChange = {transactionFormViewModel.setName(it)})
         NumbereFieldForm("Amount", transactionAmount, setter = {transactionFormViewModel.setAmount(it)})
@@ -51,6 +57,9 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         Button(onClick = { transactionFormViewModel.saveTransaction() }) {
             Text("Save")
         }
+
+        ChooseCategoryForm(categoryIds = categoryIds, add = {transactionFormViewModel.addCategoryId(it)}, remove = {transactionFormViewModel.removeCategoryId(it)})
+
 
 
 
@@ -66,6 +75,42 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
 
 
     }
+
+}
+
+
+@Composable
+fun ChooseCategoryForm(CategoryViewModel: CategoryViewModel = hiltViewModel(), categoryIds: MutableSet<Long>?, add: (Long) -> Unit = {}, remove: (Long) -> Unit = {}) {
+    var showDialog by remember { mutableStateOf(false) }
+    val categories by CategoryViewModel.filteredCategories.observeAsState()
+    val selectedCategories: MutableSet<Long> = remember { HashSet(categoryIds ?: emptyList()) }
+
+    Button(onClick = { showDialog = !showDialog }) {
+        Text("Choose Category")
+
+    }
+    if (showDialog) {
+        Dialog(onDismissRequest = { showDialog = false }, content = {
+            if (categories != null) {
+                CategoryList(categories!!, action = {Long ->
+                    if (selectedCategories.contains(Long)) {
+                        selectedCategories.remove(Long)
+                        remove(Long)
+                    }
+                    else {
+                        selectedCategories.add(Long)
+                        add(Long)
+                    }
+
+                })
+            }
+
+        })
+
+    }
+
+
+
 
 }
 
