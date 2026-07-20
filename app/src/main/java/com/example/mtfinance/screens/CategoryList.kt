@@ -30,9 +30,11 @@ import androidx.compose.ui.unit.sp
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.Category
 
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
+import java.math.RoundingMode
 
 
 @Composable
@@ -47,7 +49,7 @@ fun CategoryListScreen(
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
 
 
-   DefaultColumn {
+   DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
         if (selectedCategory == null) {
 
 
@@ -92,15 +94,14 @@ fun CategoryDashBoard(
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(7.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start
     ) {
-        Text(text = "Category Dashboard", color = MaterialTheme.colorScheme.primary)
+        CategoryHeader(text = "Category Dashboard")
         if (selectedCategory != null) {
             Text(
-                text = selectedCategory!!.category.name,
+                text = MessageCli.CATEGORY_SELECTED.getMessage(selectedCategory!!.category.name),
                 color = MaterialTheme.colorScheme.primary
             )
             CategoryDetails(selectedCategory!!)
@@ -166,23 +167,31 @@ fun TransactionList(categoryItem: CategoryWithTransactions) {
 
 @Composable
 fun CategoryDetails(categoryItem: CategoryWithTransactions) {
-    Text(categoryItem.category.description, color = MaterialTheme.colorScheme.primary)
-    Text(categoryItem.category.monthlyBudget.toString(), color = MaterialTheme.colorScheme.primary)
-    Text(categoryItem.category.type.toString(), color = MaterialTheme.colorScheme.primary)
+    Text(MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.category.description), color = MaterialTheme.colorScheme.primary)
+    Text(MessageCli.CATEGORY_MONTHLY_BUDGET.getMessage(categoryItem.category.monthlyBudget.setScale(2, RoundingMode.HALF_UP).toString()), color = MaterialTheme.colorScheme.primary)
+    Text(MessageCli.TYPE_DISPLAY.getMessage(categoryItem.category.type.toString().lowercase()), color = MaterialTheme.colorScheme.primary)
 
 
 
 }
 
 @Composable
-fun CategoryHeader() {
+fun CategoryHeader(text: String = "Category List") {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = text,
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+    }
 
-    Text(
-        text = "Category List!",
-        color = MaterialTheme.colorScheme.primary,
-        style = MaterialTheme.typography.headlineMedium,
-        modifier = Modifier.padding(bottom = 12.dp)
-    )
 
 
 
@@ -191,7 +200,7 @@ fun CategoryHeader() {
 
 @Composable
 fun CategoryList(categories: Collection<CategoryWithTransactions>, action: (Long) -> Unit) {
-    LazyColumn(modifier = Modifier.fillMaxSize().height(100.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxSize().height(500.dp)) {
 
         items(categories.size) { index ->
             CategoryListItem(categories.elementAt(index).category, action)
