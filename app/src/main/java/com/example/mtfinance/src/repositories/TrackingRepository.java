@@ -81,13 +81,18 @@ public class TrackingRepository {
     }
 
     /**
-     * To regonise a relationship between a category and relationship.
+     * To recolonise a relationship between a category and relationship.
      * Both transaction and category must already be in the database.
      * @param transactionId - The ID of a transaction already within a database.
      * @param categoryId - The ID of a category already within a database.
      */
-    public void insertRelationship(Long transactionId, Long categoryId) {
+    public void insertRelationship(Long transactionId, Long categoryId) throws IllegalStateException {
         if (transactionExists(transactionId) && categoryExists(categoryId) ) {
+            if (!categoryRepository.getCategoryById(categoryId).isSameType(transactionRepository.getById(transactionId).getType())) {
+                throw new IllegalStateException(MessageCli.TRANSACTION_TYPE_MISMATCH.getMessage());
+            };
+
+
             CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(categoryId, transactionId);
             categoryWithTransactionsDao.insertCrossRef(crossRef);
         }
@@ -190,7 +195,7 @@ public class TrackingRepository {
     }
 
     public LiveData<List<CategoryWithTransactions>> searchCategories(String query) {
-         return categoryWithTransactionsDao.searchCategories(query, TrackingUtlis.EMPTY_DESCRIPTION);
+         return categoryWithTransactionsDao.searchCategoriesByType(query, TrackingUtlis.EMPTY_DESCRIPTION);
     }
 
     public List<Long> autoSearchCategoryIds(String query, TrackingType type) {
@@ -229,6 +234,7 @@ public class TrackingRepository {
         if (category == null) return false;
         return categoryRepository.isRoot(category);
     }
+
 
     public boolean isRoot(Long id) {
         return isRoot(getCategoryByIdRestored(id));
@@ -289,6 +295,10 @@ public class TrackingRepository {
         return total;
 
 
+    }
+
+    public LiveData<List<CategoryWithTransactions>> searchCategoriesWithType(String query, TrackingType type) {
+        return categoryWithTransactionsDao.searchCategoriesByType(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
     }
 
     public boolean categoryExists(Long id) {

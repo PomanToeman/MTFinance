@@ -44,6 +44,7 @@ public class TransactionFormViewModel extends ViewModel {
     private final MutableLiveData<Long> transactionId = new MutableLiveData<>();
     private final MutableLiveData<Boolean> editMode = new MutableLiveData<>(false);
     private final LiveData<Set<CategoryWithTransactions>> cachedCategories;
+    private final LiveData<List<CategoryWithTransactions>> categorySelection;
 
 
     @Inject
@@ -55,6 +56,16 @@ public class TransactionFormViewModel extends ViewModel {
             }
             return new MutableLiveData<>(new HashSet<>(trackingRepository.getCategoriesWithTransactionsByIds(ids)));
         });
+        categorySelection = Transformations.switchMap(type , type -> {
+            if (type == null) {
+                return trackingRepository.getAllCategoriesWithTransactions();
+            }
+            return trackingRepository.searchCategoriesWithType("", type);
+        });
+
+
+
+
 
         clear(); // set default values
 
@@ -93,11 +104,21 @@ public class TransactionFormViewModel extends ViewModel {
             this.amount.setValue(amount);
         }
     }
-    public void setType(TrackingType type) {
 
-        if (type != null && Boolean.FALSE.equals(editMode.getValue())) {
-            this.type.setValue(type);
+    /**
+     * Sets the type of the transaction.
+     * Please set your type before setting category IDs, as the categories and transactions must be the same type.
+     * Will clear category IDs if type is changed.
+     * @param type
+     */
+    public void setType(TrackingType type) {
+        if (type == null || Boolean.TRUE.equals(editMode.getValue()) || this.type.getValue() == type) {
+            return;
         }
+
+
+        this.type.setValue(type);
+        categoryIds.setValue(new HashSet<>());
     }
     public void setDate(LocalDateTime date) {
         if (Boolean.FALSE.equals(editMode.getValue())) {
@@ -302,4 +323,5 @@ public class TransactionFormViewModel extends ViewModel {
     public LiveData<String> getSuccessMessage() { return successMessage; }
     public LiveData<Boolean> getEditMode() { return editMode; }
     public LiveData<Set<CategoryWithTransactions>> getCachedCategories() { return cachedCategories; }
+    public LiveData<List<CategoryWithTransactions>> getCategorySelection() { return categorySelection; }
 }

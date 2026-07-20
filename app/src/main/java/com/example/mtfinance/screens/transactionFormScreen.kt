@@ -1,13 +1,22 @@
 package com.example.mtfinance.screens
 
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,8 +28,12 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.mtfinance.src.trackingengine.TrackingType
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
 import java.math.BigDecimal
@@ -41,7 +54,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val errorMessage by transactionFormViewModel.errorMessage.observeAsState()
     val isLoading by transactionFormViewModel.isLoading.observeAsState()
     val cachedCategories by transactionFormViewModel.cachedCategories.observeAsState()
-
+    var expanded: Boolean by remember { mutableStateOf(false) }
 
 
 
@@ -54,16 +67,38 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         DatePickerField(value = transactionDate?.toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
             LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))})
 
+        CategoryList(cachedCategories?.toList() ?: emptyList() ) {}
+        ChooseCategoryForm(add = {transactionFormViewModel.addCategoryId(it)}, remove = {transactionFormViewModel.removeCategoryId(it)})
+
+        Box(
+            modifier = Modifier
+                .padding(16.dp)
+        ) {
+            Button(onClick = { expanded = !expanded }) {
+                Text("Type: " + transactionType.toString().lowercase())
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                for (type in TrackingType.entries) {
+                    DropdownMenuItem(
+                        text = { Text(type.toString().lowercase()) },
+                        onClick = {
+                            transactionFormViewModel.setType(type)
+                            expanded = false
+                        }
+                    )
+                }
+            }}
+
+
+
+
+
         Button(onClick = { transactionFormViewModel.saveTransaction() }) {
             Text("Save")
         }
-
-        ChooseCategoryForm(categoryIds = categoryIds, add = {transactionFormViewModel.addCategoryId(it)}, remove = {transactionFormViewModel.removeCategoryId(it)})
-
-
-
-
-
 
         if (successMessage != null) {
             Text(successMessage!!, color = androidx.compose.ui.graphics.Color.Green)
@@ -80,33 +115,50 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
 
 
 @Composable
-fun ChooseCategoryForm(CategoryViewModel: CategoryViewModel = hiltViewModel(), categoryIds: MutableSet<Long>?, add: (Long) -> Unit = {}, remove: (Long) -> Unit = {}) {
+fun ChooseCategoryForm(transactionFormViewModel: TransactionFormViewModel = hiltViewModel(), add: (Long) -> Unit = {}, remove: (Long) -> Unit = {}) {
     var showDialog by remember { mutableStateOf(false) }
-    val categories by CategoryViewModel.filteredCategories.observeAsState()
-    val selectedCategories: MutableSet<Long> = remember { HashSet(categoryIds ?: emptyList()) }
-
+    val cachedCategories by transactionFormViewModel.cachedCategories.observeAsState()
+    val categorySelection by transactionFormViewModel.categorySelection.observeAsState()
     Button(onClick = { showDialog = !showDialog }) {
         Text("Choose Category")
-
     }
+
     if (showDialog) {
-        Dialog(onDismissRequest = { showDialog = false }, content = {
-            if (categories != null) {
-                CategoryList(categories!!, action = {Long ->
-                    if (selectedCategories.contains(Long)) {
-                        selectedCategories.remove(Long)
-                        remove(Long)
+        Dialog( onDismissRequest = { showDialog = false }) {
+            LazyColumn(modifier = Modifier.fillMaxSize(), content = {
+
+                if (showDialog) {
+                    items(categorySelection?.size ?: 0) {
+                        val category = categorySelection?.elementAt(it)
+                        Button(onClick = {
+                            if (cachedCategories?.contains(category) == true) {
+                                remove(category!!.category.categoryId)
+                            }
+                            else {
+                                add(category!!.category.categoryId)
+                            }
+
+                        }) {
+                            if (cachedCategories?.contains(category) == true) {
+                                Text(text = category!!.category.name, color = Color.Green)
+                            }
+                            else {
+                                Text(text = category!!.category.name)
+                            }
+                        }
                     }
-                    else {
-                        selectedCategories.add(Long)
-                        add(Long)
+
+
+                    item {
+                        Button(onClick = { showDialog = false }) {
+                            Text("Cancel")
+                        }
                     }
 
-                })
-            }
 
-        })
-
+                }
+            })
+        }
     }
 
 

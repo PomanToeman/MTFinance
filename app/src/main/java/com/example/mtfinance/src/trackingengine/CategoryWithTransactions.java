@@ -46,6 +46,19 @@ public class CategoryWithTransactions implements Details {
        return category.getName();
    }
 
+   @Override
+    public boolean equals(Object obj) {
+       if (obj instanceof CategoryWithTransactions) {
+           return ((CategoryWithTransactions) obj).category.equals(category);
+       }
+       return false;
+   }
+
+   @Override
+    public int hashCode() {
+       return category.hashCode();
+   }
+
 
 
 

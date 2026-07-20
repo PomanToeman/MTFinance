@@ -115,7 +115,7 @@ fun CategoryDashBoard(
             SubCategoryList(
                 selectedCategory!!.category.getChildren(false).toList(),
                 action = { Long -> categoryViewModel.setSelectedCategory(Long) })
-            TransactionList(selectedCategory!!)
+            TransactionListforCategory(selectedCategory!!)
             Button(onClick = { categoryViewModel.resetSelectedCategory() }) {
                 Text(text = "Back", color = Color.Yellow)
             }
@@ -154,7 +154,8 @@ fun CategoryListItem(categoryItem: Category?, action: (Long) -> Unit = {
 }
 
 @Composable
-fun TransactionList(categoryItem: CategoryWithTransactions) {
+fun TransactionListforCategory(categoryItem: CategoryWithTransactions) {
+    Text("Transactions")
     if (categoryItem.transactions != null && categoryItem.transactions.isNotEmpty()) {
 
         TransactionList(categoryItem.transactions)

@@ -1,7 +1,5 @@
 package com.example.mtfinance.src;
 
-import org.jetbrains.annotations.NotNull;
-
 /**
  * Holds all required messages for the application.
  * Should be used when displaying messages to the user.
@@ -48,6 +46,8 @@ public enum MessageCli {
     TRANSACTION_CATEGORIES_NOT_EXIST("Some Categories do not exist."),
     TRANSACTION_DUPLICATE("Identical transaction already exists."),
     TRANSACTION_MIN_CATEGORY("Transaction must have at least one category"),
+    TRANSACTION_TYPE_MISMATCH("Transaction and category types do not match."),
+
 
     // Utils
     INVALID_AMOUNT("Invalid amount: %s"),
@@ -61,6 +61,7 @@ public enum MessageCli {
     NO_TRANSACTIONS("No transactions"),
     CATEGORY_DESCRIPTION("Description: %s"),
     CATEGORY_MONTHLY_BUDGET("Monthly Budget: $%s");
+
 
     private final String message;
 
