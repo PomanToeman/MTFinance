@@ -67,7 +67,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         DatePickerField(value = transactionDate?.toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
             LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))})
 
-        CategoryList(cachedCategories?.toList() ?: emptyList() ) {}
+        CategoryList(categories = cachedCategories?.toList() ?: emptyList(), actionOne = {transactionFormViewModel.removeCategoryId(it)}, actionOneLabel = "Remove")
         ChooseCategoryForm(add = {transactionFormViewModel.addCategoryId(it)}, remove = {transactionFormViewModel.removeCategoryId(it)})
 
         Box(
@@ -125,39 +125,18 @@ fun ChooseCategoryForm(transactionFormViewModel: TransactionFormViewModel = hilt
 
     if (showDialog) {
         Dialog( onDismissRequest = { showDialog = false }) {
-            LazyColumn(modifier = Modifier.fillMaxSize(), content = {
-
-                if (showDialog) {
-                    items(categorySelection?.size ?: 0) {
-                        val category = categorySelection?.elementAt(it)
-                        Button(onClick = {
-                            if (cachedCategories?.contains(category) == true) {
-                                remove(category!!.category.categoryId)
-                            }
-                            else {
-                                add(category!!.category.categoryId)
-                            }
-
-                        }) {
-                            if (cachedCategories?.contains(category) == true) {
-                                Text(text = category!!.category.name, color = Color.Green)
-                            }
-                            else {
-                                Text(text = category!!.category.name)
-                            }
-                        }
-                    }
-
-
-                    item {
-                        Button(onClick = { showDialog = false }) {
-                            Text("Cancel")
-                        }
-                    }
-
-
+            LazyColumn() {
+                item {
+                    CategoryList(categories = categorySelection?.toList() ?: emptyList(), actionOne = {add(it)}, actionOneLabel = "Add", actionTwo = {remove(it)}, actionTwoLabel = "Remove", backgroundColor = Color.Black)
                 }
-            })
+                item {
+                    Button(onClick = { showDialog = false }) {
+                        Text("Close")
+                    }
+                }
+            }
+
+
         }
     }
 

@@ -1,19 +1,26 @@
 package com.example.mtfinance.screens
 
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,10 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.tooling.preview.Preview
 
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -56,7 +63,7 @@ fun CategoryListScreen(
             CategoryHeader()
             CategorySearch()
             if (categories != null && categories!!.isNotEmpty()) {
-                CategoryList(categories!!, action = {Long -> categoryViewModel.setSelectedCategory(Long)})
+                CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)})
             } else {
                 Text("No categories Found", color = MaterialTheme.colorScheme.primary)
             }
@@ -108,7 +115,7 @@ fun CategoryDashBoard(
             if (selectedCategory?.category?.parent != null) {
                 CategoryListItem(
                     selectedCategory?.category?.parent,
-                    action = { Long -> categoryViewModel.setSelectedCategory(Long) })
+                    actionOne = { Long -> categoryViewModel.setSelectedCategory(Long) })
             } else {
                 Text("No parent", color = MaterialTheme.colorScheme.primary)
             }
@@ -128,27 +135,58 @@ fun CategoryDashBoard(
 
 
 @Composable
-fun CategoryListItem(categoryItem: Category?, action: (Long) -> Unit = {
-
-} ){
+fun CategoryListItem(categoryItem: Category?, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, backgroundColor: Color = Color.Gray){
     val expanded = remember { mutableStateOf(false) }
     if (categoryItem != null) {
 
-        Row(content = {
-
-            Button(
-                content = { Text(text = categoryItem.name,
-                    color = Color.Yellow,
-                    fontSize = 14.sp) },
-                onClick = { expanded.value = !expanded.value
-                    action(categoryItem.categoryId)
-                }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                // 3. Toggle state on click
+                .clickable { expanded.value = !expanded.value }.background(color = backgroundColor, shape = RectangleShape)
 
 
+        ) {
 
-            )
 
-        })
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    content = {
+                        Text(categoryItem.name, color = MaterialTheme.colorScheme.primary)
+
+                        if (expanded.value) {
+
+                            Text(MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.description), color = MaterialTheme.colorScheme.primary)
+                            Row() {
+                                if (actionOne != null) {
+                                    TextButton(onClick = { actionOne(categoryItem.categoryId) }) {
+                                        Text(
+                                            actionOneLabel ?: "Show more",
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                if (actionTwo != null) {
+                                    TextButton(onClick = { actionTwo(categoryItem.categoryId) }) {
+                                        Text(
+                                            actionTwoLabel ?: "Show more",
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+
+                            }
+
+
+
+                    }
+                )
+
+        }
+
 
     }
 }
@@ -200,11 +238,15 @@ fun CategoryHeader(text: String = "Category List") {
 }
 
 @Composable
-fun CategoryList(categories: Collection<CategoryWithTransactions>, action: (Long) -> Unit) {
-    LazyColumn(modifier = Modifier.fillMaxSize().height(500.dp)) {
+fun CategoryList(categories: Collection<CategoryWithTransactions>, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, backgroundColor: Color = Color.Gray ) {
+    LazyColumn(modifier = Modifier.fillMaxSize().height(500.dp).padding(16.dp).border(
+        width = 2.dp,
+        color = Color.Black,
+        shape = RectangleShape
+    )) {
 
         items(categories.size) { index ->
-            CategoryListItem(categories.elementAt(index).category, action)
+            CategoryListItem(categories.elementAt(index).category, actionOne, actionOneLabel, actionTwo, actionTwoLabel, backgroundColor)
         }
     }
 }
