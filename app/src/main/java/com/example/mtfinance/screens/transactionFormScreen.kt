@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.example.mtfinance.src.trackingengine.TrackingType
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
@@ -42,7 +43,7 @@ import java.time.format.DateTimeFormatter
 
 
 @Composable
-fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = hiltViewModel()) {
+fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = hiltViewModel(), navHostController: NavHostController) {
     val transactionName by transactionFormViewModel.name.observeAsState()
     val transactionAmount by transactionFormViewModel.amount.observeAsState()
     val transactionDate by transactionFormViewModel.date.observeAsState()
@@ -105,6 +106,10 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         }
         if (errorMessage != null) {
             Text(errorMessage!!, color = androidx.compose.ui.graphics.Color.Red)
+        }
+
+        Button(onClick = { navHostController.navigate("transaction") }) {
+            Text("Back")
         }
 
 

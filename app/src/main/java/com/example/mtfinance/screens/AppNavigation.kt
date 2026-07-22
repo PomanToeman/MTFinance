@@ -18,7 +18,9 @@ fun AppNavigation() {
 
             composable("home") { HomeScreen(navController) }
             composable("category") { CategoryListScreen(navController) }
-            composable("transaction") { TransactionFormScreen() }
+            composable("transaction") { TransactionListScreen(navHostController = navController) }
+            composable("transactionForm") { TransactionFormScreen(navHostController = navController) }
+
 
 
 
