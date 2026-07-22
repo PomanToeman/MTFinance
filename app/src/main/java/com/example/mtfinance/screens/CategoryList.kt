@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 
@@ -60,7 +59,7 @@ fun CategoryListScreen(
         if (selectedCategory == null) {
 
 
-            CategoryHeader()
+            Header()
             CategorySearch()
             if (categories != null && categories!!.isNotEmpty()) {
                 CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)})
@@ -105,7 +104,7 @@ fun CategoryDashBoard(
         verticalArrangement = Arrangement.spacedBy(7.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        CategoryHeader(text = "Category Dashboard")
+        Header(text = "Category Dashboard")
         if (selectedCategory != null) {
             Text(
                 text = MessageCli.CATEGORY_SELECTED.getMessage(selectedCategory!!.category.name),
@@ -215,7 +214,7 @@ fun CategoryDetails(categoryItem: CategoryWithTransactions) {
 }
 
 @Composable
-fun CategoryHeader(text: String = "Category List") {
+fun Header(text: String = "Category List") {
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -264,6 +263,6 @@ fun SubCategoryList(categories: List<Category>, action: (Long) -> Unit = {}) {
 @Composable
 fun PreviewMyApp() {
 
-    CategoryHeader()
+    Header()
 }
 
