@@ -79,5 +79,8 @@ public class TransactionViewModel extends ViewModel {
     }
 
 
-
+    public void resetSelectedTransaction() {
+        selectedTransaction.setValue(null);
+        categoriesUnderSelectedTransaction.setValue(null);
+    }
 }
