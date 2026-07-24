@@ -36,7 +36,11 @@ public interface CategoryTransactionDao {
 
     @Transaction
     @Query("SELECT * FROM categories WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)")
-    LiveData<List<CategoryWithTransactions>> searchCategories(String query, String defaultDescription);
+    LiveData<List<CategoryWithTransactions>> searchCategoriesByType(String query, String defaultDescription);
+
+    @Transaction
+    @Query("SELECT * FROM categories WHERE (LOWER(name) LIKE '%' || LOWER(:query) || '%' OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)) AND type == :type")
+    LiveData<List<CategoryWithTransactions>> searchCategoriesByType(String query, String defaultDescription, String type);
 
     @Query("SELECT categoryId FROM categoryTransactionCrossRef WHERE transactionId = :transactionId")
     List<Long> getCategoryIdsForTransaction(long transactionId);
@@ -50,7 +54,7 @@ public interface CategoryTransactionDao {
 
     @Transaction
     @Query("SELECT * FROM categories WHERE categoryId IN (:categoryIds)")
-    LiveData<List<CategoryWithTransactions>> getCategoriesByIds(Collection<Long> categoryIds);
+    List<CategoryWithTransactions> getCategoriesByIds(Collection<Long> categoryIds);
 
 
 

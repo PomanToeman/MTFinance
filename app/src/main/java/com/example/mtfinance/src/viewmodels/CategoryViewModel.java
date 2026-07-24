@@ -68,6 +68,10 @@ public class CategoryViewModel extends ViewModel {
         }).start();
     }
 
+    public void resetSelectedCategory() {
+        selectedCategory.setValue(null);
+    }
+
     public LiveData<CategoryWithTransactions> getSelectedCategory() {
         return selectedCategory;
     }

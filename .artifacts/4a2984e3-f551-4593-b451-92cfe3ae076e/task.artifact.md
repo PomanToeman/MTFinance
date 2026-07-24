@@ -1,0 +1,7 @@
+- [ ] Revert `TransactionFormViewModel.java`
+- [ ] Revert `CategoryFormViewModel.java`
+- [ ] Revert `TransactionImportFormViewModel.java`
+- [ ] Revert `TransactionFormViewModelTest.java`
+- [ ] Revert `TransactionImportFormViewModelTest.java`
+- [ ] Revert `CategoryFormViewModelTest.java`
+- [ ] Verify unit tests pass

@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 public class TransactionFormViewModelTest {
 
@@ -44,11 +45,12 @@ public class TransactionFormViewModelTest {
     private TrackingRepository trackingRepository;
 
     private TransactionFormViewModel viewModel;
+    private final Executor synchronousExecutor = Runnable::run;
 
     @Before
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        viewModel = new TransactionFormViewModel(trackingRepository);
+        viewModel = new TransactionFormViewModel(trackingRepository, synchronousExecutor);
     }
 
     @Test
@@ -60,9 +62,10 @@ public class TransactionFormViewModelTest {
 
         viewModel.setName("Double Category");
         viewModel.setAmount(BigDecimal.TEN);
+        viewModel.setType(TrackingType.EXPENSE);
         viewModel.addCategoryId(1L);
         viewModel.addCategoryId(2L);
-        viewModel.setType(TrackingType.EXPENSE);
+
 
         // Act
         viewModel.saveTransaction();

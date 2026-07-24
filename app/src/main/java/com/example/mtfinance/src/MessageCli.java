@@ -46,9 +46,22 @@ public enum MessageCli {
     TRANSACTION_CATEGORIES_NOT_EXIST("Some Categories do not exist."),
     TRANSACTION_DUPLICATE("Identical transaction already exists."),
     TRANSACTION_MIN_CATEGORY("Transaction must have at least one category"),
+    TRANSACTION_TYPE_MISMATCH("Transaction and category types do not match."),
+
 
     // Utils
-    INVALID_AMOUNT("Invalid amount: %s");
+    INVALID_AMOUNT("Invalid amount: %s"),
+
+    //Screen Messages
+    CATEGORY_SELECTED("Category selected: %s"),
+        BUDGET_DISPLAY("Budget: %s"),
+                 TYPE_DISPLAY("Type: %s"),
+    NO_PARENT_FOUND("No parent found"),
+    NO_SUB_CATEGORIES("No sub-categories"),
+    NO_TRANSACTIONS("No transactions"),
+    CATEGORY_DESCRIPTION("Description: %s"),
+    CATEGORY_MONTHLY_BUDGET("Monthly Budget: $%s");
+
 
     private final String message;
 
