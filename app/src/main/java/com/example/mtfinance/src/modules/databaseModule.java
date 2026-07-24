@@ -14,6 +14,9 @@ import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionDa
 import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
 import dagger.Module;
 import dagger.Provides;
 import dagger.hilt.InstallIn;
@@ -61,6 +64,12 @@ public class databaseModule {
     @Singleton
     public TrackingRepository provideTrackingRepository(CategoryRepository categoryRepository, TransactionRepository transactionRepository, CategoryTransactionDao categoryWithTransactionsDao) {
         return new TrackingRepository(categoryRepository, transactionRepository, categoryWithTransactionsDao);
+    }
+
+    @Provides
+    @Singleton
+    public Executor provideExecutor() {
+        return Executors.newFixedThreadPool(4);
     }
 
 

@@ -27,6 +27,7 @@ import org.mockito.MockitoAnnotations;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.concurrent.Executor;
 
 
 public class TransactionImportFormViewModelTest {
@@ -41,11 +42,12 @@ public class TransactionImportFormViewModelTest {
     private TrackingRepository trackingRepository;
 
     private TransactionImportFormViewModel viewModel;
+    private final Executor synchronousExecutor = Runnable::run;
 
     @Before
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        viewModel = new TransactionImportFormViewModel(trackingRepository);
+        viewModel = new TransactionImportFormViewModel(trackingRepository, synchronousExecutor);
     }
 
     @Test

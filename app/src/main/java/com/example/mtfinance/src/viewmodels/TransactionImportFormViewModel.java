@@ -24,9 +24,10 @@ import java.time.format.DateTimeFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
-import jakarta.inject.Inject;
+import javax.inject.Inject;
 
 /**
  * This will import Transactions from a CSV file (exported from Bank).
@@ -35,6 +36,7 @@ import jakarta.inject.Inject;
 @HiltViewModel
 public class TransactionImportFormViewModel extends ViewModel {
     private final TrackingRepository trackingRepository;
+    private final Executor executor;
     private final MutableLiveData<String> filePath = new MutableLiveData<>();
     private final MutableLiveData<CSVParser> csvParser = new MutableLiveData<>();
 
@@ -56,8 +58,9 @@ public class TransactionImportFormViewModel extends ViewModel {
 
 
     @Inject
-    public TransactionImportFormViewModel(TrackingRepository trackingRepository) {
+    public TransactionImportFormViewModel(TrackingRepository trackingRepository, Executor executor) {
         this.trackingRepository = trackingRepository;
+        this.executor = executor;
         clear();
     }
 
@@ -68,20 +71,20 @@ public class TransactionImportFormViewModel extends ViewModel {
     }
 
     private void setCsvHeaders(List<String> headers) {
-        this.csvHeaders.setValue(headers);
+        this.csvHeaders.postValue(headers);
 
     }
 
     private void setErrorMessage(String errorMessage)  {
-        this.errorMessage.setValue(errorMessage);
+        this.errorMessage.postValue(errorMessage);
     }
 
     private void setSuccessMessage(String successMessage)  {
-        this.successMessage.setValue(successMessage);
+        this.successMessage.postValue(successMessage);
     }
 
     private void setIsLoading(Boolean booleanValue) {
-        this.isLoading.setValue(booleanValue);
+        this.isLoading.postValue(booleanValue);
     }
 
     /**
@@ -179,6 +182,10 @@ public class TransactionImportFormViewModel extends ViewModel {
      */
 
     public void readTransactionFile() {
+        executor.execute(this::readTransactionFileSync);
+    }
+
+    public void readTransactionFileSync() {
         if (filePath.getValue() == null || filePath.getValue().isEmpty()) {
             setErrorMessage(MessageCli.NO_FILE_FOUND.getMessage());
             return;
@@ -195,10 +202,10 @@ public class TransactionImportFormViewModel extends ViewModel {
                     .get()
                     .parse(reader);
 
-            this.csvParser.setValue(csvParser);
-            dateHeader.setValue("");
-            nameHeader.setValue("");
-            amountHeader.setValue("");
+            this.csvParser.postValue(csvParser);
+            this.dateHeader.postValue("");
+            this.nameHeader.postValue("");
+            this.amountHeader.postValue("");
             setCsvHeaders(csvParser.getHeaderNames());
 
 
@@ -219,10 +226,14 @@ public class TransactionImportFormViewModel extends ViewModel {
      *
      */
     public void importTransaction() {
+        executor.execute(this::importTransactionSync);
+    }
+
+    public void importTransactionSync() {
         try {
             setIsLoading(Boolean.TRUE);
             validateImport();
-            TransactionFormViewModel transactionForm = new TransactionFormViewModel(this.trackingRepository);
+            TransactionFormViewModel transactionForm = new TransactionFormViewModel(this.trackingRepository, Runnable::run);
             CSVParser csvParser = this.csvParser.getValue();
             String nameHeader = this.nameHeader.getValue();
             String dateHeader = this.dateHeader.getValue();
@@ -254,7 +265,7 @@ public class TransactionImportFormViewModel extends ViewModel {
                     transactionForm.addCategoryId(findCategoryIdForTransaction(type, record.get(nameHeader)));
 
                     // create and insert instance.
-                    transactionForm.saveTransaction();
+                    transactionForm.saveTransactionSync();
 
                     // check for success
                     if (!transactionForm.getSuccessMessage().getValue().isEmpty()) {
@@ -269,12 +280,12 @@ public class TransactionImportFormViewModel extends ViewModel {
 
                 }
                 finally {
-                    transactionForm.clear();
+                    transactionForm.clearSync();
 
                 }
             }
 
-            this.successfulImports.setValue(successfulImports);
+            this.successfulImports.postValue(successfulImports);
 
 
 
