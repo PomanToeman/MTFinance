@@ -8,10 +8,12 @@ import androidx.lifecycle.ViewModel;
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.concurrent.Executor;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
@@ -36,12 +38,25 @@ public class CategoryFormViewModel extends ViewModel {
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>("");
     private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
+    private final LiveData<Boolean> isEditMode;
+    private final LiveData<List<CategoryWithTransactions>> categorySelection;
+    private final LiveData<Category> cachedCategory;
+
+
+
 
 
     @Inject
     public CategoryFormViewModel(TrackingRepository trackingRepository, Executor executor) {
         this.trackingRepository = trackingRepository;
         this.executor = executor;
+        isEditMode = Transformations.map(formFields, fields -> fields.editCategoryId != null);
+        categorySelection = Transformations.switchMap(type, type -> trackingRepository.searchCategoriesWithType("", type));
+        this.cachedCategory = Transformations.switchMap(formFields, fields -> {
+            if (fields.editCategoryId == null) return null;
+            return new MutableLiveData<>(trackingRepository.getCategoryByIdRestored(fields.editCategoryId));
+        });
+
         clearSync(); // set default values
     }
 
@@ -313,7 +328,7 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
     private static class CategoryFormFields {
-        Long editCategoryId = null;
+        public Long editCategoryId = null;
         String name = "Name";
         String description = TrackingUtlis.EMPTY_DESCRIPTION;
         Long parentId = null;
@@ -366,5 +381,15 @@ public class CategoryFormViewModel extends ViewModel {
     }
     public LiveData<String> getSuccessMessage() {
         return successMessage;
+    }
+
+    public LiveData<Boolean> IsEditMode() {
+        return isEditMode;
+    }
+    public LiveData<List<CategoryWithTransactions>> getCategorySelection() {
+        return categorySelection;
+    }
+    public LiveData<Category> getCachedCategory() {
+        return cachedCategory;
     }
 }

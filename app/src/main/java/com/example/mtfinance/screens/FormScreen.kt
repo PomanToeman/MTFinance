@@ -2,6 +2,7 @@ package com.example.mtfinance.screens
 
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,8 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.TrackingType
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
+import com.example.mtfinance.src.viewmodels.CategoryFormViewModel
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -45,7 +48,6 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val transactionAmount by transactionFormViewModel.amount.observeAsState()
     val transactionDate by transactionFormViewModel.date.observeAsState()
     val transactionType by transactionFormViewModel.type.observeAsState()
-    val categoryIds by transactionFormViewModel.categoryIds.observeAsState()
 
     val transactionNotes by transactionFormViewModel.description.observeAsState()
     val editMode by transactionFormViewModel.editMode.observeAsState()
@@ -54,6 +56,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val isLoading by transactionFormViewModel.isLoading.observeAsState()
     val cachedCategories by transactionFormViewModel.cachedCategories.observeAsState()
     var expanded: Boolean by remember { mutableStateOf(false) }
+    val categorySelection by transactionFormViewModel.categorySelection.observeAsState()
 
     // edit mode if transactionId is not null
     transactionFormViewModel.setTransactionId(transactionId)
@@ -69,7 +72,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
             LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))}, enabled = editMode == false)
 
         CategoryList(categories = cachedCategories?.toList() ?: emptyList(), actionOne = {transactionFormViewModel.removeCategoryId(it)}, actionOneLabel = "Remove")
-        ChooseCategoryForm(add = {transactionFormViewModel.addCategoryId(it)}, remove = {transactionFormViewModel.removeCategoryId(it)})
+        ChooseCategoryForm(categorySelection, actionOne = {transactionFormViewModel.addCategoryId(it)}, actionOneLabel = "Add", actionTwo = {transactionFormViewModel.removeCategoryId(it)}, actionTwoLabel = "Remove")
 
         Box(
             modifier = Modifier
@@ -141,13 +144,81 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
 
 }
 
+@Composable
+fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewModel(), navHostController: NavHostController, categoryId: Long? = null) {
+    val categoryName by categoryFormViewModel.name.observeAsState()
+    val categoryDescription by categoryFormViewModel.description.observeAsState()
+    val categoryMonthlyBudget by categoryFormViewModel.monthlyBudget.observeAsState()
+    val categoryType by categoryFormViewModel.type.observeAsState()
+    val categoryParent by categoryFormViewModel.cachedCategory.observeAsState()
+    val editMode by categoryFormViewModel.IsEditMode().observeAsState()
+    val successMessage by categoryFormViewModel.successMessage.observeAsState()
+    val errorMessage by categoryFormViewModel.errorMessage.observeAsState()
+    val isLoading by categoryFormViewModel.isLoading.observeAsState()
+    val categorySelection by categoryFormViewModel.categorySelection.observeAsState()
+
+    // edit mode if categoryId is not null
+    categoryFormViewModel.setEditCategory(categoryId)
+
+    DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        Header("Category Form")
+        TextFieldForm("Name", categoryName, onValueChange = {categoryFormViewModel.setName(it)}, minLines = 1, maxLines = 1, enabled = editMode == false)
+        TextFieldForm("Description", categoryDescription, onValueChange = {categoryFormViewModel.setDescription(it)}, minLines = 3, maxLines = 3, placeholder = TrackingUtlis.EMPTY_DESCRIPTION)
+        NumberFieldForm("Monthly Budget", categoryMonthlyBudget, setter = {categoryFormViewModel.setMonthlyBudget(it)}, enabled = editMode == false)
+        Column(modifier = Modifier.padding(16.dp)) {
+            if (categoryParent != null) {
+                CategoryListItem(categoryParent, actionOne = {categoryFormViewModel.setParentId(null)}, actionOneLabel = "Remove Parent")
+            }
+            else {
+                Text("Parent: The root of the category")
+            }
+            ChooseCategoryForm( categorySelection, actionOne = {categoryFormViewModel.setParentId(it)})
+            Text("Type: " + categoryType.toString().lowercase())
+            Button(onClick = { categoryFormViewModel.saveCategory() }) {
+                Text("Save")
+            }
+            if (isLoading == true) {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .padding(16.dp)
+                )
+            }
+
+            if (successMessage != null) {
+                Text(successMessage!!, color = Color.Green)
+            }
+            if (errorMessage != null) {
+                Text(errorMessage!!, color = Color.Red)
+            }
+
+            if (editMode == true) {
+                Button(onClick = { categoryFormViewModel.deleteCategory(true) }) {
+                    Text("Delete")
+                }
+            }
+            else {
+                Button(onClick = { categoryFormViewModel.clear() }) {
+                    Text("Clear")
+                }
+            }
+
+            Button(onClick = { navHostController.navigate("category") }) {
+                Text("Back")
+            }
+        }
+    }
+
+}
+
 /**
  * Allows you to view and choose a category from a list via a dialogue. Can input actions as composables for specific selection actions.
  */
 @Composable
-fun ChooseCategoryForm(transactionFormViewModel: TransactionFormViewModel = hiltViewModel(), add: (Long) -> Unit = {}, remove: (Long) -> Unit = {}) {
+fun ChooseCategoryForm(categorySelection: List<CategoryWithTransactions?>?, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null) {
     var showDialog by remember { mutableStateOf(false) }
-    val categorySelection by transactionFormViewModel.categorySelection.observeAsState()
+
     Button(onClick = { showDialog = !showDialog }) {
         Text("Choose Category")
     }
@@ -156,7 +227,7 @@ fun ChooseCategoryForm(transactionFormViewModel: TransactionFormViewModel = hilt
         Dialog( onDismissRequest = { showDialog = false }) {
             LazyColumn() {
                 item {
-                    CategoryList(categories = categorySelection?.toList() ?: emptyList(), actionOne = {add(it)}, actionOneLabel = "Add", actionTwo = {remove(it)}, actionTwoLabel = "Remove", backgroundColor = Color.Black)
+                    CategoryList(categories = categorySelection as Collection<CategoryWithTransactions>, actionOne = actionOne, actionOneLabel = actionOneLabel, actionTwo = actionTwo, actionTwoLabel = actionTwoLabel, backgroundColor = Color.Black)
                 }
                 item {
                     Button(onClick = { showDialog = false }) {

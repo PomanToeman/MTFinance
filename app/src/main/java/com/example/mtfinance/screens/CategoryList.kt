@@ -30,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 
 import androidx.compose.ui.unit.dp
@@ -54,24 +56,26 @@ fun CategoryListScreen(
     val categories by categoryViewModel.filteredCategories.observeAsState()
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
 
+    FabRightBottomCorner(onClick = { NavHostController.navigate(Routes.CATEGORY_FORM.route) }, content = {
+        DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            if (selectedCategory == null) {
 
-   DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
-        if (selectedCategory == null) {
 
-
-            Header()
-            CategorySearch()
-            if (categories != null && categories!!.isNotEmpty()) {
-                CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)})
-            } else {
-                Text("No categories Found", color = MaterialTheme.colorScheme.primary)
+                Header()
+                CategorySearch()
+                if (categories != null && categories!!.isNotEmpty()) {
+                    CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)}, actionOneLabel = "Show more", backgroundColor = Color.LightGray)
+                } else {
+                    Text("No categories Found", color = MaterialTheme.colorScheme.primary)
+                }
             }
-        }
-        else {
-            CategoryDashBoard()
-        }
+            else {
+                CategoryDashBoard()
+            }
 
-    }
+        }
+    })
+
 
 
 
@@ -146,18 +150,24 @@ fun CategoryListItem(categoryItem: Category?, actionOne: ((Long) -> Unit)? = nul
 
 
         ) {
-
-
-
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth().padding(3.dp),
                     content = {
-                        Text(categoryItem.name, color = MaterialTheme.colorScheme.primary)
+                        Row() {
+
+                            Text(categoryItem.name, modifier = Modifier.weight(1f), textAlign = TextAlign.Left, minLines = 1, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+                            Text("$" + categoryItem.monthlyBudget.setScale(2, RoundingMode.HALF_UP).toString(), textAlign = TextAlign.Right)
+
+
+                        }
+                        Text(categoryItem.type.toString(), color = Color.Black)
+
 
                         if (expanded.value) {
 
-                            Text(MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.description), color = MaterialTheme.colorScheme.primary)
+                            Text(MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.description), color = Color.Black, minLines = 1, maxLines = 3, overflow = TextOverflow.Ellipsis)
                             Row() {
                                 if (actionOne != null) {
                                     TextButton(onClick = { actionOne(categoryItem.categoryId) }) {
