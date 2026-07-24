@@ -1,17 +1,13 @@
-# Task List - Refactor ViewModels for Background Execution
+# Task List - Refactor CategoryFormViewModel for Background Execution
 
-- [x] Provide `Executor` in `databaseModule.java`
-- [x] Refactor `TransactionFormViewModel.java`
-    - [x] Create `TransactionFormFields` state class
+- [x] Refactor `CategoryFormViewModel.java`
+    - [x] Create `CategoryFormFields` state class
     - [x] Refactor LiveData to use consolidated state
     - [x] Implement `*Sync` and `*Async` methods with `Executor`
-- [x] Refactor `TransactionImportFormViewModel.java`
-    - [x] Update constructor to inject `Executor`
-    - [x] Refactor `readTransactionFile` and `importTransaction` to be asynchronous
-- [x] Update Unit Tests
-    - [x] `TransactionFormViewModelTest.java`
-    - [x] `TransactionImportFormViewModelTest.java`
-- [/] Verification
-    - [ ] Clean build
-    - [ ] Run all unit tests
-    - [ ] Manual verification on device
+- [x] Update `CategoryFormViewModelTest.java`
+- [x] Verification
+    - [x] Clean build
+    - [x] Run `CategoryFormViewModelTest`
+    - [x] Run all unit tests
+- [x] Final Cleanup
+    - [x] Remove `allowMainThreadQueries()` from `databaseModule.java`

@@ -24,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
+import java.util.concurrent.Executor;
 
 public class CategoryFormViewModelTest {
 
@@ -34,11 +35,20 @@ public class CategoryFormViewModelTest {
     private TrackingRepository trackingRepository;
 
     private CategoryFormViewModel viewModel;
+    private final Executor synchronousExecutor = Runnable::run;
 
     @Before
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        viewModel = new CategoryFormViewModel(trackingRepository);
+        viewModel = new CategoryFormViewModel(trackingRepository, synchronousExecutor);
+        
+        // Observe all LiveData to ensure Transformations.map are active
+        viewModel.getName().observeForever(s -> {});
+        viewModel.getDescription().observeForever(s -> {});
+        viewModel.getParentId().observeForever(l -> {});
+        viewModel.getMonthlyBudget().observeForever(b -> {});
+        viewModel.getMinimumBudget().observeForever(b -> {});
+        viewModel.getType().observeForever(t -> {});
     }
 
     @Test

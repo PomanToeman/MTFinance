@@ -1,8 +1,8 @@
 package com.example.mtfinance.src.viewmodels;
 
-import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.MessageCli;
@@ -12,37 +12,37 @@ import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import java.math.BigDecimal;
+import java.util.concurrent.Executor;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
-import jakarta.inject.Inject;
+import javax.inject.Inject;
 
 @HiltViewModel
 public class CategoryFormViewModel extends ViewModel {
     // instance fields.
     private final TrackingRepository trackingRepository;
+    private final Executor executor;
 
-    private final MutableLiveData<String> name = new MutableLiveData<>();
-    private final MutableLiveData<String> description = new MutableLiveData<>();
-    private final MutableLiveData<Long> parentId = new MutableLiveData<>();
+    private final MutableLiveData<CategoryFormFields> formFields = new MutableLiveData<>(new CategoryFormFields());
 
-    private final MutableLiveData<BigDecimal> monthlyBudget = new MutableLiveData<>();
-    private final MutableLiveData<BigDecimal> minimumBudget = new MutableLiveData<>();
-    private final MutableLiveData<TrackingType> type = new MutableLiveData<>();
+    private final LiveData<String> name = Transformations.map(formFields, fields -> fields.name);
+    private final LiveData<String> description = Transformations.map(formFields, fields -> fields.description);
+    private final LiveData<Long> parentId = Transformations.map(formFields, fields -> fields.parentId);
+    private final LiveData<BigDecimal> monthlyBudget = Transformations.map(formFields, fields -> fields.monthlyBudget);
+    private final LiveData<BigDecimal> minimumBudget = Transformations.map(formFields, fields -> fields.minimumBudget);
+    private final LiveData<TrackingType> type = Transformations.map(formFields, fields -> fields.type);
 
     // logistical fields
-    private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>();
-    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
-    private final MutableLiveData<String> successMessage = new MutableLiveData<>();
-
-
-    // creating mode if null
-    private Long editCategoryId = null;
+    private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
+    private final MutableLiveData<String> errorMessage = new MutableLiveData<>("");
+    private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
 
 
     @Inject
-    public CategoryFormViewModel(TrackingRepository trackingRepository) {
+    public CategoryFormViewModel(TrackingRepository trackingRepository, Executor executor) {
         this.trackingRepository = trackingRepository;
-        clear(); // set default values
+        this.executor = executor;
+        clearSync(); // set default values
     }
 
     /**
@@ -51,7 +51,9 @@ public class CategoryFormViewModel extends ViewModel {
      * @param categoryId - The category in database to edit.
      */
     public void setEditCategory(Long categoryId) {
-        this.editCategoryId = categoryId;
+        CategoryFormFields fields = getFields();
+        fields.editCategoryId = categoryId;
+        updateFields(fields);
         if (categoryId != null) {
             loadCategoryForEditing();
         }
@@ -61,34 +63,39 @@ public class CategoryFormViewModel extends ViewModel {
      * Gets category and sets all fields to its values.
      * Will ignore if category is root or cannot be found.
      */
-    private void loadCategoryForEditing() {
-        if (!trackingRepository.categoryExists(editCategoryId)) {
+    public void loadCategoryForEditing() {
+        executor.execute(this::loadCategoryForEditingSync);
+    }
+
+    public void loadCategoryForEditingSync() {
+        CategoryFormFields fields = getFields();
+        if (fields.editCategoryId == null) return;
+
+        if (!trackingRepository.categoryExists(fields.editCategoryId)) {
             setErrorMessage(MessageCli.CATEGORY_NOT_FOUND.getMessage());
             return;
         }
-        Category category = trackingRepository.getCategoryByIdRestored(editCategoryId);
+        Category category = trackingRepository.getCategoryByIdRestored(fields.editCategoryId);
         if (category == null || trackingRepository.isRoot(category)) {
             setErrorMessage(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
-            setEditCategory(null);
+            fields.editCategoryId = null;
+            updateFields(fields);
             return;
         }
-        setName(category.getName());
-        setDescription(category.getDescription());
-        setParentId(category.getParentId());
-        setMonthlyBudget(category.getMonthlyBudget());
-        setMinimumBudget(category.determineMinimumBudget());
-
-    }
-
-    private void setMinimumBudget(BigDecimal minimumBudget) {
-        this.minimumBudget.setValue(minimumBudget);
+        
+        fields.name = category.getName();
+        fields.description = category.getDescription();
+        fields.parentId = category.getParentId();
+        fields.monthlyBudget = category.getMonthlyBudget();
+        fields.minimumBudget = category.determineMinimumBudget();
+        updateFields(fields);
     }
 
     public void setName(String name) {
-        if (name == null) {
-            return;
-        }
-        this.name.setValue(name);
+        if (name == null) return;
+        CategoryFormFields fields = getFields();
+        fields.name = name;
+        updateFields(fields);
     }
 
     /**
@@ -96,10 +103,18 @@ public class CategoryFormViewModel extends ViewModel {
      * @param description - the description to be set (if not empty)
      */
     public void setDescription(String description) {
-        this.description.setValue(TrackingUtlis.determineDescription(description));
+        CategoryFormFields fields = getFields();
+        fields.description = TrackingUtlis.determineDescription(description);
+        updateFields(fields);
     }
 
     public void setParentId(Long parentId) {
+        executor.execute(() -> setParentIdSync(parentId));
+    }
+
+    public void setParentIdSync(Long parentId) {
+        CategoryFormFields fields = getFields();
+
         if (parentId != null && !trackingRepository.categoryExists(parentId)) {
             setErrorMessage(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
             return;
@@ -108,7 +123,8 @@ public class CategoryFormViewModel extends ViewModel {
             setErrorMessage(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
             return;
         }
-        this.parentId.setValue(parentId);
+        fields.parentId = parentId;
+        updateFields(fields);
     }
 
     /**
@@ -116,28 +132,32 @@ public class CategoryFormViewModel extends ViewModel {
      * @param monthlyBudget - the monthly budget to set.
      */
     public void setMonthlyBudget(BigDecimal monthlyBudget) {
-        if (monthlyBudget.compareTo(minimumBudget.getValue()) <= 0) {
-            this.monthlyBudget.setValue(minimumBudget.getValue());
-            return;
+        CategoryFormFields fields = getFields();
+        if (monthlyBudget.compareTo(fields.minimumBudget) <= 0) {
+            fields.monthlyBudget = fields.minimumBudget;
+        } else {
+            fields.monthlyBudget = monthlyBudget;
         }
-        this.monthlyBudget.setValue(monthlyBudget);
+        updateFields(fields);
     }
     
     // private since only Expense categories allowed.
     private void setType(TrackingType type) {
-        this.type.setValue(type);
+        CategoryFormFields fields = getFields();
+        fields.type = type;
+        updateFields(fields);
     }
 
 
     // private setters
     private void setIsLoading(boolean isLoading) {
-        this.isLoading.setValue(isLoading);
+        updateLiveData(this.isLoading, isLoading);
     }
     private void setErrorMessage(String errorMessage) {
-        this.errorMessage.setValue(errorMessage);
+        updateLiveData(this.errorMessage, errorMessage);
     }
     private void setSuccessMessage(String successMessage) {
-        this.successMessage.setValue(successMessage);
+        updateLiveData(this.successMessage, successMessage);
     }
 
 
@@ -147,22 +167,25 @@ public class CategoryFormViewModel extends ViewModel {
      * deletes all of its transactions if permitted (will move to root category if permitted).
      */
     public void deleteCategory(boolean deleteTransactions) {
-        if (!trackingRepository.categoryExists(editCategoryId)) {
+        executor.execute(() -> deleteCategorySync(deleteTransactions));
+    }
+
+    public void deleteCategorySync(boolean deleteTransactions) {
+        CategoryFormFields fields = getFields();
+        if (!trackingRepository.categoryExists(fields.editCategoryId)) {
             setErrorMessage(MessageCli.CATEGORY_DELETE_NONE.getMessage());
             return;
         }
         try {
             setIsLoading(true);
-            trackingRepository.deleteCategory(editCategoryId, deleteTransactions);
-            setEditCategory(null);
-            clear();
+            trackingRepository.deleteCategory(fields.editCategoryId, deleteTransactions);
+            clearSync();
             setSuccessMessage(MessageCli.CATEGORY_DELETED.getMessage());
             setErrorMessage("");
         }
         catch (Exception e) {
             setErrorMessage(MessageCli.CATEGORY_DELETE_FAILED.getMessage(e.getMessage()));
             setSuccessMessage("");
-            return;
         }
         finally {
             setIsLoading(false);
@@ -176,33 +199,40 @@ public class CategoryFormViewModel extends ViewModel {
      */
 
     public void saveCategory() {
+        executor.execute(this::saveCategorySync);
+    }
+
+    public void saveCategorySync() {
+       CategoryFormFields fields = getFields();
+
        try {
-           validateForm();
+           validateFormSync(fields);
 
            setErrorMessage("");
            setSuccessMessage("");
            setIsLoading(true);
 
            // Create Category
-           if (editCategoryId == null) {
-               Category newCategory = new Category(name.getValue(), description.getValue(), monthlyBudget.getValue(), type.getValue());
-               if (parentId.getValue() != null) {
-                   newCategory.setParentId(parentId.getValue());
+           if (fields.editCategoryId == null) {
+               Category newCategory = new Category(fields.name, fields.description, fields.monthlyBudget, fields.type);
+               if (fields.parentId != null) {
+                   newCategory.setParentId(fields.parentId);
                }
                trackingRepository.insertCategory(newCategory);
-               setEditCategory(newCategory.getCategoryId());
+               fields.editCategoryId = newCategory.getCategoryId();
+               updateFields(fields);
            }
            // Edit Category
            else {
-               Category category = trackingRepository.getCategoryByIdRestored(editCategoryId);
+               Category category = trackingRepository.getCategoryByIdRestored(fields.editCategoryId);
                if (category == null) {
                    return;
                }
-               category.setName(name.getValue());
-               category.setDescription(description.getValue());
-               category.setMonthlyBudget(monthlyBudget.getValue());
-               if (parentId.getValue() != null) {
-                   category.setParent(trackingRepository.getCategoryByIdRestored(parentId.getValue()));
+               category.setName(fields.name);
+               category.setDescription(fields.description);
+               category.setMonthlyBudget(fields.monthlyBudget);
+               if (fields.parentId != null) {
+                   category.setParent(trackingRepository.getCategoryByIdRestored(fields.parentId));
                }
                trackingRepository.updateCategoryTree(category);
            }
@@ -226,52 +256,89 @@ public class CategoryFormViewModel extends ViewModel {
      * Checks if the fields are filled out correctly.
      * @throws IllegalArgumentException
      */
-    private void validateForm() throws IllegalArgumentException{
-        if (name.getValue() == null || name.getValue().isEmpty()) {
+    private void validateFormSync(CategoryFormFields fields) throws IllegalArgumentException{
+        if (fields.name == null || fields.name.isEmpty()) {
             throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EMPTY.getMessage());
         }
 
         // Check if name already exists (excluding the current category if editing)
-        if (trackingRepository.categoryNameExists(name.getValue())) {
-            if (editCategoryId == null) {
+        if (trackingRepository.categoryNameExists(fields.name)) {
+            if (fields.editCategoryId == null) {
                 throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
             } else {
-                Category current = trackingRepository.getCategoryByIdRestored(editCategoryId);
-                if (current != null && !current.getName().equalsIgnoreCase(name.getValue().trim())) {
+                Category current = trackingRepository.getCategoryByIdRestored(fields.editCategoryId);
+                if (current != null && !current.getName().equalsIgnoreCase(fields.name.trim())) {
                     throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
                 }
             }
         }
 
-        TrackingUtlis.checkAmount(monthlyBudget.getValue());
+        TrackingUtlis.checkAmount(fields.monthlyBudget);
         // if parent category is set, check it exists.
-        if (parentId.getValue() != null && !trackingRepository.categoryExists(parentId.getValue())) {
+        if (fields.parentId != null && !trackingRepository.categoryExists(fields.parentId)) {
             throw new IllegalArgumentException(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
-
         }
-
-
     }
 
     /**
      * Clears all fields to their default values
      */
     public void clear() {
-        editCategoryId = null;
-        name.setValue("Name");
-        description.setValue(TrackingUtlis.EMPTY_DESCRIPTION);
-        parentId.setValue(null);
-        monthlyBudget.setValue(BigDecimal.ONE);
-        minimumBudget.setValue(BigDecimal.ZERO);
-        type.setValue(TrackingType.EXPENSE);
-        errorMessage.setValue("");
-        successMessage.setValue("");
+        executor.execute(this::clearSync);
+    }
+
+    public void clearSync() {
+        CategoryFormFields fields = new CategoryFormFields();
+        updateFields(fields);
+        setErrorMessage("");
+        setSuccessMessage("");
+        setIsLoading(false);
+    }
+
+    private CategoryFormFields getFields() {
+        CategoryFormFields fields = formFields.getValue();
+        return fields != null ? fields.copy() : new CategoryFormFields();
+    }
+
+    private void updateFields(CategoryFormFields fields) {
+        updateLiveData(formFields, fields);
+    }
+
+    private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
+        try {
+            liveData.setValue(value);
+        } catch (RuntimeException e) {
+            liveData.postValue(value);
+        }
+    }
+
+    private static class CategoryFormFields {
+        Long editCategoryId = null;
+        String name = "Name";
+        String description = TrackingUtlis.EMPTY_DESCRIPTION;
+        Long parentId = null;
+        BigDecimal monthlyBudget = BigDecimal.ONE;
+        BigDecimal minimumBudget = BigDecimal.ZERO;
+        TrackingType type = TrackingType.EXPENSE;
+
+        CategoryFormFields copy() {
+            CategoryFormFields copy = new CategoryFormFields();
+            copy.editCategoryId = this.editCategoryId;
+            copy.name = this.name;
+            copy.description = this.description;
+            copy.parentId = this.parentId;
+            copy.monthlyBudget = this.monthlyBudget;
+            copy.minimumBudget = this.minimumBudget;
+            copy.type = this.type;
+            return copy;
+        }
     }
 
 
     // PUBLIC GETTERS
     public Long getEditCategoryId() {
-        return editCategoryId;
+        CategoryFormFields fields = formFields.getValue();
+        return fields != null ? fields.editCategoryId : null;
     }
     public LiveData<String> getName() {
         return name;
@@ -300,8 +367,4 @@ public class CategoryFormViewModel extends ViewModel {
     public LiveData<String> getSuccessMessage() {
         return successMessage;
     }
-
-
-
-
 }
