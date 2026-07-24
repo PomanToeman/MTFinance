@@ -16,10 +16,12 @@ fun AppNavigation() {
 
         NavHost(navController, startDestination = "home") {
 
-            composable("home") { HomeScreen(navController) }
-            composable("category") { CategoryListScreen(navController) }
-            composable("transaction") { TransactionListScreen(navHostController = navController) }
-            composable("transactionForm") { TransactionFormScreen(navHostController = navController) }
+            composable(Routes.HOME.route) { HomeScreen(navController) }
+            composable(Routes.CATEGORY.route) { CategoryListScreen(navController) }
+            composable(Routes.TRANSACTION.route) { TransactionListScreen(navHostController = navController) }
+            composable(Routes.TRANSACTION_FORM_EDIT.route) { backStackEntry -> TransactionFormScreen(navHostController = navController, transactionId = backStackEntry.arguments?.getString("transactionId")?.toLong()) }
+            composable(Routes.TRANSACTION_FORM.route) { TransactionFormScreen(navHostController = navController) }
+
 
 
 
@@ -33,3 +35,22 @@ fun AppNavigation() {
 
 
 }
+
+enum class Routes {
+    HOME("home"),
+    CATEGORY("category"),
+    TRANSACTION("transaction"),
+    TRANSACTION_FORM("transactionForm"),
+    TRANSACTION_FORM_EDIT("transactionForm/{transactionId}"),
+    TRANSACTION_IMPORT("transactionImport")
+    ;
+
+    val route: String
+    constructor(route: String) {
+        this.route = route
+    }
+
+
+
+}
+

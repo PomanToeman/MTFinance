@@ -2,7 +2,6 @@ package com.example.mtfinance.screens
 
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,8 +14,6 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,7 +32,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.mtfinance.src.trackingengine.TrackingType
-import com.example.mtfinance.src.viewmodels.CategoryViewModel
+import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -43,12 +40,13 @@ import java.time.format.DateTimeFormatter
 
 
 @Composable
-fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = hiltViewModel(), navHostController: NavHostController) {
+fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = hiltViewModel(), navHostController: NavHostController, transactionId: Long? = null) {
     val transactionName by transactionFormViewModel.name.observeAsState()
     val transactionAmount by transactionFormViewModel.amount.observeAsState()
     val transactionDate by transactionFormViewModel.date.observeAsState()
     val transactionType by transactionFormViewModel.type.observeAsState()
     val categoryIds by transactionFormViewModel.categoryIds.observeAsState()
+
     val transactionNotes by transactionFormViewModel.description.observeAsState()
     val editMode by transactionFormViewModel.editMode.observeAsState()
     val successMessage by transactionFormViewModel.successMessage.observeAsState()
@@ -57,25 +55,28 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val cachedCategories by transactionFormViewModel.cachedCategories.observeAsState()
     var expanded: Boolean by remember { mutableStateOf(false) }
 
-
+    // edit mode if transactionId is not null
+    transactionFormViewModel.setTransactionId(transactionId)
 
     DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
         Text("Transaction Form")
-        TextFieldForm("Name", transactionName, onValueChange = {transactionFormViewModel.setName(it)})
-        NumbereFieldForm("Amount", transactionAmount, setter = {transactionFormViewModel.setAmount(it)})
+        TextFieldForm("Name", transactionName, onValueChange = {transactionFormViewModel.setName(it)}, minLines = 1, maxLines = 1, enabled = editMode == false)
+        TextFieldForm("Description", transactionNotes, onValueChange = {transactionFormViewModel.setDescription(it)}, minLines = 3, maxLines = 3, placeholder = TrackingUtlis.EMPTY_DESCRIPTION)
+        NumberFieldForm("Amount", transactionAmount, setter = {transactionFormViewModel.setAmount(it)}, enabled = editMode == false)
 
         Text(transactionDate?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString())
         DatePickerField(value = transactionDate?.toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
-            LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))})
+            LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))}, enabled = editMode == false)
 
         CategoryList(categories = cachedCategories?.toList() ?: emptyList(), actionOne = {transactionFormViewModel.removeCategoryId(it)}, actionOneLabel = "Remove")
         ChooseCategoryForm(add = {transactionFormViewModel.addCategoryId(it)}, remove = {transactionFormViewModel.removeCategoryId(it)})
 
         Box(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(16.dp),
+
         ) {
-            Button(onClick = { expanded = !expanded }) {
+            Button(onClick = { expanded = !expanded }, enabled = editMode == false) {
                 Text("Type: " + transactionType.toString().lowercase())
             }
             DropdownMenu(
@@ -100,12 +101,32 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         Button(onClick = { transactionFormViewModel.saveTransaction() }) {
             Text("Save")
         }
+        if (isLoading == true) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .padding(16.dp)
+            ) {
+            }
+        }
 
         if (successMessage != null) {
-            Text(successMessage!!, color = androidx.compose.ui.graphics.Color.Green)
+            Text(successMessage!!, color = Color.Green)
         }
         if (errorMessage != null) {
-            Text(errorMessage!!, color = androidx.compose.ui.graphics.Color.Red)
+            Text(errorMessage!!, color = Color.Red)
+        }
+
+        if (editMode == true) {
+            Button(onClick = { transactionFormViewModel.deleteTransaction() }) {
+                Text("Delete")
+            }
+        }
+        else {
+            Button(onClick = { transactionFormViewModel.clear() }) {
+                Text("Clear")
+            }
         }
 
         Button(onClick = { navHostController.navigate("transaction") }) {
@@ -114,15 +135,18 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
 
 
 
+
+
     }
 
 }
 
-
+/**
+ * Allows you to view and choose a category from a list via a dialogue. Can input actions as composables for specific selection actions.
+ */
 @Composable
 fun ChooseCategoryForm(transactionFormViewModel: TransactionFormViewModel = hiltViewModel(), add: (Long) -> Unit = {}, remove: (Long) -> Unit = {}) {
     var showDialog by remember { mutableStateOf(false) }
-    val cachedCategories by transactionFormViewModel.cachedCategories.observeAsState()
     val categorySelection by transactionFormViewModel.categorySelection.observeAsState()
     Button(onClick = { showDialog = !showDialog }) {
         Text("Choose Category")
@@ -154,12 +178,12 @@ fun ChooseCategoryForm(transactionFormViewModel: TransactionFormViewModel = hilt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange: (Long?) -> Unit) {
+fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange: (Long?) -> Unit, enabled: Boolean = true) {
     var showDialog by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = valuelong?.toEpochDay()?.times(1000 * 60 * 60 * 24))
 
     // Button to trigger the dialog
-    Button(onClick = { showDialog = true }) {
+    Button(onClick = { showDialog = true }, enabled = enabled) {
         Text(text = "Pick a Date")
     }
 
@@ -189,15 +213,15 @@ fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange:
 
 
 @Composable
-fun TextFieldForm(label: String, value: String?, onValueChange: (String) -> Unit) {
-    TextField(label = { Text(label) }, value = value ?: "", onValueChange = onValueChange)
+fun TextFieldForm(label: String, value: String?, onValueChange: (String) -> Unit, minLines: Int = 1, maxLines: Int = 1, placeholder: String = "", enabled: Boolean = true) {
+    TextField(label = { Text(label) }, value = value ?: "", onValueChange = onValueChange, minLines = minLines, maxLines = maxLines, placeholder = { Text(placeholder)}, enabled = enabled)
 }
 
 @Composable
-fun NumbereFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal) -> Unit) {
+fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> Unit, enabled: Boolean = true) {
     OutlinedTextField(
         label = { Text(label) },
-        value =  if (value != null && value != BigDecimal.ZERO) value.toString() else "",
+        value = value?.toString() ?: "",
         prefix = { Text("$ ") },
         placeholder = { Text("0.00") },
         onValueChange = {input ->
@@ -206,7 +230,7 @@ fun NumbereFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal) -> 
             if (filteredInput.isNotEmpty() ) {
 
                 if (filteredInput.last() == '.') {
-                    setter(BigDecimal(filteredInput + "00"))
+                    setter(BigDecimal(filteredInput + "0"))
                     return@OutlinedTextField
                 }
                 if (filteredInput.first() == '.') {
@@ -224,15 +248,17 @@ fun NumbereFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal) -> 
                 try {
                     setter(BigDecimal(filteredInput))
                 } catch (e: NumberFormatException) {
-                    setter(BigDecimal.ZERO)
+                    setter(null)
                 }
             }
             else {
-                setter(BigDecimal.ZERO)
+                setter(null)
             }
 
 
-        }
+        },
+        enabled = enabled
+
     )
 
 

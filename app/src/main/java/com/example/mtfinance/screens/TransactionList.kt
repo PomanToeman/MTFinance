@@ -1,6 +1,5 @@
 package com.example.mtfinance.screens
 
-import android.widget.Button
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,7 +42,7 @@ fun TransactionListScreen(transactionViewModel: TransactionViewModel = hiltViewM
     val filteredTransactions by transactionViewModel.filteredTransactions.observeAsState()
     val searchQuery by transactionViewModel.searchQuery.observeAsState()
     val selectedTransaction by transactionViewModel.selectedTransaction.observeAsState()
-    FabRightBottomCorner(onClick = { navHostController.navigate("transactionForm") }, content = {
+    FabRightBottomCorner(onClick = { navHostController.navigate(Routes.TRANSACTION_FORM.route) }, content = {
         DefaultColumn(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             if (selectedTransaction == null) {
                 Header("Transaction List")
@@ -58,8 +57,10 @@ fun TransactionListScreen(transactionViewModel: TransactionViewModel = hiltViewM
 
                     TransactionList(
                         filteredTransactions!!,
-                        action = { transactionViewModel.setSelectedTransaction(it) },
-                        actionLabel = "Show more",
+                        actionOne = { transactionViewModel.setSelectedTransaction(it) },
+                        actionOneLabel = "Show more",
+                        actionTwo = { navHostController.navigate(Routes.TRANSACTION_FORM.route + "/$it") },
+                        actionTwoLabel = "Edit",
                         backgroundColor = Color.LightGray
                     )
                 } else {
@@ -76,7 +77,7 @@ fun TransactionListScreen(transactionViewModel: TransactionViewModel = hiltViewM
 }
 
 @Composable
-fun TransactionList(transactions: Collection<Transaction>, modifier: Modifier = Modifier, action: ((Long) -> Unit)? = null, actionLabel: String = "Select", backgroundColor: Color = Color.Gray) {
+fun TransactionList(transactions: Collection<Transaction>, modifier: Modifier = Modifier, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String = "Select", actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String = "Select", backgroundColor: Color = Color.Gray) {
     LazyColumn(modifier = modifier.fillMaxSize().height(500.dp).padding(16.dp).border(
         width = 2.dp,
         color = Color.Black,
@@ -84,14 +85,14 @@ fun TransactionList(transactions: Collection<Transaction>, modifier: Modifier = 
     ))
          {
         items(transactions.size) { index ->
-            TransactionListItem(transactions.elementAt(index), action = action, actionLabel = actionLabel, backgroundColor = backgroundColor)
+            TransactionListItem(transactions.elementAt(index), actionOne = actionOne, actionOneLabel = actionOneLabel, actionTwo = actionTwo, actionTwoLabel = actionTwoLabel, backgroundColor = backgroundColor)
         }
     }
 
 }
 
 @Composable
-fun TransactionListItem(transaction: Transaction, action: ((Long) -> Unit)? = null, actionLabel: String = "Select", expanded: Boolean = false, backgroundColor: Color = Color.Gray) {
+fun TransactionListItem(transaction: Transaction, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String = "Select", actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String = "Select", expanded: Boolean = false, backgroundColor: Color = Color.Gray) {
     val expanded = remember { mutableStateOf(expanded) }
     Box(
         modifier = Modifier
@@ -112,11 +113,19 @@ fun TransactionListItem(transaction: Transaction, action: ((Long) -> Unit)? = nu
                 Text(transaction.date.toLocalDate().format(formatter).toString(), textAlign = TextAlign.Left)
                 if (expanded.value) {
                     Text(transaction.description, minLines = 1, maxLines = 3)
-                    if (action != null) {
-                        TextButton(onClick = { action(transaction.transactionId) }) {
-                            Text("Select")
+                    Row() {
+                        if (actionOne != null) {
+                            TextButton(onClick = { actionOne(transaction.transactionId) }) {
+                                Text(actionOneLabel)
+                            }
+                        }
+                        if (actionTwo != null) {
+                            TextButton(onClick = { actionTwo(transaction.transactionId) }) {
+                                Text(actionTwoLabel)
+                            }
                         }
                     }
+
                 }
 
 

@@ -22,7 +22,7 @@ fun HomeScreen(NavHostController: NavHostController, homeViewModel: HomeViewMode
     ) {
         Text("Home Screen")
         Button(
-            onClick = { NavHostController.navigate("category") }
+            onClick = { NavHostController.navigate(Routes.CATEGORY.route) }
         ) {
             Text("Go to Category List")
         }

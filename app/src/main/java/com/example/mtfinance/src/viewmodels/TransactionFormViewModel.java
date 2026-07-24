@@ -85,10 +85,16 @@ public class TransactionFormViewModel extends ViewModel {
         }
 
     }
+
+    /**
+     * Sets the description of the transaction.
+     * Note that empty descriptions will default to EMPTY_DESCRIPTION.
+     * @param description - the description of the transaction
+     */
     public void setDescription(String description) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null) {
-            fields.description = TrackingUtlis.determineDescription(description);
+            fields.description = description;
             formFields.setValue(fields);
         }
     }
@@ -119,7 +125,7 @@ public class TransactionFormViewModel extends ViewModel {
      * Sets the type of the transaction.
      * Please set your type before setting category IDs, as the categories and transactions must be the same type.
      * Will clear category IDs if type is changed.
-     * @param type
+     * @param type - the type of the transaction
      */
     public void setType(TrackingType type) {
         TransactionFormFields fields = formFields.getValue();
