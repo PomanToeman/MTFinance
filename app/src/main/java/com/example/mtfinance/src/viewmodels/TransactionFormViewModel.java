@@ -82,7 +82,7 @@ public class TransactionFormViewModel extends ViewModel {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
             fields.name = name;
-            formFields.setValue(fields);
+            updateFields(fields);
         }
 
     }
@@ -96,14 +96,14 @@ public class TransactionFormViewModel extends ViewModel {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null) {
             fields.description = description;
-            formFields.setValue(fields);
+            updateFields(fields);
         }
     }
     public void addCategoryId(Long categoryId) {
        TransactionFormFields fields = formFields.getValue();
        if (fields != null) {
            fields.categoryIds.add(categoryId);
-           formFields.setValue(fields);
+           updateFields(fields);
        }
     }
 
@@ -111,14 +111,14 @@ public class TransactionFormViewModel extends ViewModel {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null) {
             fields.categoryIds.remove(categoryId);
-            formFields.setValue(fields);
+            updateFields(fields);
         }
     }
     public void setAmount(BigDecimal amount) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
             fields.amount = amount;
-            formFields.setValue(fields);
+            updateFields(fields);
         }
     }
 
@@ -136,13 +136,13 @@ public class TransactionFormViewModel extends ViewModel {
 
         fields.type = type;
         fields.categoryIds = new HashSet<>();
-        formFields.setValue(fields);
+        updateFields(fields);
     }
     public void setDate(LocalDateTime date) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
             fields.date = date;
-            formFields.setValue(fields);
+            updateFields(fields);
         }
     }
     public void setDate(LocalDate date) {
@@ -346,6 +346,18 @@ public class TransactionFormViewModel extends ViewModel {
         LocalDateTime date = LocalDateTime.now();
         Long transactionId = null;
         Boolean editMode = false;
+    }
+
+    /**
+     * Updates the fields. Set if on main thread, post if not.
+     * @param fields - the fields to update
+     */
+    private void updateFields(TransactionFormFields fields) {
+        try {
+            formFields.setValue(fields);
+        } catch (Exception e) {
+            formFields.postValue(fields);
+        }
     }
 
 

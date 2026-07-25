@@ -15,10 +15,12 @@ public enum MessageCli {
     IMPORT_FILE_READ_FAILED("Couldn't read transaction File: %s"),
     IMPORT_SUCCESS("%d Transaction/s successfully imported!"),
     IMPORT_FAILED("%d Transaction/s failed to import!"),
-    IMPORT_NAME_HEADER_MISSING("Name header is missing"),
-    IMPORT_DATE_HEADER_MISSING("Date header is missing"),
-    IMPORT_AMOUNT_HEADER_MISSING("Amount header is missing"),
+    IMPORT_NAME_HEADER_MISSING("Name header is missing or not valid"),
+    IMPORT_DATE_HEADER_MISSING("Date header is missing or not valid"),
+    IMPORT_AMOUNT_HEADER_MISSING("Amount header is missing or not valid"),
     IMPORT_PARSER_MISSING("CSV Parser is not initialized"),
+    IMPORT_TYPE_HEADER_MISSING("Type header is invalid"),
+    IMPORT_DATE_FORMAT_MISSING("Date Formatter is missing"),
 
     // Category
     CATEGORY_DELETED("Category deleted successfully"),
@@ -63,6 +65,7 @@ public enum MessageCli {
     NO_TRANSACTIONS("No transactions"),
     CATEGORY_DESCRIPTION("Description: %s"),
     CATEGORY_MONTHLY_BUDGET("Monthly Budget: $%s");
+
 
 
     private final String message;

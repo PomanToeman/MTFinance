@@ -1,6 +1,9 @@
 package com.example.mtfinance.src.viewmodels;
 
 
+import android.app.Application;
+import android.net.Uri;
+
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
@@ -14,8 +17,11 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
+import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -37,7 +43,10 @@ import javax.inject.Inject;
 public class TransactionImportFormViewModel extends ViewModel {
     private final TrackingRepository trackingRepository;
     private final Executor executor;
+    private final Application application;
+
     private final MutableLiveData<String> filePath = new MutableLiveData<>();
+    private final MutableLiveData<Uri> fileUri = new MutableLiveData<>();
     private final MutableLiveData<CSVParser> csvParser = new MutableLiveData<>();
 
 
@@ -58,9 +67,10 @@ public class TransactionImportFormViewModel extends ViewModel {
 
 
     @Inject
-    public TransactionImportFormViewModel(TrackingRepository trackingRepository, Executor executor) {
+    public TransactionImportFormViewModel(TrackingRepository trackingRepository, Executor executor, Application application) {
         this.trackingRepository = trackingRepository;
         this.executor = executor;
+        this.application = application;
         clear();
     }
 
@@ -68,23 +78,28 @@ public class TransactionImportFormViewModel extends ViewModel {
 
     public void setFilePath(String filePath) {
         this.filePath.setValue(filePath);
+        this.fileUri.setValue(null);
+    }
+
+    public void setFileUri(Uri uri) {
+        this.fileUri.setValue(uri);
+        this.filePath.setValue("");
     }
 
     private void setCsvHeaders(List<String> headers) {
-        this.csvHeaders.postValue(headers);
-
+        updateLiveData(this.csvHeaders, headers);
     }
 
     private void setErrorMessage(String errorMessage)  {
-        this.errorMessage.postValue(errorMessage);
+        updateLiveData(this.errorMessage, errorMessage);
     }
 
     private void setSuccessMessage(String successMessage)  {
-        this.successMessage.postValue(successMessage);
+        updateLiveData(this.successMessage, successMessage);
     }
 
     private void setIsLoading(Boolean booleanValue) {
-        this.isLoading.postValue(booleanValue);
+        updateLiveData(this.isLoading, booleanValue);
     }
 
     /**
@@ -95,6 +110,9 @@ public class TransactionImportFormViewModel extends ViewModel {
         if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(nameHeader)) {
             this.nameHeader.setValue(nameHeader);
         }
+
+
+
     }
 
     /**
@@ -105,6 +123,8 @@ public class TransactionImportFormViewModel extends ViewModel {
         if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(amountHeader)) {
             this.amountHeader.setValue(amountHeader);
         }
+
+
     }
 
     /**
@@ -114,7 +134,9 @@ public class TransactionImportFormViewModel extends ViewModel {
     public void setTypeHeader(String typeHeader) {
         if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(typeHeader)) {
             this.typeHeader.setValue(typeHeader);
+
         }
+
     }
 
     /**
@@ -125,6 +147,8 @@ public class TransactionImportFormViewModel extends ViewModel {
         if (this.csvHeaders.getValue() != null && this.csvHeaders.getValue().contains(dateHeader)) {
             this.dateHeader.setValue(dateHeader);
         }
+
+
     }
 
     /**
@@ -157,6 +181,7 @@ public class TransactionImportFormViewModel extends ViewModel {
      */
     public void clear() {
         this.filePath.setValue("");
+        this.fileUri.setValue(null);
         this.csvParser.setValue(null);
         this.errorMessage.setValue("");
         this.successMessage.setValue("");
@@ -169,7 +194,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         this.isLoading.setValue(Boolean.FALSE);
         this.successfulImports.setValue(new ArrayList<>());
         this.alwaysSendToRoot.setValue(Boolean.TRUE);
-        this.dateFormatter.setValue(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        this.dateFormatter.setValue(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
     }
 
@@ -186,14 +211,27 @@ public class TransactionImportFormViewModel extends ViewModel {
     }
 
     public void readTransactionFileSync() {
-        if (filePath.getValue() == null || filePath.getValue().isEmpty()) {
+        Uri uri = fileUri.getValue();
+        String path = filePath.getValue();
+
+        if ((uri == null) && (path == null || path.isEmpty())) {
             setErrorMessage(MessageCli.NO_FILE_FOUND.getMessage());
             return;
         }
 
-
         try {
-            Reader reader = new FileReader(this.filePath.getValue());
+            Reader reader;
+            if (uri != null) {
+                InputStream inputStream = application.getContentResolver().openInputStream(uri);
+                if (inputStream == null) {
+                    setErrorMessage(MessageCli.IMPORT_FILE_INVALID.getMessage("Could not open stream from Uri"));
+                    return;
+                }
+                reader = new BufferedReader(new InputStreamReader(inputStream));
+            } else {
+                reader = new FileReader(path);
+            }
+
             CSVParser csvParser = CSVFormat.DEFAULT
                     .builder()
                     .setHeader()                    // Use first record as header
@@ -202,10 +240,10 @@ public class TransactionImportFormViewModel extends ViewModel {
                     .get()
                     .parse(reader);
 
-            this.csvParser.postValue(csvParser);
-            this.dateHeader.postValue("");
-            this.nameHeader.postValue("");
-            this.amountHeader.postValue("");
+            updateLiveData(this.csvParser, csvParser);
+            updateLiveData(this.dateHeader, "");
+            updateLiveData(this.nameHeader, "");
+            updateLiveData(this.amountHeader, "");
             setCsvHeaders(csvParser.getHeaderNames());
 
 
@@ -276,6 +314,7 @@ public class TransactionImportFormViewModel extends ViewModel {
 
                 } catch (Exception e) {
                     // record and skip transactions
+                    System.err.println(e.getMessage() + " " + record.toString());
                     failedImports.add(record.toString());
 
                 }
@@ -285,7 +324,7 @@ public class TransactionImportFormViewModel extends ViewModel {
                 }
             }
 
-            this.successfulImports.postValue(successfulImports);
+            updateLiveData(this.successfulImports, successfulImports);
 
 
 
@@ -315,10 +354,14 @@ public class TransactionImportFormViewModel extends ViewModel {
      */
     private TrackingType determineType(BigDecimal amount, String typeValue) {
         if (typeValue != null && !typeValue.isEmpty()) {
-            return TrackingType.fromString(typeValue);
-        } else {
-            return TrackingUtlis.determineTypeByAmount(amount);
+            TrackingType type = TrackingType.fromString(typeValue);
+            if (type != TrackingType.OTHER) {
+                return type;
+            }
         }
+
+        return TrackingUtlis.determineTypeByAmount(amount);
+
     }
 
     /**
@@ -329,17 +372,23 @@ public class TransactionImportFormViewModel extends ViewModel {
      */
 
     private void validateImport() throws IllegalArgumentException {
-        if (csvParser.getValue() == null) {
+        if (csvParser.getValue() == null || csvHeaders.getValue() == null) {
             throw new IllegalArgumentException(MessageCli.IMPORT_PARSER_MISSING.getMessage());
         }
-        if (nameHeader.getValue() == null || nameHeader.getValue().isEmpty()) {
+        if (nameHeader.getValue() == null || nameHeader.getValue().isEmpty() ) {
             throw new IllegalArgumentException(MessageCli.IMPORT_NAME_HEADER_MISSING.getMessage());
         }
-        if (dateHeader.getValue() == null || dateHeader.getValue().isEmpty()) {
+        if (dateHeader.getValue() == null || dateHeader.getValue().isEmpty() || !csvHeaders.getValue().contains(dateHeader.getValue())) {
             throw new IllegalArgumentException(MessageCli.IMPORT_DATE_HEADER_MISSING.getMessage());
         }
-        if (amountHeader.getValue() == null || amountHeader.getValue().isEmpty()) {
+        if (amountHeader.getValue() == null || amountHeader.getValue().isEmpty() || !csvHeaders.getValue().contains(amountHeader.getValue())) {
             throw new IllegalArgumentException(MessageCli.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
+        }
+        if (dateFormatter.getValue() == null) {
+            throw new IllegalArgumentException(MessageCli.IMPORT_DATE_FORMAT_MISSING.getMessage());
+        }
+        if (typeHeader != null && !typeHeader.getValue().isEmpty() && !csvHeaders.getValue().contains(typeHeader.getValue())) {
+            throw new IllegalArgumentException(MessageCli.IMPORT_TYPE_HEADER_MISSING.getMessage());
         }
     }
 
@@ -365,6 +414,14 @@ public class TransactionImportFormViewModel extends ViewModel {
 
     }
 
+    private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
+        try {
+            liveData.setValue(value);
+        } catch (IllegalStateException e) {
+            liveData.postValue(value);
+        }
+    }
+
 
     // public getters
 
@@ -374,6 +431,9 @@ public class TransactionImportFormViewModel extends ViewModel {
     }
     public LiveData<String> getFilePath() {
         return filePath;
+    }
+    public LiveData<Uri> getFileUri() {
+        return fileUri;
     }
 
     public LiveData<List<String>> getCsvHeaders() {
@@ -416,4 +476,5 @@ public class TransactionImportFormViewModel extends ViewModel {
     public LiveData<DateTimeFormatter> getDateFormatter() {
         return dateFormatter;
     }
+
 }

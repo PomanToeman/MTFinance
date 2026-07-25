@@ -1,26 +1,28 @@
-# Walkthrough - Category Composable Overloading
+# Walkthrough - Support Uri in TransactionImportFormViewModel
 
-I have overloaded the `CategoryList` and `CategoryListItem` composables to support both `Category` and `CategoryWithTransactions` types. This improves code reuse and fixes type mismatch errors in the `TransactionDashboardScreen`.
+I have added support for importing CSV files via `Uri` in the `TransactionImportFormViewModel`. This allows the application to handle files selected through modern Android storage pickers.
 
 ## Changes Made
 
-### 1. CategoryListItem Overload
-In [CategoryList.kt](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/main/java/com/example/mtfinance/screens/CategoryList.kt), I added an overload for `CategoryListItem` that accepts `CategoryWithTransactions`. This version simply extracts the `category` property and delegates to the original `CategoryListItem`.
+### 1. ViewModel Enhancements
+In [TransactionImportFormViewModel.java](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/main/java/com/example/mtfinance/src/viewmodels/TransactionImportFormViewModel.java):
+- **Injection**: Added `Application` to the constructor to access the `ContentResolver`.
+- **New State**: Added `fileUri` LiveData and a public `setFileUri(Uri)` setter.
+- **Unified Processing**: Refactored `readTransactionFileSync` to prioritize `fileUri`. If a `Uri` is provided, it uses `ContentResolver.openInputStream()` to parse the CSV. Otherwise, it falls back to the existing `filePath` logic.
+- **State Integrity**: Setters for `filePath` and `fileUri` now automatically clear the other field to prevent ambiguous states.
 
-### 2. CategoryList Overload
-I added a new `CategoryList` composable that accepts `Collection<Category>`.
-- **Type Erasure Handling**: Used `@JvmName("CategoryListFromCategory")` to distinguish it from the `Collection<CategoryWithTransactions>` version at the JVM level.
-- **Refactoring**: Updated the existing `CategoryList(Collection<CategoryWithTransactions>, ...)` to use the new `CategoryListItem` overload, making the implementation cleaner.
-
-### 3. Type Error Fix
-The `TransactionDashboardScreen` in [TransactionList.kt](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/main/java/com/example/mtfinance/screens/TransactionList.kt) was previously passing `List<Category>` to `CategoryList`, which expected `Collection<CategoryWithTransactions>`. This type mismatch is now resolved by the new overload.
+### 2. Test Suite Expansion
+In [TransactionImportFormViewModelTest.java](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/test/java/com/example/mtfinance/src/viewmodels/TransactionImportFormViewModelTest.java):
+- **Mocking**: Added mocks for `Application` and `ContentResolver`.
+- **New Test Case**: `readTransactionFile_validUri_loadsHeaders()` verifies that CSV headers are correctly extracted from a `Uri` data source.
+- **Regression Testing**: Confirmed that the existing `filePath` tests still pass.
 
 ## Verification Results
 
 ### Automated Tests
-- **Build**: Successfully performed a clean build of the `:app` module.
-- **Unit Tests**: All 71 unit tests passed (`71 passed, 0 failed`).
-- **Static Analysis**: Verified that the argument type mismatch error in `TransactionList.kt` has been resolved.
+- **Full Test Suite**: Executed all project unit tests.
+- **Result**: `72 passed, 0 skipped, 0 failed` (including the new `Uri` test).
+- **Command**: `./gradlew clean :app:testDebugUnitTest`
 
 > [!TIP]
-> Using `@JvmName` allows us to maintain a consistent API in Kotlin (same function name for different collection types) while satisfying JVM requirements.
+> The `Uri` support is fully integrated with the existing asynchronous processing model, ensuring that file reading remains off the UI thread.

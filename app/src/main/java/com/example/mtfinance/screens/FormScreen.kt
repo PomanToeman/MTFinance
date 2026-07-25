@@ -1,6 +1,9 @@
 package com.example.mtfinance.screens
 
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -16,6 +19,8 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -234,22 +239,83 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
 
 @Composable
 fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormViewModel = hiltViewModel(), navHostController: NavHostController) {
-    val filePath by transactionImportViewModel.filePath.observeAsState()
-    val csvParser by transactionImportViewModel.getCsvParser().observeAsState()
-    val csvHeaders by transactionImportViewModel.getCsvHeaders().observeAsState()
-    val nameHeader by transactionImportViewModel.getNameHeader().observeAsState()
-    val amountHeader by transactionImportViewModel.getAmountHeader().observeAsState()
-    val dateHeader by transactionImportViewModel.getDateHeader().observeAsState()
+
+    val csvParser by transactionImportViewModel.csvParser.observeAsState()
+    val csvHeaders by transactionImportViewModel.csvHeaders.observeAsState()
+    val nameHeader by transactionImportViewModel.nameHeader.observeAsState()
+    val amountHeader by transactionImportViewModel.amountHeader.observeAsState()
+    val dateHeader by transactionImportViewModel.dateHeader.observeAsState()
+    val typeHeader by transactionImportViewModel.typeHeader.observeAsState()
     val errorMessage by transactionImportViewModel.errorMessage.observeAsState()
     val successMessage by transactionImportViewModel.successMessage.observeAsState()
     val isLoading by transactionImportViewModel.isLoading.observeAsState()
+    val fileUri by transactionImportViewModel.fileUri.observeAsState()
+    val successfulImports by transactionImportViewModel.successfulImports.observeAsState()
+    val failedImports by transactionImportViewModel.failedImports.observeAsState()
+
 
     DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
 
         Text("Transaction Import")
 
+
+        val csvLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri: Uri? ->
+            transactionImportViewModel.setFileUri(uri)
+        }
+
+
+        Button(onClick = {
+            csvLauncher.launch("text/comma-separated-values")
+        }) {
+            Text("Select CSV File")
+        }
+
+        fileUri?.let {
+            Text(text = "Target Selected: ${it.path}", modifier = Modifier.padding(top = 10.dp))
+        }
+
+        Button(onClick = { transactionImportViewModel.readTransactionFile() }) {
+            Text("Read File")
+        }
+        if (csvParser != null) {
+            Text(csvHeaders.toString())
+            SelectForm( label = "Name Header", options = csvHeaders, selectedOption = nameHeader, onOptionSelected = { transactionImportViewModel.setNameHeader(it)})
+            SelectForm( label = "Amount Header", options = csvHeaders, selectedOption = amountHeader, onOptionSelected = { transactionImportViewModel.setAmountHeader(it)})
+            SelectForm( label = "Date Header", options = csvHeaders, selectedOption = dateHeader, onOptionSelected = { transactionImportViewModel.setDateHeader(it)})
+            SelectForm( label = "Type Header", options = csvHeaders, selectedOption = typeHeader, onOptionSelected = { transactionImportViewModel.setTypeHeader(it)})
+            Button(onClick = { transactionImportViewModel.importTransaction() }) {
+                Text("Import")
+            }
+        }
+
+        if (isLoading == true) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .padding(16.dp)
+            )
+        }
+
+        if (successMessage != null) {
+            Text(successMessage!!, color = Color.Green)
+        }
+        if (errorMessage != null) {
+            Text(errorMessage!!, color = Color.Red)
+        }
+
+
         Button(onClick = {navHostController.navigate(Routes.TRANSACTION.route)}) {
             Text("Back")
+        }
+
+        if (successfulImports != null) {
+            Text(successfulImports.toString())
+        }
+        if (failedImports != null) {
+            Text(failedImports.toString())
         }
     }
 
@@ -376,6 +442,45 @@ fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> 
     )
 
 
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SelectForm(label: String, options: List<String?>?, selectedOption: String?, onOptionSelected: (String) -> Unit) {
+    var isMenuExpanded by remember { mutableStateOf(false) }
+    var textFieldValue: String? by remember { mutableStateOf(selectedOption ?: "") }
+    val filteredOptions = options?.filter { textFieldValue?.let { other -> it?.contains(other, ignoreCase = true) }
+        ?: false }
+
+    ExposedDropdownMenuBox(
+        expanded = isMenuExpanded,
+        onExpandedChange = { isMenuExpanded = !isMenuExpanded },
+        modifier = Modifier.padding(16.dp)
+    ) {
+        TextField(
+            value = textFieldValue ?: "",
+            onValueChange = {value -> textFieldValue = value; onOptionSelected(value)},
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded) })
+
+    }
+
+    if (filteredOptions?.isNotEmpty() ?: false) {
+        filteredOptions.forEach { selectionOption ->
+            DropdownMenuItem(
+                text = {
+                    if (selectionOption != null) {
+                        Text(selectionOption)
+                    }
+                },
+                onClick = {
+                    textFieldValue = selectionOption
+                    onOptionSelected(selectionOption ?: "")
+                    isMenuExpanded = false
+                }
+            )
+        }
+    }
 }
 
 
