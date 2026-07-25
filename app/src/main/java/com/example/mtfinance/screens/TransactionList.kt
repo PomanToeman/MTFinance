@@ -35,6 +35,7 @@ import com.example.mtfinance.src.trackingengine.Transaction
 import com.example.mtfinance.src.viewmodels.TransactionViewModel
 import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 
 @Composable
@@ -145,6 +146,19 @@ fun TransactionDashboardScreen(transactionViewModel: TransactionViewModel = hilt
             Header("Transaction Dashboard")
 
         }
+        else {
+            Header("No Transaction Selected")
+        }
+        if (selectedTransaction != null) {
+            TransactionDetails(selectedTransaction!!)
+        }
+
+
+        if (categoriesUnderSelectedTransaction != null) {
+            Text("Categories")
+            CategoryList(categoriesUnderSelectedTransaction!!)
+        }
+
 
 
         Button(onClick = { transactionViewModel.resetSelectedTransaction() }) {
@@ -154,4 +168,13 @@ fun TransactionDashboardScreen(transactionViewModel: TransactionViewModel = hilt
 
     })
 
+}
+
+@Composable
+fun TransactionDetails(transaction: Transaction) {
+    Text(transaction.name)
+    Text(transaction.description)
+    Text(transaction.amount.toString())
+    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+    Text(transaction.date.format(formatter).toString())
 }

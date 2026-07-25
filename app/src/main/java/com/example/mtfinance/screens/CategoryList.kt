@@ -35,8 +35,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
+
 import androidx.navigation.NavHostController
 import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.Category
@@ -122,7 +123,7 @@ fun CategoryDashBoard(
             } else {
                 Text("No parent", color = MaterialTheme.colorScheme.primary)
             }
-            SubCategoryList(
+            CategoryListBasic(
                 selectedCategory!!.category.getChildren(false).toList(),
                 action = { Long -> categoryViewModel.setSelectedCategory(Long) })
             TransactionListforCategory(selectedCategory!!)
@@ -201,6 +202,11 @@ fun CategoryListItem(categoryItem: Category?, actionOne: ((Long) -> Unit)? = nul
 }
 
 @Composable
+fun CategoryListItem(categoryWithTransactions: CategoryWithTransactions, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, backgroundColor: Color = Color.Gray) {
+    CategoryListItem(categoryWithTransactions.category, actionOne, actionOneLabel, actionTwo, actionTwoLabel, backgroundColor)
+}
+
+@Composable
 fun TransactionListforCategory(categoryItem: CategoryWithTransactions) {
     Text("Transactions")
     if (categoryItem.transactions != null && categoryItem.transactions.isNotEmpty()) {
@@ -255,13 +261,28 @@ fun CategoryList(categories: Collection<CategoryWithTransactions>, actionOne: ((
     )) {
 
         items(categories.size) { index ->
-            CategoryListItem(categories.elementAt(index).category, actionOne, actionOneLabel, actionTwo, actionTwoLabel, backgroundColor)
+            CategoryListItem(categories.elementAt(index), actionOne, actionOneLabel, actionTwo, actionTwoLabel, backgroundColor)
         }
     }
 }
 
 @Composable
-fun SubCategoryList(categories: List<Category>, action: (Long) -> Unit = {}) {
+@JvmName("CategoryListFromCategory")
+fun CategoryList(categories: Collection<Category>, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, backgroundColor: Color = Color.Gray ) {
+    LazyColumn(modifier = Modifier.fillMaxSize().height(500.dp).padding(16.dp).border(
+        width = 2.dp,
+        color = Color.Black,
+        shape = RectangleShape
+    )) {
+
+        items(categories.size) { index ->
+            CategoryListItem(categories.elementAt(index), actionOne, actionOneLabel, actionTwo, actionTwoLabel, backgroundColor)
+        }
+    }
+}
+
+@Composable
+fun CategoryListBasic(categories: List<Category>, action: (Long) -> Unit = {}) {
     Column {
         categories.forEach { category ->
             CategoryListItem(category, action)

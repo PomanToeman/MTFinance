@@ -34,7 +34,7 @@ fun DefaultColumn(modifier: Modifier = Modifier, horizontalAlignment: Alignment.
 fun FabRightBottomCorner( onClick: () -> Unit, content: @Composable () -> Unit, iconImage: ImageVector = Icons.Default.Add) {
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = onClick, containerColor = Color.Black ) {
+            FloatingActionButton(onClick = onClick, containerColor = Color.Black, contentColor = Color.White) {
                 Icon(imageVector = iconImage, contentDescription = "Add", tint = Color.White)
             }
 

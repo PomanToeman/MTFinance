@@ -1,10 +1,9 @@
-# Task List - Fix CategoryFormViewModel Tests
+# Task List - Overload Category Composables
 
-- [ ] Update `CategoryFormViewModel.java` field defaults
-- [ ] Update `CategoryFormViewModelTest.java`
-    - [ ] Update `setUp` to observe LiveData
-    - [ ] Fix `saveCategory_withParent_setsParentId`
-    - [ ] Refactor `editRoot_shouldFail` to `editRoot_allowsBudgetUpdate`
-- [ ] Verification
-    - [ ] Run `CategoryFormViewModelTest`
-    - [ ] Run all unit tests
+- [x] Overload `CategoryListItem` in `CategoryList.kt`
+- [x] Overload `CategoryList` in `CategoryList.kt` (using `@JvmName`)
+- [x] Refactor existing `CategoryList` to use the new overload
+- [x] Verify fix in `TransactionList.kt`
+- [x] Final Verification
+    - [x] Clean build
+    - [x] Run all unit tests

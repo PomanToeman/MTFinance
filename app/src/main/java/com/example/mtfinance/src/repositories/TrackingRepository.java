@@ -161,6 +161,8 @@ public class TrackingRepository {
          return categoryRepository.getCategoriesByIds(categoryIds);
     }
 
+
+
     public List<Long> getCategoryIdsByTransactionId(Long id) {
          return categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
     }
