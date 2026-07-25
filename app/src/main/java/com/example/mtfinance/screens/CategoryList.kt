@@ -64,7 +64,7 @@ fun CategoryListScreen(
                 Header()
                 CategorySearch()
                 if (categories != null && categories!!.isNotEmpty()) {
-                    CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)}, actionOneLabel = "Show more", backgroundColor = Color.LightGray)
+                    CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)}, actionOneLabel = "Show more", backgroundColor = Color.LightGray, actionTwo = { Long -> NavHostController.navigate(Routes.CATEGORY_FORM.route + "/" + Long)}, actionTwoLabel = "Edit")
                 } else {
                     Text("No categories Found", color = MaterialTheme.colorScheme.primary)
                 }

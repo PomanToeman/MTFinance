@@ -33,6 +33,7 @@ public enum MessageCli {
     CATEGORY_PARENT_NOT_FOUND("Parent category does not exist"),
     CATEGORY_MAX_DEPTH_REACHED("Cannot exceed Maximum Depth of %d"),
     BELOW_MINIMUM_BUDGET("$%s is below minimum budget of $%s"),
+    CATEGORY_PARENT_SELF("Cannot set parent as self"),
 
     // Transaction
     TRANSACTION_UPDATED("Transaction Updated successfully"),

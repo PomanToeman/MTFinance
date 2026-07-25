@@ -1,5 +1,7 @@
 package com.example.mtfinance.src.viewmodels;
 
+import android.os.Looper;
+
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
@@ -39,11 +41,9 @@ public class CategoryFormViewModel extends ViewModel {
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>("");
     private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
     private final LiveData<Boolean> isEditMode;
+    private final LiveData<Boolean> isRoot;
     private final LiveData<List<CategoryWithTransactions>> categorySelection;
-    private final LiveData<Category> cachedCategory;
-
-
-
+    private final LiveData<Category> cachedParentCategory;
 
 
     @Inject
@@ -51,10 +51,15 @@ public class CategoryFormViewModel extends ViewModel {
         this.trackingRepository = trackingRepository;
         this.executor = executor;
         isEditMode = Transformations.map(formFields, fields -> fields.editCategoryId != null);
+        isRoot = Transformations.map(formFields, fields -> {
+            if (fields.editCategoryId == null) return false;
+            return trackingRepository.isRoot(fields.editCategoryId);
+        });
+
         categorySelection = Transformations.switchMap(type, type -> trackingRepository.searchCategoriesWithType("", type));
-        this.cachedCategory = Transformations.switchMap(formFields, fields -> {
-            if (fields.editCategoryId == null) return null;
-            return new MutableLiveData<>(trackingRepository.getCategoryByIdRestored(fields.editCategoryId));
+        this.cachedParentCategory = Transformations.switchMap(formFields, fields -> {
+            if (fields.parentId == null) return null;
+            return new MutableLiveData<>(trackingRepository.getCategoryByIdRestored(fields.parentId));
         });
 
         clearSync(); // set default values
@@ -62,7 +67,7 @@ public class CategoryFormViewModel extends ViewModel {
 
     /**
      * Sets the category to edit.
-     * The category must already be in the database, and cannot be root.
+     * The category must already be in the database.
      * @param categoryId - The category in database to edit.
      */
     public void setEditCategory(Long categoryId) {
@@ -76,7 +81,7 @@ public class CategoryFormViewModel extends ViewModel {
 
     /**
      * Gets category and sets all fields to its values.
-     * Will ignore if category is root or cannot be found.
+     * Will ignore if category cannot be found.
      */
     public void loadCategoryForEditing() {
         executor.execute(this::loadCategoryForEditingSync);
@@ -91,12 +96,6 @@ public class CategoryFormViewModel extends ViewModel {
             return;
         }
         Category category = trackingRepository.getCategoryByIdRestored(fields.editCategoryId);
-        if (category == null || trackingRepository.isRoot(category)) {
-            setErrorMessage(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
-            fields.editCategoryId = null;
-            updateFields(fields);
-            return;
-        }
         
         fields.name = category.getName();
         fields.description = category.getDescription();
@@ -129,12 +128,23 @@ public class CategoryFormViewModel extends ViewModel {
 
     public void setParentIdSync(Long parentId) {
         CategoryFormFields fields = getFields();
+        if (parentId == null) {
+            fields.parentId = null;
+            updateFields(fields);
+            return;
+        }
+        if (parentId.equals(fields.editCategoryId)) {
+            setErrorMessage(MessageCli.CATEGORY_PARENT_SELF.getMessage());
+            return;
 
-        if (parentId != null && !trackingRepository.categoryExists(parentId)) {
+        }
+
+
+        if (!trackingRepository.categoryExists(parentId)) {
             setErrorMessage(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
             return;
         }
-        if (parentId != null && trackingRepository.getCategoryByIdRestored(parentId).getAncestors().size() >= Category.MAX_DEPTH) {
+        if (trackingRepository.getCategoryByIdRestored(parentId).getAncestors().size() >= Category.MAX_DEPTH) {
             setErrorMessage(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
             return;
         }
@@ -144,18 +154,15 @@ public class CategoryFormViewModel extends ViewModel {
 
     /**
      * The given budget must be greater than or equal to the minimum budget to be set.
-     * The implementation is lazy, it will be checked in validateForm.
      * @param monthlyBudget - the monthly budget to set.
      */
     public void setMonthlyBudget(BigDecimal monthlyBudget) {
         CategoryFormFields fields = getFields();
         if (monthlyBudget == null) {
             fields.monthlyBudget = null;
-
         }
         else if (monthlyBudget.compareTo(fields.minimumBudget) < 0) {
             fields.monthlyBudget = monthlyBudget;
-            // to notify user
             setErrorMessage(MessageCli.BELOW_MINIMUM_BUDGET.getMessage(monthlyBudget.toString(), fields.minimumBudget.toString()));
         } else {
             fields.monthlyBudget = monthlyBudget;
@@ -195,7 +202,7 @@ public class CategoryFormViewModel extends ViewModel {
 
     public void deleteCategorySync(boolean deleteTransactions) {
         CategoryFormFields fields = getFields();
-        if (!trackingRepository.categoryExists(fields.editCategoryId)) {
+        if (fields.editCategoryId == null || !trackingRepository.categoryExists(fields.editCategoryId)) {
             setErrorMessage(MessageCli.CATEGORY_DELETE_NONE.getMessage());
             return;
         }
@@ -242,8 +249,7 @@ public class CategoryFormViewModel extends ViewModel {
                    newCategory.setParentId(fields.parentId);
                }
                trackingRepository.insertCategory(newCategory);
-               fields.editCategoryId = newCategory.getCategoryId();
-               updateFields(fields);
+
            }
            // Edit Category
            else {
@@ -251,13 +257,19 @@ public class CategoryFormViewModel extends ViewModel {
                if (category == null) {
                    return;
                }
-               category.setName(fields.name);
-               category.setDescription(fields.description);
-               category.setMonthlyBudget(fields.monthlyBudget);
-               if (fields.parentId != null) {
-                   category.setParent(trackingRepository.getCategoryByIdRestored(fields.parentId));
+
+               if (!trackingRepository.isRoot(category)) {
+                   category.setName(fields.name);
+                   category.setDescription(fields.description);
+                   category.setMonthlyBudget(fields.monthlyBudget);
+                   if (fields.parentId != null) {
+                       category.setParent(trackingRepository.getCategoryByIdRestored(fields.parentId));
+                   }
+                   trackingRepository.updateCategoryTree(category);
+               } else {
+                   category.setMonthlyBudget(fields.monthlyBudget);
+                   trackingRepository.updateCategory(category);
                }
-               trackingRepository.updateCategoryTree(category);
            }
 
            setSuccessMessage(MessageCli.CATEGORY_SAVED.getMessage());
@@ -276,8 +288,8 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
     /**
-     * Checks if the fields are filled out correctly. Throws an exception if not.
-     * @throws IllegalArgumentException - if any fields are invalid.
+     * Checks if the fields are filled out correctly.
+     * @throws IllegalArgumentException
      */
     private void validateFormSync(CategoryFormFields fields) throws IllegalArgumentException{
         if (fields.name == null || fields.name.isEmpty()) {
@@ -299,8 +311,8 @@ public class CategoryFormViewModel extends ViewModel {
         TrackingUtlis.checkAmount(fields.monthlyBudget);
         if (fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
             throw new IllegalArgumentException(MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
-
         }
+        
         // if parent category is set, check it exists.
         if (fields.parentId != null && !trackingRepository.categoryExists(fields.parentId)) {
             throw new IllegalArgumentException(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
@@ -334,18 +346,19 @@ public class CategoryFormViewModel extends ViewModel {
     private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
         try {
             liveData.setValue(value);
-        } catch (RuntimeException e) {
+
+        } catch (Exception e) {
             liveData.postValue(value);
         }
     }
 
     private static class CategoryFormFields {
         public Long editCategoryId = null;
-        String name = "";
+        String name = "Name";
         String description = TrackingUtlis.EMPTY_DESCRIPTION;
         Long parentId = null;
         BigDecimal monthlyBudget = BigDecimal.ONE;
-        BigDecimal minimumBudget = monthlyBudget;
+        BigDecimal minimumBudget = BigDecimal.ZERO;
         TrackingType type = TrackingType.EXPENSE;
 
         CategoryFormFields copy() {
@@ -401,7 +414,10 @@ public class CategoryFormViewModel extends ViewModel {
     public LiveData<List<CategoryWithTransactions>> getCategorySelection() {
         return categorySelection;
     }
-    public LiveData<Category> getCachedCategory() {
-        return cachedCategory;
+    public LiveData<Category> getCachedParentCategory() {
+        return cachedParentCategory;
+    }
+    public LiveData<Boolean> getIsRoot() {
+        return isRoot;
     }
 }

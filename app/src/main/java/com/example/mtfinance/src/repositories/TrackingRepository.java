@@ -218,8 +218,8 @@ public class TrackingRepository {
 
     /**
      * Returns the Category with restored cache (parent and children) for the given ID.
-     * @param id
-     * @return
+     * @param id - the ID of the category to restore.
+     * @return - the category with restored cache.
      */
     public Category getCategoryByIdRestored(Long id) {
         return categoryRepository.getCategoryByIdRestored(id);
@@ -228,7 +228,7 @@ public class TrackingRepository {
     /**
      * Allows for easy checks if a category is a root.
      * @param category
-     * @return
+     * @return - true if the category is a root.
      */
     public boolean isRoot(Category category) {
         if (category == null) return false;

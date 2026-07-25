@@ -28,6 +28,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 
 /**
  * Meant to manually enter transactions, Will also be used for the import feature.
+ *
  */
 @HiltViewModel
 public class TransactionFormViewModel extends ViewModel {

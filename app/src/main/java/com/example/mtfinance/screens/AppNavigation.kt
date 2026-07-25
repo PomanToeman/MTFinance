@@ -19,9 +19,11 @@ fun AppNavigation() {
             composable(Routes.HOME.route) { HomeScreen(navController) }
             composable(Routes.CATEGORY.route) { CategoryListScreen(navController) }
             composable(Routes.CATEGORY_FORM.route) { CategoryFormScreen(navHostController = navController) }
+            composable(Routes.CATEGORY_FORM_EDIT.route) { backStackEntry -> CategoryFormScreen(navHostController = navController, categoryId = backStackEntry.arguments?.getString("categoryId")?.toLong()) }
             composable(Routes.TRANSACTION.route) { TransactionListScreen(navHostController = navController) }
             composable(Routes.TRANSACTION_FORM_EDIT.route) { backStackEntry -> TransactionFormScreen(navHostController = navController, transactionId = backStackEntry.arguments?.getString("transactionId")?.toLong()) }
             composable(Routes.TRANSACTION_FORM.route) { TransactionFormScreen(navHostController = navController) }
+
 
 
 
@@ -46,6 +48,7 @@ enum class Routes {
     TRANSACTION_FORM_EDIT("transactionForm/{transactionId}"),
     TRANSACTION_IMPORT("transactionImport"),
     CATEGORY_FORM("categoryForm"),
+    CATEGORY_FORM_EDIT("categoryForm/{categoryId}")
     ;
 
     val route: String

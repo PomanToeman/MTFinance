@@ -159,12 +159,27 @@ public class CategoryRepository {
         }
     }
 
-
+    /**
+     * Updates the category in database, will automatically pass root categories to updateRootCategory.
+     *
+     * @param category - the category to update.
+     */
     public void updateCategory(@NonNull Category category) {
-        if (category.equals(getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
-            return;
+        if (isRoot(category)) {
+            updateRootCategory(category);
         }
         categoryDao.update(category);
+    }
+
+    /**
+     * Updates the budget ONLY for the root category. cannot update anything else
+     * @param rootCategory - the root category to update.
+     */
+    public void updateRootCategory(@NonNull Category rootCategory) {
+        Category originalRootCategory = getRootCategoryByType( rootCategory.getType());
+        originalRootCategory.setMonthlyBudget(rootCategory.getMonthlyBudget());
+        categoryDao.update(originalRootCategory);
+
     }
 
     public void updateAllCategories(@NonNull Collection<Category> categories) {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
@@ -150,29 +151,38 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
     val categoryDescription by categoryFormViewModel.description.observeAsState()
     val categoryMonthlyBudget by categoryFormViewModel.monthlyBudget.observeAsState()
     val categoryType by categoryFormViewModel.type.observeAsState()
-    val categoryParent by categoryFormViewModel.cachedCategory.observeAsState()
+    val categoryParent by categoryFormViewModel.cachedParentCategory.observeAsState()
     val editMode by categoryFormViewModel.IsEditMode().observeAsState()
     val successMessage by categoryFormViewModel.successMessage.observeAsState()
     val errorMessage by categoryFormViewModel.errorMessage.observeAsState()
     val isLoading by categoryFormViewModel.isLoading.observeAsState()
     val categorySelection by categoryFormViewModel.categorySelection.observeAsState()
+    val isRoot by categoryFormViewModel.isRoot.observeAsState()
+    var deleteTransactions by remember { mutableStateOf(false) }
 
     // edit mode if categoryId is not null
     categoryFormViewModel.setEditCategory(categoryId)
 
     DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
         Header("Category Form")
-        TextFieldForm("Name", categoryName, onValueChange = {categoryFormViewModel.setName(it)}, minLines = 1, maxLines = 1, enabled = editMode == false)
-        TextFieldForm("Description", categoryDescription, onValueChange = {categoryFormViewModel.setDescription(it)}, minLines = 3, maxLines = 3, placeholder = TrackingUtlis.EMPTY_DESCRIPTION)
-        NumberFieldForm("Monthly Budget", categoryMonthlyBudget, setter = {categoryFormViewModel.setMonthlyBudget(it)}, enabled = editMode == false)
+        Text("Edit Mode: $editMode")
+        TextFieldForm("Name", categoryName, onValueChange = {categoryFormViewModel.setName(it)}, minLines = 1, maxLines = 1, enabled = isRoot == false)
+        TextFieldForm("Description", categoryDescription, onValueChange = {categoryFormViewModel.setDescription(it)}, minLines = 3, maxLines = 3, placeholder = TrackingUtlis.EMPTY_DESCRIPTION, enabled = isRoot == false)
+        NumberFieldForm("Monthly Budget", categoryMonthlyBudget, setter = {categoryFormViewModel.setMonthlyBudget(it)})
         Column(modifier = Modifier.padding(16.dp)) {
-            if (categoryParent != null) {
-                CategoryListItem(categoryParent, actionOne = {categoryFormViewModel.setParentId(null)}, actionOneLabel = "Remove Parent")
+            if (categoryParent != null && isRoot == false) {
+                CategoryListItem(categoryParent!!, backgroundColor = Color.LightGray)
             }
-            else {
+            else if (isRoot == false)  {
                 Text("Parent: The root of the category")
             }
-            ChooseCategoryForm( categorySelection, actionOne = {categoryFormViewModel.setParentId(it)})
+            else {
+                Text("Parent: None (Root Category)")
+            }
+            if (isRoot == false) {
+                ChooseCategoryForm( categorySelection, actionOne = {categoryFormViewModel.setParentId(it)}, actionOneLabel = "Set Parent", dismissOnSelection = true)
+            }
+
             Text("Type: " + categoryType.toString().lowercase())
             Button(onClick = { categoryFormViewModel.saveCategory() }) {
                 Text("Save")
@@ -193,12 +203,20 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
                 Text(errorMessage!!, color = Color.Red)
             }
 
-            if (editMode == true) {
-                Button(onClick = { categoryFormViewModel.deleteCategory(true) }) {
+            if (editMode == true && isRoot == false) {
+                Checkbox(
+                    checked = deleteTransactions,
+                    onCheckedChange = { deleteTransactions = it }
+                )
+                Text(
+                    text = "delete transactions",
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+                Button(onClick = { categoryFormViewModel.deleteCategory(deleteTransactions) }) {
                     Text("Delete")
                 }
             }
-            else {
+            else if (isRoot == false) {
                 Button(onClick = { categoryFormViewModel.clear() }) {
                     Text("Clear")
                 }
@@ -216,7 +234,7 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
  * Allows you to view and choose a category from a list via a dialogue. Can input actions as composables for specific selection actions.
  */
 @Composable
-fun ChooseCategoryForm(categorySelection: List<CategoryWithTransactions?>?, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null) {
+fun ChooseCategoryForm(categorySelection: List<CategoryWithTransactions?>?, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, dismissOnSelection: Boolean = false) {
     var showDialog by remember { mutableStateOf(false) }
 
     Button(onClick = { showDialog = !showDialog }) {
@@ -227,7 +245,7 @@ fun ChooseCategoryForm(categorySelection: List<CategoryWithTransactions?>?, acti
         Dialog( onDismissRequest = { showDialog = false }) {
             LazyColumn() {
                 item {
-                    CategoryList(categories = categorySelection as Collection<CategoryWithTransactions>, actionOne = actionOne, actionOneLabel = actionOneLabel, actionTwo = actionTwo, actionTwoLabel = actionTwoLabel, backgroundColor = Color.Black)
+                    CategoryList(categories = categorySelection as Collection<CategoryWithTransactions>, actionOne = {if (actionOne != null) {actionOne(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = actionOneLabel, actionTwo = actionTwo, actionTwoLabel = actionTwoLabel, backgroundColor = Color.LightGray)
                 }
                 item {
                     Button(onClick = { showDialog = false }) {

@@ -50,6 +50,8 @@ public class CategoryFormViewModelTest {
         viewModel.getMonthlyBudget().observeForever(b -> {});
         viewModel.getMinimumBudget().observeForever(b -> {});
         viewModel.getType().observeForever(t -> {});
+        viewModel.getIsRoot().observeForever(b -> {});
+        viewModel.IsEditMode().observeForever(b -> {});
     }
 
     @Test
@@ -79,6 +81,7 @@ public class CategoryFormViewModelTest {
         
         when(trackingRepository.categoryExists(categoryId)).thenReturn(true);
         when(trackingRepository.getCategoryByIdRestored(categoryId)).thenReturn(existingCategory);
+        when(trackingRepository.isRoot(existingCategory)).thenReturn(false);
         
         viewModel.setEditCategory(categoryId);
         
@@ -148,6 +151,7 @@ public class CategoryFormViewModelTest {
         
         viewModel.setName("Child");
         viewModel.setParentId(parentId);
+        viewModel.setMonthlyBudget(BigDecimal.TEN);
 
         viewModel.saveCategory();
 
@@ -168,6 +172,7 @@ public class CategoryFormViewModelTest {
         when(trackingRepository.categoryExists(2L)).thenReturn(true);
         when(trackingRepository.getCategoryByIdRestored(1L)).thenReturn(catA);
         when(trackingRepository.getCategoryByIdRestored(2L)).thenReturn(catB);
+        when(trackingRepository.isRoot(catB)).thenReturn(false);
 
         // 2. Edit B to make A its parent
         viewModel.setEditCategory(2L);
@@ -179,16 +184,21 @@ public class CategoryFormViewModelTest {
     }
 
     @Test
-    public void editRoot_shouldFail() {
+    public void editRoot_allowsBudgetUpdate() {
+        long rootId = 0L;
         Category root = new Category("Root", "", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
-        root.setCategoryId(0L);
-        when(trackingRepository.categoryExists(0L)).thenReturn(true);
-        when(trackingRepository.getCategoryByIdRestored(0L)).thenReturn(root);
+        root.setCategoryId(rootId);
+        when(trackingRepository.categoryExists(rootId)).thenReturn(true);
+        when(trackingRepository.getCategoryByIdRestored(rootId)).thenReturn(root);
         when(trackingRepository.isRoot(root)).thenReturn(true);
 
-        viewModel.setEditCategory(0L);
+        viewModel.setEditCategory(rootId);
+        viewModel.setMonthlyBudget(BigDecimal.valueOf(1200));
+        viewModel.saveCategory();
 
-        assertTrue(viewModel.getErrorMessage().getValue().contains("root"));
+        verify(trackingRepository).updateCategory(root);
+        assertEquals(0, BigDecimal.valueOf(1200).compareTo(root.getMonthlyBudget()));
+        assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue());
     }
 
     @Test
@@ -198,6 +208,7 @@ public class CategoryFormViewModelTest {
         cat.setCategoryId(id);
         when(trackingRepository.categoryExists(id)).thenReturn(true);
         when(trackingRepository.getCategoryByIdRestored(id)).thenReturn(cat);
+        when(trackingRepository.isRoot(cat)).thenReturn(false);
         
         viewModel.setEditCategory(id);
 
@@ -251,7 +262,7 @@ public class CategoryFormViewModelTest {
         verify(trackingRepository).deleteCategory(categoryId, true);
         assertEquals("Category deleted successfully", viewModel.getSuccessMessage().getValue());
         assertNull(viewModel.getEditCategoryId());
-        assertEquals("", viewModel.getName().getValue()); // Verify clear() was called
+        assertEquals("Name", viewModel.getName().getValue()); // Verify clear() was called
     }
 
     @Test
