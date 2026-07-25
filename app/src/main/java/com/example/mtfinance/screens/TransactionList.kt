@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ImportExport
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,7 +45,10 @@ fun TransactionListScreen(transactionViewModel: TransactionViewModel = hiltViewM
     val filteredTransactions by transactionViewModel.filteredTransactions.observeAsState()
     val searchQuery by transactionViewModel.searchQuery.observeAsState()
     val selectedTransaction by transactionViewModel.selectedTransaction.observeAsState()
-    FabRightBottomCorner(onClick = { navHostController.navigate(Routes.TRANSACTION_FORM.route) }, content = {
+
+    FabRightBottomCorner(actionOne = {
+        navHostController.navigate(Routes.TRANSACTION_FORM.route)
+                                   }, actionTwo = { navHostController.navigate(Routes.TRANSACTION_IMPORT.route) }, iconImageTwo = Icons.Default.ImportExport, content = {
         DefaultColumn(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             if (selectedTransaction == null) {
                 Header("Transaction List")
@@ -72,7 +77,7 @@ fun TransactionListScreen(transactionViewModel: TransactionViewModel = hiltViewM
                 TransactionDashboardScreen()
             }
         }
-    }, iconImage = androidx.compose.material.icons.Icons.Default.Add)
+    }, iconImageOne = androidx.compose.material.icons.Icons.Default.Add)
 
 
 }

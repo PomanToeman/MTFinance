@@ -57,7 +57,7 @@ fun CategoryListScreen(
     val categories by categoryViewModel.filteredCategories.observeAsState()
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
 
-    FabRightBottomCorner(onClick = { NavHostController.navigate(Routes.CATEGORY_FORM.route) }, content = {
+    FabRightBottomCorner(actionOne = { NavHostController.navigate(Routes.CATEGORY_FORM.route) }, content = {
         DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
             if (selectedCategory == null) {
 

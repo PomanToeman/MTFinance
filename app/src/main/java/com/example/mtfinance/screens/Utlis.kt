@@ -31,13 +31,25 @@ fun DefaultColumn(modifier: Modifier = Modifier, horizontalAlignment: Alignment.
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun FabRightBottomCorner( onClick: () -> Unit, content: @Composable () -> Unit, iconImage: ImageVector = Icons.Default.Add) {
+fun FabRightBottomCorner(actionOne: () -> Unit, actionTwo: (() -> Unit)? = null, content: @Composable () -> Unit,  iconImageOne: ImageVector = Icons.Default.Add, iconImageTwo: ImageVector = Icons.Default.Add ) {
     Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(onClick = onClick, containerColor = Color.Black, contentColor = Color.White) {
-                Icon(imageVector = iconImage, contentDescription = "Add", tint = Color.White)
-            }
 
+        floatingActionButton = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                FloatingActionButton(onClick = actionOne, containerColor = Color.Black, contentColor = Color.White) {
+                    Icon(imageVector = iconImageOne, contentDescription = "Add", tint = Color.White)
+                }
+                if (actionTwo != null) {
+                    FloatingActionButton(onClick = actionTwo, containerColor = Color.Black, contentColor = Color.White) {
+                        Icon(imageVector = iconImageTwo, contentDescription = "Add", tint = Color.White)
+                    }
+                }
+
+
+            }
 
         },
         content = {

@@ -38,6 +38,7 @@ import com.example.mtfinance.src.trackingengine.TrackingType
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.viewmodels.CategoryFormViewModel
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
+import com.example.mtfinance.src.viewmodels.TransactionImportFormViewModel
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -225,6 +226,30 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
             Button(onClick = { navHostController.navigate("category") }) {
                 Text("Back")
             }
+        }
+    }
+
+}
+
+
+@Composable
+fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormViewModel = hiltViewModel(), navHostController: NavHostController) {
+    val filePath by transactionImportViewModel.filePath.observeAsState()
+    val csvParser by transactionImportViewModel.getCsvParser().observeAsState()
+    val csvHeaders by transactionImportViewModel.getCsvHeaders().observeAsState()
+    val nameHeader by transactionImportViewModel.getNameHeader().observeAsState()
+    val amountHeader by transactionImportViewModel.getAmountHeader().observeAsState()
+    val dateHeader by transactionImportViewModel.getDateHeader().observeAsState()
+    val errorMessage by transactionImportViewModel.errorMessage.observeAsState()
+    val successMessage by transactionImportViewModel.successMessage.observeAsState()
+    val isLoading by transactionImportViewModel.isLoading.observeAsState()
+
+    DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
+
+        Text("Transaction Import")
+
+        Button(onClick = {navHostController.navigate(Routes.TRANSACTION.route)}) {
+            Text("Back")
         }
     }
 

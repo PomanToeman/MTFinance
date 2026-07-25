@@ -23,6 +23,7 @@ fun AppNavigation() {
             composable(Routes.TRANSACTION.route) { TransactionListScreen(navHostController = navController) }
             composable(Routes.TRANSACTION_FORM_EDIT.route) { backStackEntry -> TransactionFormScreen(navHostController = navController, transactionId = backStackEntry.arguments?.getString("transactionId")?.toLong()) }
             composable(Routes.TRANSACTION_FORM.route) { TransactionFormScreen(navHostController = navController) }
+            composable(Routes.TRANSACTION_IMPORT.route) { TransactionImportScreen(navHostController = navController) }
 
 
 
