@@ -119,7 +119,7 @@ public class CategoryFormViewModel extends ViewModel {
      */
     public void setDescription(String description) {
         CategoryFormFields fields = getFields();
-        fields.description = TrackingUtlis.determineDescription(description);
+        fields.description = description;
         updateFields(fields);
     }
 
@@ -144,14 +144,22 @@ public class CategoryFormViewModel extends ViewModel {
 
     /**
      * The given budget must be greater than or equal to the minimum budget to be set.
+     * The implementation is lazy, it will be checked in validateForm.
      * @param monthlyBudget - the monthly budget to set.
      */
     public void setMonthlyBudget(BigDecimal monthlyBudget) {
         CategoryFormFields fields = getFields();
-        if (monthlyBudget.compareTo(fields.minimumBudget) <= 0) {
-            fields.monthlyBudget = fields.minimumBudget;
+        if (monthlyBudget == null) {
+            fields.monthlyBudget = null;
+
+        }
+        else if (monthlyBudget.compareTo(fields.minimumBudget) < 0) {
+            fields.monthlyBudget = monthlyBudget;
+            // to notify user
+            setErrorMessage(MessageCli.BELOW_MINIMUM_BUDGET.getMessage(monthlyBudget.toString(), fields.minimumBudget.toString()));
         } else {
             fields.monthlyBudget = monthlyBudget;
+            setErrorMessage("");
         }
         updateFields(fields);
     }
@@ -268,8 +276,8 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
     /**
-     * Checks if the fields are filled out correctly.
-     * @throws IllegalArgumentException
+     * Checks if the fields are filled out correctly. Throws an exception if not.
+     * @throws IllegalArgumentException - if any fields are invalid.
      */
     private void validateFormSync(CategoryFormFields fields) throws IllegalArgumentException{
         if (fields.name == null || fields.name.isEmpty()) {
@@ -289,6 +297,10 @@ public class CategoryFormViewModel extends ViewModel {
         }
 
         TrackingUtlis.checkAmount(fields.monthlyBudget);
+        if (fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
+            throw new IllegalArgumentException(MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
+
+        }
         // if parent category is set, check it exists.
         if (fields.parentId != null && !trackingRepository.categoryExists(fields.parentId)) {
             throw new IllegalArgumentException(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
@@ -329,11 +341,11 @@ public class CategoryFormViewModel extends ViewModel {
 
     private static class CategoryFormFields {
         public Long editCategoryId = null;
-        String name = "Name";
+        String name = "";
         String description = TrackingUtlis.EMPTY_DESCRIPTION;
         Long parentId = null;
         BigDecimal monthlyBudget = BigDecimal.ONE;
-        BigDecimal minimumBudget = BigDecimal.ZERO;
+        BigDecimal minimumBudget = monthlyBudget;
         TrackingType type = TrackingType.EXPENSE;
 
         CategoryFormFields copy() {

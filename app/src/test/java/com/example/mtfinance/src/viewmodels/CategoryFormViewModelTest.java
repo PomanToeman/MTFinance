@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 
+import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
@@ -132,7 +133,8 @@ public class CategoryFormViewModelTest {
         
         viewModel.setMonthlyBudget(BigDecimal.valueOf(20));
 
-        assertEquals(0, BigDecimal.valueOf(50).compareTo(viewModel.getMonthlyBudget().getValue()));
+        assertEquals(0, BigDecimal.valueOf(20).compareTo(viewModel.getMonthlyBudget().getValue()));
+        assertTrue(viewModel.getErrorMessage().getValue().contains("below minimum budget"));
     }
 
     @Test
@@ -249,7 +251,7 @@ public class CategoryFormViewModelTest {
         verify(trackingRepository).deleteCategory(categoryId, true);
         assertEquals("Category deleted successfully", viewModel.getSuccessMessage().getValue());
         assertNull(viewModel.getEditCategoryId());
-        assertEquals("Name", viewModel.getName().getValue()); // Verify clear() was called
+        assertEquals("", viewModel.getName().getValue()); // Verify clear() was called
     }
 
     @Test

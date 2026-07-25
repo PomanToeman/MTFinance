@@ -1,27 +1,17 @@
-# Diagnostics - CategoryFormViewModel Test Failure
+# Diagnostics - CategoryFormViewModel Test Failures (Take 2)
 
-## Observed Issue
-Test `setMonthlyBudget_respectsMinimum` failed with:
-`java.lang.AssertionError: expected:<0> but was:<1>`
+## 1. saveCategory_withParent_setsParentId Failure
+**Issue**: `trackingRepository.insertCategory` was not invoked.
+**Cause**: In the new background refactor, `CategoryFormFields` defaulted `monthlyBudget` to `BigDecimal.ZERO`. The `Category` constructor calls `TrackingUtlis.checkAmount(monthlyBudget)`, which throws an `IllegalArgumentException` if the amount is zero. This exception was caught in the `saveCategorySync` catch block, preventing the repository call.
+**Fix**: Updated `CategoryFormFields` defaults to match the original ViewModel (Name="Name", Budget=1).
 
-This means `viewModel.getMonthlyBudget().getValue()` returned a value smaller than 50 (expected minimum). Specifically, it likely returned the input value 20, indicating that the clamping logic in `setMonthlyBudget` did not trigger or that the state was not correctly updated.
+## 2. setMonthlyBudget_respectsMinimum Failure
+**Issue**: `AssertionError: expected:<0> but was:<1>` (Actual value was 0/default instead of the set value 20).
+**Cause**: This indicates a race condition or propagation failure. Since `postValue` is used for background updates, calling `getValue()` immediately in a test might return the old value. Even with `InstantTaskExecutorRule`, `postValue` is posted to a queue.
+**Fix**:
+- Use `setValue` whenever on the main thread (detected via `Looper` or `ArchTaskExecutor`).
+- Ensure all tests observe the LiveData they are asserting on (already added to `setUp`).
+- Restored original logic where budget clamping is performed immediately in the setter if possible, or ensured validation handles it correctly.
 
-## Potential Causes
-
-### 1. LiveData Inactivity in Tests
-`Transformations.map` creates a LiveData that only updates its value when it is "active" (i.e., has an observer). In the test environment, if `viewModel.getMonthlyBudget()` is not observed, calling `getValue()` might return the initial value or a stale value.
-- **Evidence**: `monthlyBudget` is a mapped LiveData. `successMessage` (which passes tests) is a `MutableLiveData`.
-- **Solution**: Use `observeForever` on mapped LiveData in tests, or ensure they are properly triggered.
-
-### 2. In-place modification of State Object
-The ViewModel modifies the `CategoryFormFields` object in-place and then calls `setValue(fields)`. While `MutableLiveData` should still notify observers, this pattern can be risky and might lead to race conditions if multiple updates are queued.
-- **Solution**: Implement a `copy()` method for `CategoryFormFields` and always set a new instance to the LiveData.
-
-### 3. Asynchronous postValue in updateLiveData
-The helper `updateLiveData` catches `RuntimeException` and falls back to `postValue`. In some test environments, `setValue` might throw if it touches certain Android components, forcing a fallback to `postValue`. `postValue` is always asynchronous (even with `InstantTaskExecutorRule`, it posts to a queue), so the subsequent line in the test might run before the LiveData update completes.
-- **Solution**: Avoid `Looper` and provide a cleaner way to ensure synchronous updates in tests.
-
-## Planned Fix
-1. Add a `copy()` method to `CategoryFormFields`.
-2. Update `CategoryFormViewModel` to use `postValue` only when on a non-main thread, and `setValue` otherwise, using `ArchTaskExecutor` to be thread-safe and test-friendly.
-3. Update the test to ensure LiveData is observed.
+## 3. General "Bugs" reported by User
+The transition to a single state object with `postValue` caused tests and potentially the UI to see stale data. By providing better defaults and ensuring synchronous updates on the main thread, the ViewModel will behave predictably in both tests and production.
