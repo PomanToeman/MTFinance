@@ -8,6 +8,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.DateFormat;
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.TrackingType;
@@ -30,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
@@ -54,7 +56,7 @@ public class TransactionImportFormViewModel extends ViewModel {
     private final MutableLiveData<String> amountHeader = new MutableLiveData<>();
     private final MutableLiveData<String> dateHeader = new MutableLiveData<>();
     private final MutableLiveData<String> typeHeader = new MutableLiveData<>();
-    private final MutableLiveData<DateTimeFormatter> dateFormatter = new MutableLiveData<>();
+    private final MutableLiveData<DateFormat> dateFormatter = new MutableLiveData<>();
 
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final MutableLiveData<String> successMessage = new MutableLiveData<>();
@@ -158,12 +160,18 @@ public class TransactionImportFormViewModel extends ViewModel {
      */
     public void setDateFormatter(String dateFormatter) {
         try {
-            this.dateFormatter.setValue(DateTimeFormatter.ofPattern(dateFormatter));
+            this.dateFormatter.setValue(DateFormat.fromString(dateFormatter));
+            setErrorMessage("");
         }
         catch (IllegalArgumentException e) {
             setErrorMessage(MessageCli.IMPORT_DATE_FORMAT_INVALID.getMessage(e.getMessage()));
-            this.dateFormatter.setValue(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            this.dateFormatter.setValue(DateFormat.DD_MM_YYYY);
         }
+    }
+
+    public void setDateFormatter(DateFormat dateFormatter)  {
+        this.dateFormatter.setValue(dateFormatter);
+
     }
 
     /**
@@ -194,7 +202,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         this.isLoading.setValue(Boolean.FALSE);
         this.successfulImports.setValue(new ArrayList<>());
         this.alwaysSendToRoot.setValue(Boolean.TRUE);
-        this.dateFormatter.setValue(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        this.dateFormatter.setValue(DateFormat.DD_MM_YYYY);
 
     }
 
@@ -276,10 +284,11 @@ public class TransactionImportFormViewModel extends ViewModel {
             String nameHeader = this.nameHeader.getValue();
             String dateHeader = this.dateHeader.getValue();
             String amountHeader = this.amountHeader.getValue();
-            DateTimeFormatter dateFormatter = this.dateFormatter.getValue();
+            DateTimeFormatter dateFormatter = this.dateFormatter.getValue().toFormatter();
             List<String> successfulImports = new ArrayList<>();
             List<String> failedImports = new ArrayList<>();
             String typeHeader = this.typeHeader.getValue();
+            CountDownLatch done = new CountDownLatch(1);
 
 
             // imports each record (if possible)
@@ -304,12 +313,15 @@ public class TransactionImportFormViewModel extends ViewModel {
 
                     // create and insert instance.
                     transactionForm.saveTransactionSync();
+                    done.countDown();
 
+                    done.await();
                     // check for success
                     if (!transactionForm.getSuccessMessage().getValue().isEmpty()) {
                         successfulImports.add(record.toString());
 
                     }
+
 
 
                 } catch (Exception e) {
@@ -321,7 +333,9 @@ public class TransactionImportFormViewModel extends ViewModel {
                 finally {
                     transactionForm.clearSync();
 
+
                 }
+
             }
 
             updateLiveData(this.successfulImports, successfulImports);
@@ -473,7 +487,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         return failedImports;
     }
 
-    public LiveData<DateTimeFormatter> getDateFormatter() {
+    public LiveData<DateFormat> getDateFormatter() {
         return dateFormatter;
     }
 

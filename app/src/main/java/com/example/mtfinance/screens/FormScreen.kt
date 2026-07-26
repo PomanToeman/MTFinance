@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.TrackingType
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
@@ -252,6 +254,9 @@ fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormVie
     val fileUri by transactionImportViewModel.fileUri.observeAsState()
     val successfulImports by transactionImportViewModel.successfulImports.observeAsState()
     val failedImports by transactionImportViewModel.failedImports.observeAsState()
+    val alwaysSendToRoot by transactionImportViewModel.alwaysSendToRoot.observeAsState()
+    val dateFormatter by transactionImportViewModel.dateFormatter.observeAsState()
+    var dateFormatterString by remember { mutableStateOf(dateFormatter?.toString()) }
 
 
     DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -285,9 +290,22 @@ fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormVie
             SelectForm( label = "Amount Header", options = csvHeaders, selectedOption = amountHeader, onOptionSelected = { transactionImportViewModel.setAmountHeader(it)})
             SelectForm( label = "Date Header", options = csvHeaders, selectedOption = dateHeader, onOptionSelected = { transactionImportViewModel.setDateHeader(it)})
             SelectForm( label = "Type Header", options = csvHeaders, selectedOption = typeHeader, onOptionSelected = { transactionImportViewModel.setTypeHeader(it)})
+            Row() {
+                Text("Always Send To Root")
+                Checkbox(
+                    checked = alwaysSendToRoot == true,
+                    onCheckedChange = { transactionImportViewModel.setAlwaysSendToRoot(it) }
+                )
+
+            }
+            TextFieldForm( label = "Date Format", value = dateFormatterString, onValueChange = {dateFormatterString = it; transactionImportViewModel.setDateFormatter(it)})
+
             Button(onClick = { transactionImportViewModel.importTransaction() }) {
                 Text("Import")
             }
+
+
+
         }
 
         if (isLoading == true) {
