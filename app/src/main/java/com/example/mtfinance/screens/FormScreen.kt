@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+
+import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -36,10 +38,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.mtfinance.src.DateFormat
+
 import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.TrackingType
@@ -78,8 +80,8 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         TextFieldForm("Description", transactionNotes, onValueChange = {transactionFormViewModel.setDescription(it)}, minLines = 3, maxLines = 3, placeholder = TrackingUtlis.EMPTY_DESCRIPTION)
         NumberFieldForm("Amount", transactionAmount, setter = {transactionFormViewModel.setAmount(it)}, enabled = editMode == false)
 
-        Text(transactionDate?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString())
-        DatePickerField(value = transactionDate?.toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
+
+        DatePickerField(value = transactionDate?.format(DateTimeFormatter.ISO_LOCAL_DATE).toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
             LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))}, enabled = editMode == false)
         Box(
             modifier = Modifier
@@ -103,14 +105,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
                     )
                 }
             }}
-
-        CategoryList(categories = cachedCategories?.toList() ?: emptyList(), actionOne = {transactionFormViewModel.removeCategoryId(it)}, actionOneLabel = "Remove")
-        ChooseCategoryForm(categorySelection, actionOne = {transactionFormViewModel.addCategoryId(it)}, actionOneLabel = "Add", actionTwo = {transactionFormViewModel.removeCategoryId(it)}, actionTwoLabel = "Remove")
-
-
-
-
-
+        ChooseCategoryForm(categorySelection, cachedCategories, select = {transactionFormViewModel.addCategoryId(it)}, selectLabel = "Add", remove = {transactionFormViewModel.removeCategoryId(it)}, removeLabel = "Remove")
 
 
         Button(onClick = { transactionFormViewModel.saveTransaction() }) {
@@ -200,7 +195,7 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
                 Text("Parent: None (Root Category)")
             }
             if (isRoot == false) {
-                ChooseCategoryForm( categorySelection, actionOne = {categoryFormViewModel.setParentId(it)}, actionOneLabel = "Set Parent", dismissOnSelection = true)
+                ChooseCategoryForm( categorySelection, select = {categoryFormViewModel.setParentId(it)},  selectLabel = "Set Parent", dismissOnSelection = true)
             }
 
             Text("Type: " + categoryType.toString().lowercase())
@@ -368,8 +363,9 @@ fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormVie
 /**
  * Allows you to view and choose a category from a list via a dialogue. Can input actions as composables for specific selection actions.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChooseCategoryForm(categorySelection: List<CategoryWithTransactions?>?, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, dismissOnSelection: Boolean = false) {
+fun ChooseCategoryForm(categorySelection: List<CategoryWithTransactions?>?, chosenCategories: Set<CategoryWithTransactions?>? = null, select: ((Long) -> Unit)? = null, selectLabel: String? = null, remove: ((Long) -> Unit)? = null, removeLabel: String? = null, dismissOnSelection: Boolean = false) {
     var showDialog by remember { mutableStateOf(false) }
 
     Button(onClick = { showDialog = !showDialog }) {
@@ -377,20 +373,38 @@ fun ChooseCategoryForm(categorySelection: List<CategoryWithTransactions?>?, acti
     }
 
     if (showDialog) {
-        Dialog( onDismissRequest = { showDialog = false }) {
-            LazyColumn() {
+        AlertDialog(onDismissRequest = { showDialog = false }) {
+
+        LazyColumn() {
+            item {
+                Text("Select Category")
+            }
+            if (chosenCategories == null) {
                 item {
-                    CategoryList(categories = categorySelection as Collection<CategoryWithTransactions>, actionOne = {if (actionOne != null) {actionOne(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = actionOneLabel, actionTwo = actionTwo, actionTwoLabel = actionTwoLabel, backgroundColor = Color.LightGray)
+                    CategoryList(categories = categorySelection as Collection<CategoryWithTransactions>, actionOne = {if (select != null) {select(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = selectLabel, actionTwo = remove, actionTwoLabel = removeLabel, backgroundColor = Color.LightGray)
                 }
-                item {
-                    Button(onClick = { showDialog = false }) {
-                        Text("Close")
+            }
+            else {
+                items(categorySelection!!.size) {
+                    if (categorySelection[it] != null && chosenCategories.contains(categorySelection[it])) {
+                        CategoryListItem(categorySelection[it]!!, backgroundColor = Color.Green, actionOne = {if (remove != null) {remove(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = removeLabel)
                     }
+                    else {
+                        CategoryListItem(categorySelection[it]!!, backgroundColor = Color.LightGray, actionOne = {if (select != null) {select(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = selectLabel)
+                    }
+
                 }
             }
 
-
+            item {
+                Button(onClick = { showDialog = false }) {
+                    Text("Close")
+                }
+            }
         }
+
+
+    }
     }
 
 
@@ -407,8 +421,8 @@ fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange:
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = valuelong?.toEpochDay()?.times(1000 * 60 * 60 * 24))
 
     // Button to trigger the dialog
-    Button(onClick = { showDialog = true }, enabled = enabled) {
-        Text(text = "Pick a Date")
+    TextButton(onClick = { showDialog = true }, enabled = enabled) {
+        Text(text = value ?: "Select Date")
     }
 
     if (showDialog) {
