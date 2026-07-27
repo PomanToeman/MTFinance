@@ -31,10 +31,10 @@ public class TransactionViewModel extends ViewModel {
 
         // to automatically switch sources whenever searchQuery changes.
         this.filteredTransactions = Transformations.switchMap(searchQuery, query -> {
-            if (query == null || query.isEmpty()) {
+            if (query == null || query.trim().isEmpty()) {
                 return allTransactions;
             }
-            return trackingRepository.searchTransactions(query);
+            return trackingRepository.searchTransactions(query.trim());
         });
 
 
@@ -52,7 +52,17 @@ public class TransactionViewModel extends ViewModel {
         }
 
     }
+
+    /**
+     * This automatically changes the filteredTransactions.
+     * null or empty query will return all transactions.
+     * @param query - the query to search for.
+     */
     public void setSearchQuery(String query) {
+        if (query != null && query.endsWith(" ") && !query.startsWith(" ")) {
+            searchQuery.setValue(query);
+            return;
+        }
         searchQuery.setValue(query != null ? query.trim() : "");
     }
 

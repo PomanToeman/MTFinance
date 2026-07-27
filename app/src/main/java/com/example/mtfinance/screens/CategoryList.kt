@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +57,8 @@ fun CategoryListScreen(
 ) {
     val categories by categoryViewModel.filteredCategories.observeAsState()
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
+    val searchQuery by categoryViewModel.searchQuery.observeAsState()
+
 
     FabRightBottomCorner(actionOne = { NavHostController.navigate(Routes.CATEGORY_FORM.route) }, content = {
         DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -63,7 +66,7 @@ fun CategoryListScreen(
 
 
                 Header()
-                CategorySearch()
+                Search(searchQuery = searchQuery, setter = {categoryViewModel.setSearchQuery(it)})
                 if (categories != null && categories!!.isNotEmpty()) {
                     CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)}, actionOneLabel = "Show more", backgroundColor = Color.LightGray, actionTwo = { Long -> NavHostController.navigate(Routes.CATEGORY_FORM.route + "/" + Long)}, actionTwoLabel = "Edit")
                 } else {
@@ -83,9 +86,13 @@ fun CategoryListScreen(
 
 }
 
+/**
+ * Sets a search query for a given setter
+ *
+ */
 @Composable
-fun CategorySearch(categoryViewModel: CategoryViewModel = hiltViewModel()) {
-    val searchQuery by categoryViewModel.getSearchQuery().observeAsState()
+fun Search(searchQuery: String?, setter: ((String) -> Unit)?) {
+
     Row(
         modifier = Modifier.padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -93,10 +100,11 @@ fun CategorySearch(categoryViewModel: CategoryViewModel = hiltViewModel()) {
     ) {
         Text(text = "Search: ", color = MaterialTheme.colorScheme.primary)
         TextField(searchQuery ?: "", onValueChange = {
-            categoryViewModel.setSearchQuery(it)
+            setter?.invoke(it)
         })
 
     }
+
 }
 @Composable
 fun CategoryDashBoard(
@@ -282,7 +290,7 @@ fun CategoryList(categories: Collection<Category>, actionOne: ((Long) -> Unit)? 
 }
 
 @Composable
-fun CategoryListBasic(categories: List<Category>, action: (Long) -> Unit = {}) {
+fun CategoryListBasic(categories: List<Category>, action: ((Long) -> Unit)? = null) {
     Column {
         categories.forEach { category ->
             CategoryListItem(category, action)

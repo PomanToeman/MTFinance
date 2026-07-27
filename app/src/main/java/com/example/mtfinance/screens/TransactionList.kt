@@ -52,13 +52,7 @@ fun TransactionListScreen(transactionViewModel: TransactionViewModel = hiltViewM
         DefaultColumn(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             if (selectedTransaction == null) {
                 Header("Transaction List")
-                Row() {
-                    Text("Search")
-                    TextFieldForm(
-                        "Search",
-                        searchQuery,
-                        onValueChange = { transactionViewModel.setSearchQuery(it) })
-                }
+                Search(searchQuery) { transactionViewModel.setSearchQuery(it) }
                 if (filteredTransactions != null && filteredTransactions!!.isNotEmpty()) {
 
                     TransactionList(

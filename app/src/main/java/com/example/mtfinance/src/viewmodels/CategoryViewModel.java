@@ -28,10 +28,10 @@ public class CategoryViewModel extends ViewModel {
 
         // to automatically switch sources for filteredCategories whenever searchQuery changes
         this.filteredCategories = Transformations.switchMap(searchQuery, query -> {
-            if (query == null || query.isEmpty()) {
+            if (query == null || query.trim().isEmpty()) {
                 return allCategories;
             }
-            return trackingRepository.searchCategories(query);
+            return trackingRepository.searchCategories(query.trim());
         });
     }
 
@@ -43,9 +43,14 @@ public class CategoryViewModel extends ViewModel {
 
     /**
      * This automatically changes the filteredCategories
+     * null or empty query will return all categories
      * @param query - the query to search for.
      */
     public void setSearchQuery(String query) {
+        if (query != null && query.endsWith(" ") && !query.startsWith(" ")) {
+            searchQuery.setValue(query);
+            return;
+        }
         searchQuery.setValue(query != null ? query.trim() : "");
     }
 
