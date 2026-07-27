@@ -64,7 +64,22 @@ public enum MessageCli {
     NO_SUB_CATEGORIES("No sub-categories"),
     NO_TRANSACTIONS("No transactions"),
     CATEGORY_DESCRIPTION("Description: %s"),
-    CATEGORY_MONTHLY_BUDGET("Monthly Budget: $%s");
+    CATEGORY_MONTHLY_BUDGET("Monthly Budget: $%s"),
+    TRANSACTION_LIST_HEADER("Transaction List"),
+    TRANSACTION_DASHBOARD_HEADER("Transaction Dashboard"),
+    TRANSACTION_FORM_HEADER("Transaction Form"),
+    TRANSACTION_IMPORT_HEADER("Transaction Import"),
+
+    SHOW_MORE_BUTTON("Show More"),
+    EDIT_BUTTON("Edit"),
+    DELETE_BUTTON("Delete"),
+    BACK_BUTTON("Back"),
+    ADD_BUTTON("Add"),
+    IMPORT_BUTTON("Import"),
+    SEARCH_BUTTON("Search"),
+    CLEAR_BUTTON("Clear"),
+    SAVE_BUTTON("Save"),
+    DELETE_BUTTON_CONFIRMATION("Are you sure you want to delete %s?");
 
 
 

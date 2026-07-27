@@ -40,6 +40,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.mtfinance.src.DateFormat
+import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.TrackingType
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
@@ -66,6 +67,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val cachedCategories by transactionFormViewModel.cachedCategories.observeAsState()
     var expanded: Boolean by remember { mutableStateOf(false) }
     val categorySelection by transactionFormViewModel.categorySelection.observeAsState()
+    var deleteConfirmation by remember { mutableStateOf(false) }
 
     // edit mode if transactionId is not null
     transactionFormViewModel.setTransactionId(transactionId)
@@ -79,15 +81,11 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         Text(transactionDate?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")).toString())
         DatePickerField(value = transactionDate?.toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
             LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))}, enabled = editMode == false)
-
-        CategoryList(categories = cachedCategories?.toList() ?: emptyList(), actionOne = {transactionFormViewModel.removeCategoryId(it)}, actionOneLabel = "Remove")
-        ChooseCategoryForm(categorySelection, actionOne = {transactionFormViewModel.addCategoryId(it)}, actionOneLabel = "Add", actionTwo = {transactionFormViewModel.removeCategoryId(it)}, actionTwoLabel = "Remove")
-
         Box(
             modifier = Modifier
                 .padding(16.dp),
 
-        ) {
+            ) {
             Button(onClick = { expanded = !expanded }, enabled = editMode == false) {
                 Text("Type: " + transactionType.toString().lowercase())
             }
@@ -106,12 +104,17 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
                 }
             }}
 
+        CategoryList(categories = cachedCategories?.toList() ?: emptyList(), actionOne = {transactionFormViewModel.removeCategoryId(it)}, actionOneLabel = "Remove")
+        ChooseCategoryForm(categorySelection, actionOne = {transactionFormViewModel.addCategoryId(it)}, actionOneLabel = "Add", actionTwo = {transactionFormViewModel.removeCategoryId(it)}, actionTwoLabel = "Remove")
+
+
+
 
 
 
 
         Button(onClick = { transactionFormViewModel.saveTransaction() }) {
-            Text("Save")
+            Text(MessageCli.SAVE_BUTTON.getMessage())
         }
         if (isLoading == true) {
             Box(
@@ -131,8 +134,16 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         }
 
         if (editMode == true) {
-            Button(onClick = { transactionFormViewModel.deleteTransaction() }) {
+            Button(onClick = { deleteConfirmation = true }) {
                 Text("Delete")
+            }
+            if (deleteConfirmation) {
+                DeleteConfirmationDialog(
+                    onDismiss = { deleteConfirmation = false },
+                    onConfirm = { transactionFormViewModel.deleteTransaction() },
+                    onCancel = { deleteConfirmation = false },
+                    message = MessageCli.DELETE_BUTTON_CONFIRMATION.getMessage(transactionName)
+                )
             }
         }
         else {
@@ -167,6 +178,7 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
     val categorySelection by categoryFormViewModel.categorySelection.observeAsState()
     val isRoot by categoryFormViewModel.isRoot.observeAsState()
     var deleteTransactions by remember { mutableStateOf(false) }
+    var deleteConfirmation by remember { mutableStateOf(false) }
 
     // edit mode if categoryId is not null
     categoryFormViewModel.setEditCategory(categoryId)
@@ -212,15 +224,29 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
             }
 
             if (editMode == true && isRoot == false) {
-                Checkbox(
-                    checked = deleteTransactions,
-                    onCheckedChange = { deleteTransactions = it }
-                )
-                Text(
-                    text = "delete transactions",
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-                Button(onClick = { categoryFormViewModel.deleteCategory(deleteTransactions) }) {
+
+                if (deleteConfirmation) {
+                    DeleteConfirmationDialog(
+                        onDismiss = { deleteConfirmation = false },
+                        onConfirm = { categoryFormViewModel.deleteCategory(deleteTransactions) },
+                        onCancel = { deleteConfirmation = false },
+                        message = MessageCli.DELETE_BUTTON_CONFIRMATION.getMessage(categoryName),
+                        content = {
+                            Row() {
+                                Text(
+                                    text = "delete transactions",
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                                Checkbox(
+                                    checked = deleteTransactions,
+                                    onCheckedChange = { deleteTransactions = it }
+                                )
+                            }
+                        }
+                    )
+                }
+
+                Button(onClick = { deleteConfirmation = true }) {
                     Text("Delete")
                 }
             }

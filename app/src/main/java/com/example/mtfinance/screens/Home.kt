@@ -12,7 +12,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.mtfinance.src.viewmodels.HomeViewModel
 
-
+/**
+ * The home screen of the application. Placeholder for now.
+ */
 @Composable
 fun HomeScreen(NavHostController: NavHostController, homeViewModel: HomeViewModel = hiltViewModel()) {
     Column(
