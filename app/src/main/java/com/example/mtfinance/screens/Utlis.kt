@@ -105,3 +105,13 @@ fun DeleteConfirmationDialog(onDismiss: () -> Unit, onConfirm: () -> Unit, onCan
 }
 
 
+@Composable
+fun LoadingDialog(message: String = "Loading...") {
+    AlertDialog(
+        onDismissRequest = { /* Handle dismiss if needed */ },
+        title = { Text("Loading") },
+        text = { Text(message) },
+        confirmButton = {})
+}
+
+

@@ -253,6 +253,7 @@ public class TransactionFormViewModel extends ViewModel {
                 }
 
                 setErrorMessage("");
+                System.out.println(MessageCli.TRANSACTION_UPDATED.getMessage() + fields.transactionId);
                 setSuccessMessage(MessageCli.TRANSACTION_UPDATED.getMessage());
 
             }
@@ -275,6 +276,7 @@ public class TransactionFormViewModel extends ViewModel {
                 }
 
                 setErrorMessage("");
+                System.out.println(MessageCli.TRANSACTION_SAVED.getMessage() + newTransaction.getTransactionId());
                 setSuccessMessage(MessageCli.TRANSACTION_SAVED.getMessage());
             }
 

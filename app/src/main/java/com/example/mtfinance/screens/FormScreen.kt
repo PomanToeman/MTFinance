@@ -4,6 +4,7 @@ package com.example.mtfinance.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.Modifier
@@ -23,7 +26,10 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
+
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,10 +43,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.src.DateFormat
 
 import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
@@ -112,13 +120,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
             Text(MessageCli.SAVE_BUTTON.getMessage())
         }
         if (isLoading == true) {
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .padding(16.dp)
-            ) {
-            }
+           LoadingDialog()
         }
 
         if (successMessage != null) {
@@ -203,12 +205,7 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
                 Text("Save")
             }
             if (isLoading == true) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(androidx.compose.foundation.shape.CircleShape)
-                        .padding(16.dp)
-                )
+                LoadingDialog()
             }
 
             if (successMessage != null) {
@@ -259,7 +256,11 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
 
 }
 
-
+/**
+ * Allows you to import transactions from a csv file.
+ * @param transactionImportViewModel The viewModel to use.
+ * @param navHostController The navigation controller to use.
+ */
 @Composable
 fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormViewModel = hiltViewModel(), navHostController: NavHostController) {
 
@@ -278,6 +279,7 @@ fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormVie
     val alwaysSendToRoot by transactionImportViewModel.alwaysSendToRoot.observeAsState()
     val dateFormatter by transactionImportViewModel.dateFormatter.observeAsState()
     var dateFormatterString by remember { mutableStateOf(dateFormatter?.toString()) }
+    var dateFormatterMenu by remember { mutableStateOf(false) }
 
 
     DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -319,7 +321,23 @@ fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormVie
                 )
 
             }
-            TextFieldForm( label = "Date Format", value = dateFormatterString, onValueChange = {dateFormatterString = it; transactionImportViewModel.setDateFormatter(it)})
+            TextField(label = { Text("Date Formatter")}, value = dateFormatterString ?: "", onValueChange = {transactionImportViewModel.setDateFormatter(it)}, trailingIcon = {
+                IconButton(onClick = { dateFormatterMenu = !dateFormatterMenu }) {
+                    Icon(imageVector = Icons.Default.List, contentDescription = "Date Formatter List")
+                }
+            })
+            if (dateFormatterMenu) {
+                DateFormat.values().forEach {
+                    DropdownMenuItem(
+                        text = { Text(it.toString()) },
+                        onClick = {
+                            transactionImportViewModel.setDateFormatter(it)
+                            dateFormatterString = it.toString()
+                            dateFormatterMenu = false
+                        }
+                    )
+                }
+            }
 
             Button(onClick = { transactionImportViewModel.importTransaction() }) {
                 Text("Import")
@@ -330,12 +348,7 @@ fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormVie
         }
 
         if (isLoading == true) {
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .padding(16.dp)
-            )
+            LoadingDialog()
         }
 
         if (successMessage != null) {
@@ -513,17 +526,18 @@ fun SelectForm(label: String, options: List<String?>?, selectedOption: String?, 
     ExposedDropdownMenuBox(
         expanded = isMenuExpanded,
         onExpandedChange = { isMenuExpanded = !isMenuExpanded },
-        modifier = Modifier.padding(16.dp)
     ) {
         TextField(
             value = textFieldValue ?: "",
             onValueChange = {value -> textFieldValue = value; onOptionSelected(value)},
             label = { Text(label) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded) })
+            trailingIcon = { IconButton(onClick = { isMenuExpanded = !isMenuExpanded }, ) {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded)
+            }})
 
     }
 
-    if (filteredOptions?.isNotEmpty() ?: false) {
+    if (filteredOptions?.isNotEmpty() ?: false && isMenuExpanded) {
         filteredOptions.forEach { selectionOption ->
             DropdownMenuItem(
                 text = {

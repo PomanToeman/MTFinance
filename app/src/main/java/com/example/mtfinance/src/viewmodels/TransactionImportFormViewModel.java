@@ -288,7 +288,7 @@ public class TransactionImportFormViewModel extends ViewModel {
             List<String> successfulImports = new ArrayList<>();
             List<String> failedImports = new ArrayList<>();
             String typeHeader = this.typeHeader.getValue();
-            CountDownLatch done = new CountDownLatch(1);
+
 
 
             // imports each record (if possible)
@@ -313,13 +313,18 @@ public class TransactionImportFormViewModel extends ViewModel {
 
                     // create and insert instance.
                     transactionForm.saveTransactionSync();
-                    done.countDown();
+                    Thread.sleep(10);
+                    do {
+                        Thread.sleep(1);
+                    } while (Boolean.TRUE.equals(transactionForm.getIsLoading().getValue()));
 
-                    done.await();
                     // check for success
                     if (!transactionForm.getSuccessMessage().getValue().isEmpty()) {
                         successfulImports.add(record.toString());
 
+                    }
+                    else {
+                        throw new Exception(transactionForm.getErrorMessage().getValue());
                     }
 
 
