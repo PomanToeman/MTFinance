@@ -8,6 +8,8 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
@@ -20,6 +22,8 @@ public class CategoryViewModel extends ViewModel {
     private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
     private final LiveData<List<CategoryWithTransactions>> filteredCategories;
     private final MutableLiveData<CategoryWithTransactions> selectedCategory = new MutableLiveData<>();
+
+
 
     @Inject
     public CategoryViewModel(TrackingRepository trackingRepository) {

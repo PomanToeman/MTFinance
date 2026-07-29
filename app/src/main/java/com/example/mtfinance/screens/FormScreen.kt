@@ -1,23 +1,21 @@
 package com.example.mtfinance.screens
 
 
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
-
-import androidx.compose.material3.AlertDialog
-import androidx.compose.ui.Modifier
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
@@ -26,11 +24,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
-
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -41,15 +39,15 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.mtfinance.src.DateFormat
-
 import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.TrackingType
@@ -62,6 +60,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 
+/**
+ * The UI screen that allows the user to create and edit transactions in the database.
+ */
 @Composable
 fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = hiltViewModel(), navHostController: NavHostController, transactionId: Long? = null) {
     val transactionName by transactionFormViewModel.name.observeAsState()
@@ -83,7 +84,8 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     transactionFormViewModel.setTransactionId(transactionId)
 
     DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
-        Text("Transaction Form")
+        Header(MessageCli.TRANSACTION_FORM_HEADER.getMessage())
+        Text("Edit Mode: $editMode")
         TextFieldForm("Name", transactionName, onValueChange = {transactionFormViewModel.setName(it)}, minLines = 1, maxLines = 1, enabled = editMode == false)
         TextFieldForm("Description", transactionNotes, onValueChange = {transactionFormViewModel.setDescription(it)}, minLines = 3, maxLines = 3, placeholder = TrackingUtlis.EMPTY_DESCRIPTION)
         NumberFieldForm("Amount", transactionAmount, setter = {transactionFormViewModel.setAmount(it)}, enabled = editMode == false)
@@ -161,6 +163,9 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
 
 }
 
+/**
+ * The UI screen that allows the user to create and edit categories in the database.
+ */
 @Composable
 fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewModel(), navHostController: NavHostController, categoryId: Long? = null) {
     val categoryName by categoryFormViewModel.name.observeAsState()
@@ -181,7 +186,7 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
     categoryFormViewModel.setEditCategory(categoryId)
 
     DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
-        Header("Category Form")
+        Header(MessageCli.CATEGORY_FORM_HEADER.getMessage())
         Text("Edit Mode: $editMode")
         TextFieldForm("Name", categoryName, onValueChange = {categoryFormViewModel.setName(it)}, minLines = 1, maxLines = 1, enabled = isRoot == false)
         TextFieldForm("Description", categoryDescription, onValueChange = {categoryFormViewModel.setDescription(it)}, minLines = 3, maxLines = 3, placeholder = TrackingUtlis.EMPTY_DESCRIPTION, enabled = isRoot == false)
@@ -363,10 +368,10 @@ fun TransactionImportScreen(transactionImportViewModel: TransactionImportFormVie
             Text("Back")
         }
 
-        if (successfulImports != null) {
+        if (successfulImports != null && successfulImports!!.isNotEmpty()) {
             Text(successfulImports.toString())
         }
-        if (failedImports != null) {
+        if (failedImports != null && failedImports!!.isNotEmpty()) {
             Text(failedImports.toString())
         }
     }
@@ -386,35 +391,41 @@ fun ChooseCategoryForm(categorySelection: List<CategoryWithTransactions?>?, chos
     }
 
     if (showDialog) {
-        AlertDialog(onDismissRequest = { showDialog = false }) {
-
-        LazyColumn() {
-            item {
-                Text("Select Category")
-            }
-            if (chosenCategories == null) {
+        Dialog(onDismissRequest = { showDialog = false }) {
+        Surface(shadowElevation = 4.dp, shape = RoundedCornerShape(16.dp),
+            color = Color.White) {
+            LazyColumn(
+                modifier = Modifier.padding(16.dp)
+            ) {
                 item {
-                    CategoryList(categories = categorySelection as Collection<CategoryWithTransactions>, actionOne = {if (select != null) {select(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = selectLabel, actionTwo = remove, actionTwoLabel = removeLabel, backgroundColor = Color.LightGray)
+                    Text("Select Category", modifier = Modifier.padding(8.dp), textAlign = TextAlign.Center)
                 }
-            }
-            else {
-                items(categorySelection!!.size) {
-                    if (categorySelection[it] != null && chosenCategories.contains(categorySelection[it])) {
-                        CategoryListItem(categorySelection[it]!!, backgroundColor = Color.Green, actionOne = {if (remove != null) {remove(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = removeLabel)
+                if (chosenCategories == null) {
+                    item {
+                        CategoryList(categories = categorySelection as Collection<CategoryWithTransactions>, actionOne = {if (select != null) {select(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = selectLabel, actionTwo = remove, actionTwoLabel = removeLabel, backgroundColor = Color.LightGray)
                     }
-                    else {
-                        CategoryListItem(categorySelection[it]!!, backgroundColor = Color.LightGray, actionOne = {if (select != null) {select(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = selectLabel)
+                }
+                else {
+                    items(categorySelection!!.size) {
+                        if (categorySelection[it] != null && chosenCategories.contains(categorySelection[it])) {
+                            CategoryListItem(categorySelection[it]!!, backgroundColor = Color.Green, actionOne = {if (remove != null) {remove(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = removeLabel)
+                        }
+                        else {
+                            CategoryListItem(categorySelection[it]!!, backgroundColor = Color.LightGray, actionOne = {if (select != null) {select(it); if (dismissOnSelection) showDialog = false}}, actionOneLabel = selectLabel)
+                        }
+
                     }
+                }
 
+                item {
+                    TextButton(onClick = { showDialog = false }, modifier = Modifier.padding(8.dp)) {
+                        Text("Close", textAlign = TextAlign.Right)
+                    }
                 }
             }
 
-            item {
-                Button(onClick = { showDialog = false }) {
-                    Text("Close")
-                }
-            }
         }
+
 
 
     }
@@ -426,7 +437,9 @@ fun ChooseCategoryForm(categorySelection: List<CategoryWithTransactions?>?, chos
 }
 
 
-
+/**
+ * Allows you to select a date from a date picker dialogue.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange: (Long?) -> Unit, enabled: Boolean = true) {
@@ -468,6 +481,13 @@ fun TextFieldForm(label: String, value: String?, onValueChange: (String) -> Unit
     TextField(label = { Text(label) }, value = value ?: "", onValueChange = onValueChange, minLines = minLines, maxLines = maxLines, placeholder = { Text(placeholder)}, enabled = enabled)
 }
 
+/**
+ * Allows you to input an amount into a field with a given setter. Allows dollars and cents (via decimal)
+ * @param label - The label for the field.
+ * @param value - The value of the field.
+ * @param setter - The setter for the value.
+ * @param enabled - Whether the field is enabled.
+ */
 @Composable
 fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> Unit, enabled: Boolean = true) {
     OutlinedTextField(
@@ -475,35 +495,39 @@ fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> 
         value = value?.toString() ?: "",
         prefix = { Text("$ ") },
         placeholder = { Text("0.00") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         onValueChange = {input ->
             val filteredInput = input.filter { it.isDigit() || it == '.' }
 
             if (filteredInput.isNotEmpty() ) {
 
-                if (filteredInput.last() == '.') {
-                    setter(BigDecimal(filteredInput + "0"))
-                    return@OutlinedTextField
-                }
-                if (filteredInput.first() == '.') {
-                    setter(BigDecimal("0" + filteredInput))
-                    return@OutlinedTextField
-                }
-                if (filteredInput.contains(".")) {
-                    val parts = filteredInput.split(".")
-                    if (parts[1].length > 2) {
-                        setter(BigDecimal(parts[0] + "." + parts[1].substring(0, 2)))
+                if (filteredInput.chars().filter { ch -> ch.toChar() == '.' }.count() == 1L) {
+                    if (filteredInput.last() == '.') {
+                        setter(BigDecimal(filteredInput + "0"))
                         return@OutlinedTextField
+                    }
+                    if (filteredInput.first() == '.') {
+                        setter(BigDecimal("0" + filteredInput))
+                        return@OutlinedTextField
+                    }
+                    else {
+                        val parts = filteredInput.split(".")
+                        if (parts[1].length > 2) {
+                            setter(BigDecimal(parts[0] + "." + parts[1].substring(0, 2)))
+                            return@OutlinedTextField
+                        }
                     }
                 }
 
+
                 try {
                     setter(BigDecimal(filteredInput))
-                } catch (e: NumberFormatException) {
-                    setter(null)
+                } catch (_: NumberFormatException) {
+                    setter(value)
                 }
             }
             else {
-                setter(null)
+                setter(value)
             }
 
 
@@ -515,6 +539,13 @@ fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> 
 
 }
 
+/**
+ * Allows you either type in or select from a list of options into a field.
+ * @param label - The label for the field.
+ * @param options - The options to choose from.
+ * @param selectedOption - The selected option.
+ * @param onOptionSelected - The action to perform when an option is selected.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectForm(label: String, options: List<String?>?, selectedOption: String?, onOptionSelected: (String) -> Unit) {
@@ -531,7 +562,7 @@ fun SelectForm(label: String, options: List<String?>?, selectedOption: String?, 
             value = textFieldValue ?: "",
             onValueChange = {value -> textFieldValue = value; onOptionSelected(value)},
             label = { Text(label) },
-            trailingIcon = { IconButton(onClick = { isMenuExpanded = !isMenuExpanded }, ) {
+            trailingIcon = { IconButton(onClick = { isMenuExpanded = !isMenuExpanded }) {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded)
             }})
 

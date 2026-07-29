@@ -60,6 +60,7 @@ public enum MessageCli {
     CATEGORY_SELECTED("Category selected: %s"),
         BUDGET_DISPLAY("Budget: %s"),
                  TYPE_DISPLAY("Type: %s"),
+    CATEGORY_FORM_HEADER("Category Form"),
     NO_PARENT_FOUND("No parent found"),
     NO_SUB_CATEGORIES("No sub-categories"),
     NO_TRANSACTIONS("No transactions"),
