@@ -19,7 +19,8 @@ public enum DateFormat {
     D_M_YYYY_DASH("d-M-yyyy"),
     M_D_YYYY_DASH("M-d-yyyy"),
     DD_MM_YY("dd/MM/yy"),
-    MM_DD_YY("MM/dd/yy");
+    MM_DD_YY("MM/dd/yy"),
+    FULL_DATE("EEEE, dd MMMM yyyy");
 
     private final String pattern;
 

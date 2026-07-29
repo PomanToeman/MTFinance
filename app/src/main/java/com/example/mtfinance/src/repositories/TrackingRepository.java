@@ -197,7 +197,7 @@ public class TrackingRepository {
     }
 
     public LiveData<List<CategoryWithTransactions>> searchCategories(String query) {
-         return categoryWithTransactionsDao.searchCategoriesByType(query, TrackingUtlis.EMPTY_DESCRIPTION);
+         return categoryWithTransactionsDao.searchCategories(query, TrackingUtlis.EMPTY_DESCRIPTION);
     }
 
     public List<Long> autoSearchCategoryIds(String query, TrackingType type) {
@@ -300,6 +300,9 @@ public class TrackingRepository {
     }
 
     public LiveData<List<CategoryWithTransactions>> searchCategoriesWithType(String query, TrackingType type) {
+        if (type == null) {
+            return searchCategories(query);
+        }
         return categoryWithTransactionsDao.searchCategoriesByType(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
     }
 
@@ -334,6 +337,14 @@ public class TrackingRepository {
     public LiveData<List<Transaction>> searchTransactions(String query) {
         return transactionRepository.searchTransactions(query);
     }
+
+    public LiveData<List<Transaction>> searchTransactionsWithType(String query, TrackingType type) {
+        if (type == null) {
+            return transactionRepository.searchTransactions(query);
+        }
+        return transactionRepository.searchTransactionsWithType(query, type);
+    }
+
 
     public boolean transactionExists(Long id) {
         return transactionRepository.exists(id);

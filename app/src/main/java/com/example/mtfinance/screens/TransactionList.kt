@@ -3,6 +3,7 @@ package com.example.mtfinance.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,10 +34,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.Transaction
 import com.example.mtfinance.src.viewmodels.TransactionViewModel
-import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -52,6 +53,7 @@ fun TransactionListScreen(transactionViewModel: TransactionViewModel = hiltViewM
     val filteredTransactions by transactionViewModel.filteredTransactions.observeAsState()
     val searchQuery by transactionViewModel.searchQuery.observeAsState()
     val selectedTransaction by transactionViewModel.selectedTransaction.observeAsState()
+    val typeFilter by transactionViewModel.typeFilter.observeAsState()
 
     FabRightBottomCorner(actionOne = {
         navHostController.navigate(Routes.TRANSACTION_FORM.route)
@@ -60,6 +62,7 @@ fun TransactionListScreen(transactionViewModel: TransactionViewModel = hiltViewM
             if (selectedTransaction == null) {
                 Header(MessageCli.TRANSACTION_LIST_HEADER.getMessage())
                 Search(searchQuery) { transactionViewModel.setSearchQuery(it) }
+                ChooseTypeForm(typeFilter, onTypeSelected = {transactionViewModel.setTypeFilter(it)}, includeNone = true, enabled = true)
                 if (filteredTransactions != null && filteredTransactions!!.isNotEmpty()) {
 
                     TransactionList(
@@ -129,7 +132,8 @@ fun TransactionListItem(transaction: Transaction, actionOne: ((Long) -> Unit)? =
             .clickable { expanded.value = !expanded.value }
             .background(color = backgroundColor, shape = RectangleShape), content = {
             Column(Modifier.fillMaxWidth().padding(3.dp)) {
-                Row() {
+                Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween) {
 
                     Text(transaction.name, modifier = Modifier.weight(1f), textAlign = TextAlign.Left, minLines = 1, maxLines = 1, overflow = TextOverflow.Ellipsis)
 
@@ -137,8 +141,14 @@ fun TransactionListItem(transaction: Transaction, actionOne: ((Long) -> Unit)? =
 
 
                 }
-                val formatter = DateTimeFormatter.ofPattern("E dd MMM yyyy")
-                Text(transaction.date.toLocalDate().format(formatter).toString(), textAlign = TextAlign.Left)
+
+                Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(transaction.date.toLocalDate().format(DateFormat.FULL_DATE.toFormatter()).toString(), textAlign = TextAlign.Left, minLines = 1, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(transaction.type.toString(), textAlign = TextAlign.Right)
+                }
+
+
                 if (expanded.value) {
                     Text(transaction.description, minLines = 1, maxLines = 3)
                     Row() {

@@ -36,7 +36,7 @@ public interface CategoryTransactionDao {
 
     @Transaction
     @Query("SELECT * FROM categories WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)")
-    LiveData<List<CategoryWithTransactions>> searchCategoriesByType(String query, String defaultDescription);
+    LiveData<List<CategoryWithTransactions>> searchCategories(String query, String defaultDescription);
 
     @Transaction
     @Query("SELECT * FROM categories WHERE (LOWER(name) LIKE '%' || LOWER(:query) || '%' OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)) AND type == :type")

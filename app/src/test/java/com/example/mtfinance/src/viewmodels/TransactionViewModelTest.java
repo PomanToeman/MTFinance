@@ -119,7 +119,7 @@ public class TransactionViewModelTest {
         MutableLiveData<List<Transaction>> repoLiveData = new MutableLiveData<>();
         repoLiveData.setValue(searchResults);
 
-        when(trackingRepository.searchTransactions(query)).thenReturn(repoLiveData);
+        when(trackingRepository.searchTransactionsWithType(query, null)).thenReturn(repoLiveData);
 
         // ACTIVATE the switchMap by adding an observer
         viewModel.getFilteredTransactions().observeForever(res -> {});
@@ -128,8 +128,42 @@ public class TransactionViewModelTest {
         viewModel.setSearchQuery(query);
 
         // Assert
-        verify(trackingRepository).searchTransactions(query);
+        verify(trackingRepository).searchTransactionsWithType(query, null);
         assertEquals(searchResults, viewModel.getFilteredTransactions().getValue());
+    }
+
+    @Test
+    public void filterTransactions_withQueryAndType_triggersSwitchMap() {
+        // Arrange
+        String query = "Pizza";
+        TrackingType type = TrackingType.EXPENSE;
+        List<Transaction> searchResults = new ArrayList<>();
+        searchResults.add(new Transaction.Builder("Pizza Hut", BigDecimal.valueOf(25)).type(type).build());
+
+        MutableLiveData<List<Transaction>> repoLiveData = new MutableLiveData<>();
+        repoLiveData.setValue(searchResults);
+
+        when(trackingRepository.searchTransactionsWithType(query, type)).thenReturn(repoLiveData);
+
+        // ACTIVATE the switchMap
+        viewModel.getFilteredTransactions().observeForever(res -> {});
+
+        // Act
+        viewModel.setTypeFilter(type);
+        viewModel.setSearchQuery(query);
+
+        // Assert
+        verify(trackingRepository).searchTransactionsWithType(query, type);
+        assertEquals(searchResults, viewModel.getFilteredTransactions().getValue());
+    }
+
+    @Test
+    public void setTypeFilter_updatesTypeFilterLiveData() {
+        // Act
+        viewModel.setTypeFilter(TrackingType.INCOME);
+
+        // Assert
+        assertEquals(TrackingType.INCOME, viewModel.getTypeFilter().getValue());
     }
 
     @Test

@@ -26,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -58,6 +57,7 @@ fun CategoryListScreen(
     val categories by categoryViewModel.filteredCategories.observeAsState()
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
     val searchQuery by categoryViewModel.searchQuery.observeAsState()
+    val typeFilter by categoryViewModel.typeFilter.observeAsState()
 
 
     FabRightBottomCorner(actionOne = { NavHostController.navigate(Routes.CATEGORY_FORM.route) }, content = {
@@ -65,8 +65,9 @@ fun CategoryListScreen(
             if (selectedCategory == null) {
 
 
-                Header()
-                Search(searchQuery = searchQuery, setter = {categoryViewModel.setSearchQuery(it)})
+                Header("Category List")
+                Search(searchQuery = searchQuery, onQueryChange = {categoryViewModel.setSearchQuery(it)})
+                ChooseTypeForm(typeFilter, { type -> categoryViewModel.setTypeFilter(type) }, includeNone = true)
                 if (categories != null && categories!!.isNotEmpty()) {
                     CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)}, actionOneLabel = "Show more", backgroundColor = Color.LightGray, actionTwo = { Long -> NavHostController.navigate(Routes.CATEGORY_FORM.route + "/" + Long)}, actionTwoLabel = "Edit")
                 } else {
@@ -91,7 +92,7 @@ fun CategoryListScreen(
  *
  */
 @Composable
-fun Search(searchQuery: String?, setter: ((String) -> Unit)?) {
+fun Search(searchQuery: String?, onQueryChange: ((String) -> Unit)?) {
 
     Row(
         modifier = Modifier.padding(16.dp),
@@ -100,7 +101,7 @@ fun Search(searchQuery: String?, setter: ((String) -> Unit)?) {
     ) {
         Text(text = "Search: ", color = MaterialTheme.colorScheme.primary)
         TextField(searchQuery ?: "", onValueChange = {
-            setter?.invoke(it)
+            onQueryChange?.invoke(it)
         })
 
     }

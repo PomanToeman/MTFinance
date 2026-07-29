@@ -73,7 +73,7 @@ public class CategoryViewModelTest {
         MutableLiveData<List<CategoryWithTransactions>> repoLiveData = new MutableLiveData<>();
         repoLiveData.setValue(searchResults);
 
-        when(trackingRepository.searchCategories(query)).thenReturn(repoLiveData);
+        when(trackingRepository.searchCategoriesWithType(query, null)).thenReturn(repoLiveData);
 
         // ACTIVATE the switchMap by adding an observer
         viewModel.getFilteredCategories().observeForever(res -> {});
@@ -82,8 +82,40 @@ public class CategoryViewModelTest {
         viewModel.setSearchQuery(query);
 
         // Assert
-        verify(trackingRepository).searchCategories(query);
+        verify(trackingRepository).searchCategoriesWithType(query, null);
         assertEquals(searchResults, viewModel.getFilteredCategories().getValue());
+    }
+
+    @Test
+    public void filterCategories_withQueryAndType_triggersSwitchMap() {
+        // Arrange
+        String query = "Water";
+        TrackingType type = TrackingType.EXPENSE;
+        List<CategoryWithTransactions> searchResults = new ArrayList<>();
+        MutableLiveData<List<CategoryWithTransactions>> repoLiveData = new MutableLiveData<>();
+        repoLiveData.setValue(searchResults);
+
+        when(trackingRepository.searchCategoriesWithType(query, type)).thenReturn(repoLiveData);
+
+        // ACTIVATE the switchMap
+        viewModel.getFilteredCategories().observeForever(res -> {});
+
+        // Act
+        viewModel.setTypeFilter(type);
+        viewModel.setSearchQuery(query);
+
+        // Assert
+        verify(trackingRepository).searchCategoriesWithType(query, type);
+        assertEquals(searchResults, viewModel.getFilteredCategories().getValue());
+    }
+
+    @Test
+    public void setTypeFilter_updatesTypeFilterLiveData() {
+        // Act
+        viewModel.setTypeFilter(TrackingType.INCOME);
+
+        // Assert
+        assertEquals(TrackingType.INCOME, viewModel.getTypeFilter().getValue());
     }
 
     @Test

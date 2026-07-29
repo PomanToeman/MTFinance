@@ -93,28 +93,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
 
         DatePickerField(value = transactionDate?.format(DateTimeFormatter.ISO_LOCAL_DATE).toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
             LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))}, enabled = editMode == false)
-        Box(
-            modifier = Modifier
-                .padding(16.dp),
-
-            ) {
-            Button(onClick = { expanded = !expanded }, enabled = editMode == false) {
-                Text("Type: " + transactionType.toString().lowercase())
-            }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                for (type in TrackingType.entries) {
-                    DropdownMenuItem(
-                        text = { Text(type.toString().lowercase()) },
-                        onClick = {
-                            transactionFormViewModel.setType(type)
-                            expanded = false
-                        }
-                    )
-                }
-            }}
+        ChooseTypeForm(transactionType, onTypeSelected = {transactionFormViewModel.setType(it)}, enabled = editMode == false)
         ChooseCategoryForm(categorySelection, cachedCategories, select = {transactionFormViewModel.addCategoryId(it)}, selectLabel = "Add", remove = {transactionFormViewModel.removeCategoryId(it)}, removeLabel = "Remove")
 
 
@@ -582,6 +561,52 @@ fun SelectForm(label: String, options: List<String?>?, selectedOption: String?, 
                     isMenuExpanded = false
                 }
             )
+        }
+    }
+}
+
+
+@Composable
+fun ChooseTypeForm(typeValue: TrackingType?, onTypeSelected: (TrackingType?) -> Unit, enabled: Boolean = true, includeNone: Boolean = false) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .padding(16.dp),
+
+        ) {
+        Button(onClick = { expanded = !expanded }, enabled = enabled) {
+            if (typeValue != null) {
+                Text("Type: " + typeValue.toString().lowercase())
+            }
+            else {
+                Text("Type: None")
+            }
+
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            for (type in TrackingType.entries) {
+                DropdownMenuItem(
+                    text = { Text(type.toString().lowercase()) },
+                    onClick = {
+
+                        onTypeSelected(type)
+                        expanded = false
+                    }
+                )
+            }
+            if (includeNone) {
+                DropdownMenuItem(
+                    text = { Text("None") },
+                    onClick = {
+                        onTypeSelected(null)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }

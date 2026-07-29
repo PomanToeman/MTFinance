@@ -1,6 +1,7 @@
 package com.example.mtfinance.src.viewmodels;
 
 
+import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
@@ -8,8 +9,9 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
+import com.example.mtfinance.src.trackingengine.TrackingType;
+import com.example.mtfinance.src.viewmodels.utlis.SearchCriteria;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
@@ -19,7 +21,8 @@ import javax.inject.Inject;
 public class CategoryViewModel extends ViewModel {
     private final TrackingRepository trackingRepository;
     private final LiveData<List<CategoryWithTransactions>> allCategories;
-    private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
+    @NonNull
+    private final MutableLiveData<SearchCriteria> searchCriteria = new MutableLiveData<>(new SearchCriteria("", null));
     private final LiveData<List<CategoryWithTransactions>> filteredCategories;
     private final MutableLiveData<CategoryWithTransactions> selectedCategory = new MutableLiveData<>();
 
@@ -31,11 +34,13 @@ public class CategoryViewModel extends ViewModel {
         this.allCategories = trackingRepository.getAllCategoriesWithTransactions();
 
         // to automatically switch sources for filteredCategories whenever searchQuery changes
-        this.filteredCategories = Transformations.switchMap(searchQuery, query -> {
-            if (query == null || query.trim().isEmpty()) {
+        this.filteredCategories = Transformations.switchMap(searchCriteria, searchCriteria -> {
+
+            if (searchCriteria == null || (searchCriteria.getQuery() == null || searchCriteria.getQuery().trim().isEmpty()) && searchCriteria.getTypeFilter() == null) {
                 return allCategories;
             }
-            return trackingRepository.searchCategories(query.trim());
+
+            return trackingRepository.searchCategoriesWithType(searchCriteria.getTrimmedQuery(), searchCriteria.getTypeFilter());
         });
     }
 
@@ -51,15 +56,41 @@ public class CategoryViewModel extends ViewModel {
      * @param query - the query to search for.
      */
     public void setSearchQuery(String query) {
-        if (query != null && query.endsWith(" ") && !query.startsWith(" ")) {
-            searchQuery.setValue(query);
-            return;
-        }
-        searchQuery.setValue(query != null ? query.trim() : "");
+        SearchCriteria searchCriteria = this.searchCriteria.getValue();
+        searchCriteria.setQuery(query);
+
+        this.searchCriteria.setValue(searchCriteria);
+
+    }
+
+    public void setTypeFilter(TrackingType typeFilter) {
+        SearchCriteria searchCriteria = this.searchCriteria.getValue() != null ? this.searchCriteria.getValue() : new SearchCriteria("", null);
+        searchCriteria.setTypeFilter(typeFilter);
+        this.searchCriteria.setValue(searchCriteria);
+
+    }
+
+    public LiveData<TrackingType> getTypeFilter() {
+        return Transformations.map(searchCriteria, searchCriteria ->{
+            if (searchCriteria != null) {
+                return searchCriteria.getTypeFilter();
+            }
+            return null;
+        });
+    }
+
+
+    public LiveData<SearchCriteria> getSearchCriteria() {
+        return searchCriteria;
     }
 
     public LiveData<String> getSearchQuery() {
-        return searchQuery;
+        return Transformations.map(searchCriteria, searchCriteria ->{
+            if (searchCriteria != null) {
+                return searchCriteria.getQuery();
+            }
+                return "";
+        });
     }
 
     public LiveData<List<CategoryWithTransactions>> getFilteredCategories() {
