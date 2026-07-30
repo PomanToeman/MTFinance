@@ -25,6 +25,7 @@ public class CategoryViewModel extends ViewModel {
     private final MutableLiveData<SearchCriteria> searchCriteria = new MutableLiveData<>(new SearchCriteria("", null));
     private final LiveData<List<CategoryWithTransactions>> filteredCategories;
     private final MutableLiveData<CategoryWithTransactions> selectedCategory = new MutableLiveData<>();
+    private final LiveData<Long> updateTrigger;
 
 
 
@@ -42,6 +43,7 @@ public class CategoryViewModel extends ViewModel {
 
             return trackingRepository.searchCategoriesWithType(searchCriteria.getTrimmedQuery(), searchCriteria.getTypeFilter());
         });
+        this.updateTrigger = Transformations.map(filteredCategories, categories -> System.currentTimeMillis());
     }
 
     public LiveData<List<CategoryWithTransactions>> getAllCategories() {
@@ -114,5 +116,9 @@ public class CategoryViewModel extends ViewModel {
 
     public LiveData<CategoryWithTransactions> getSelectedCategory() {
         return selectedCategory;
+    }
+
+    public LiveData<Long> getUpdateTrigger() {
+        return updateTrigger;
     }
 }

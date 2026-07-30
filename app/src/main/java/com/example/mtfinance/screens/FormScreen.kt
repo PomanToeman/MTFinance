@@ -80,6 +80,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val categorySelection by transactionFormViewModel.categorySelection.observeAsState()
     var deleteConfirmation by remember { mutableStateOf(false) }
 
+
     // edit mode if transactionId is not null
     transactionFormViewModel.setTransactionId(transactionId)
 
@@ -160,6 +161,7 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
     val isRoot by categoryFormViewModel.isRoot.observeAsState()
     var deleteTransactions by remember { mutableStateOf(false) }
     var deleteConfirmation by remember { mutableStateOf(false) }
+
 
     // edit mode if categoryId is not null
     categoryFormViewModel.setEditCategory(categoryId)

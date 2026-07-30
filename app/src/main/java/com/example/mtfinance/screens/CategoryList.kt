@@ -58,6 +58,7 @@ fun CategoryListScreen(
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
     val searchQuery by categoryViewModel.searchQuery.observeAsState()
     val typeFilter by categoryViewModel.typeFilter.observeAsState()
+    val updateTrigger by categoryViewModel.updateTrigger.observeAsState()
 
 
     FabRightBottomCorner(actionOne = { NavHostController.navigate(Routes.CATEGORY_FORM.route) }, content = {
@@ -69,7 +70,7 @@ fun CategoryListScreen(
                 Search(searchQuery = searchQuery, onQueryChange = {categoryViewModel.setSearchQuery(it)})
                 ChooseTypeForm(typeFilter, { type -> categoryViewModel.setTypeFilter(type) }, includeNone = true)
                 if (categories != null && categories!!.isNotEmpty()) {
-                    CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)}, actionOneLabel = "Show more", backgroundColor = Color.LightGray, actionTwo = { Long -> NavHostController.navigate(Routes.CATEGORY_FORM.route + "/" + Long)}, actionTwoLabel = "Edit")
+                    CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)}, actionOneLabel = "Show more", backgroundColor = Color.LightGray, actionTwo = { Long -> NavHostController.navigate(Routes.CATEGORY_FORM.route + "/" + Long)}, actionTwoLabel = "Edit", updateTrigger = updateTrigger)
                 } else {
                     Text("No categories Found", color = MaterialTheme.colorScheme.primary)
                 }
@@ -262,14 +263,14 @@ fun Header(text: String = "Category List") {
 }
 
 @Composable
-fun CategoryList(categories: Collection<CategoryWithTransactions>, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, backgroundColor: Color = Color.Gray ) {
+fun CategoryList(categories: Collection<CategoryWithTransactions>, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, backgroundColor: Color = Color.Gray, updateTrigger: Long? = 0 ) {
     LazyColumn(modifier = Modifier.fillMaxSize().height(500.dp).padding(16.dp).border(
         width = 2.dp,
         color = Color.Black,
         shape = RectangleShape
     )) {
 
-        items(categories.size) { index ->
+        items(categories.size,  key = {  index -> "${categories.elementAt(index).category.categoryId}_${updateTrigger}" }) { index ->
             CategoryListItem(categories.elementAt(index), actionOne, actionOneLabel, actionTwo, actionTwoLabel, backgroundColor)
         }
     }
@@ -277,14 +278,14 @@ fun CategoryList(categories: Collection<CategoryWithTransactions>, actionOne: ((
 
 @Composable
 @JvmName("CategoryListFromCategory")
-fun CategoryList(categories: Collection<Category>, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, backgroundColor: Color = Color.Gray ) {
+fun CategoryList(categories: Collection<Category>, actionOne: ((Long) -> Unit)? = null, actionOneLabel: String? = null, actionTwo: ((Long) -> Unit)? = null, actionTwoLabel: String? = null, backgroundColor: Color = Color.Gray, updateTrigger: Long? = 0 ) {
     LazyColumn(modifier = Modifier.fillMaxSize().height(500.dp).padding(16.dp).border(
         width = 2.dp,
         color = Color.Black,
         shape = RectangleShape
     )) {
 
-        items(categories.size) { index ->
+        items(categories.size , key = { index -> "${categories.elementAt(index).categoryId}_${updateTrigger}" }) { index ->
             CategoryListItem(categories.elementAt(index), actionOne, actionOneLabel, actionTwo, actionTwoLabel, backgroundColor)
         }
     }

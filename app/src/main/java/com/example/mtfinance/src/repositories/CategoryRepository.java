@@ -260,6 +260,7 @@ public class CategoryRepository {
         treeContents.addAll(category.getAncestors());
         treeContents.remove(null); // for safety
         updateAllCategories(treeContents);
+
     }
 
 
