@@ -128,12 +128,11 @@ public class CategoryRepository {
             return; // not found
         }
 
-        // Re-parent children to grandparent (or root)
-        Long parentId = categoryInDb.getParentId();
-        Set<Category> children = categoryToDelete.getChildren(false);
+
 
         categoryToDelete.makeChildrenCongruent(); // make children at same level as parent
-        updateAllCategories(children); // save new children to Db
+        updateAllCategories(categoryToDelete.getParent().getChildren(false)); // save new children to Db
+
 
         categoryDao.delete(categoryToDelete);
     }

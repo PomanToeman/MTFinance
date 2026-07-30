@@ -135,7 +135,7 @@ public class TrackingRepository {
 
 
             categoryWithTransactionsDao.deleteCrossRefsForCategory(categoryId);
-            categoryRepository.deleteCategory(categoryRepository.getCategoryById(categoryId));
+            categoryRepository.deleteCategory(categoryRepository.getCategoryByIdRestored(categoryId));
         }
     }
 
