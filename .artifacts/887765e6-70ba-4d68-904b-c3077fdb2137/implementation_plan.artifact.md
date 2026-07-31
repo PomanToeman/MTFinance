@@ -1,41 +1,50 @@
-# Implementation Plan - Refactor CategoryFormViewModel for Background Execution
+# Implementation Plan - Fix Category List Update and Budget Comparison Bugs
 
-Refactor `CategoryFormViewModel` to perform database operations on background threads using an injected `Executor`, following the pattern established with `TransactionFormViewModel`.
+Address two critical issues:
+1. Visual bug where parent categories don't update their budgets in the list when children change.
+2. Logic bug where budget cannot be set exactly equal to the minimum budget.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - `CategoryFormViewModel` will use a consolidated `CategoryFormFields` state object internally to manage all form data.
-> - Public `LiveData` getters will be maintained using `Transformations.map` to ensure future UI compatibility without breaking existing structure.
-> - Background operations will use `postValue()` for thread-safe updates to LiveData.
+> - **Equality Logic Change**: I will modify `Category.equals()` and `hashCode()` to include all display fields (`name`, `description`, `monthlyBudget`). This is crucial for Jetpack Compose to detect state changes in the `LazyColumn` and trigger recomposition.
+> - **Budget Clamping Fix**: I will change the comparison logic in `Category.java` to allow setting the budget exactly at the minimum threshold.
 
 ## Proposed Changes
 
-### [View Models]
+### [Tracking Engine]
 
-#### [MODIFY] [CategoryFormViewModel.java](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/main/java/com/example/mtfinance/src/viewmodels/CategoryFormViewModel.java)
-- Update constructor to inject `java.util.concurrent.Executor`.
-- Introduce a private static class `CategoryFormFields` to hold all form field data.
-- Replace individual `MutableLiveData` for fields with a single `MutableLiveData<CategoryFormFields>`.
-- Use `Transformations.map` to expose individual field `LiveData`.
-- Refactor `loadCategoryForEditing()`, `clear()`, `saveCategory()`, and `deleteCategory()` to run on the `executor`.
-- Implement `*Sync` versions of these methods for internal logic and testing.
-- Ensure all LiveData updates from background threads use `postValue()`.
+#### [MODIFY] [Category.java](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/main/java/com/example/mtfinance/src/trackingengine/Category.java)
+- **Fix Budget Comparison**: Change `setMonthlyBudget(BigDecimal)` to use `>=` when comparing with the minimum budget.
+- **Improve Equality**: Update `equals(Object o)` and `hashCode()` to include `name`, `description`, `monthlyBudget`, and `parentId`. This ensures that `CategoryWithTransactions` (which delegates equality to Category) correctly signals a change to the UI.
+
+#### [MODIFY] [CategoryWithTransactions.java](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/main/java/com/example/mtfinance/src/trackingengine/CategoryWithTransactions.java)
+- Ensure `equals()` and `hashCode()` correctly reflect changes in the underlying `category` object.
 
 ---
 
-### [Tests]
+### [Repositories]
 
-#### [MODIFY] [CategoryFormViewModelTest.java](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/test/java/com/example/mtfinance/src/viewmodels/CategoryFormViewModelTest.java)
-- Provide a synchronous `Executor` (e.g., `Runnable::run`) to the `CategoryFormViewModel` constructor.
-- Update `setUp()` to reflect the new constructor parameters.
+#### [MODIFY] [CategoryRepository.java](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/main/java/com/example/mtfinance/src/repositories/CategoryRepository.java)
+- **Tree Updates**: Refactor `updateCategoryTree(Category)` to ensure that all ancestors (including the system root) whose budgets are modified by propagation are consistently collected and persisted.
+
+---
+
+### [Database]
+
+#### [MODIFY] [CategoryDao.java](file:///C:/Users/Rebec/AndroidStudioProjects/MTFinance/MTFinance/app/src/main/java/com/example/mtfinance/src/repositories/roomdatabase/CategoryDao.java)
+- Ensure `updateAll` is atomic. If needed, I will wrap it in a `@Transaction` method to ensure that all category updates in a tree are emitted as a single `LiveData` change.
 
 ## Verification Plan
 
 ### Automated Tests
-- Run `CategoryFormViewModelTest` to ensure business logic (validation, budget constraints, hierarchy) remains correct.
-- Execute `./gradlew :app:testDebugUnitTest` to run all unit tests in the project.
+- **New Test**: `setMonthlyBudget_atExactMinimum_succeeds()` to verify the comparison fix.
+- **New Test**: `updateChildBudget_updatesParentBudgetInRepository()` to verify propagation and persistence logic.
+- Run all unit tests to ensure no regressions in validation or hierarchy depth checks.
 
 ### Manual Verification
-- Perform a clean build: `./gradlew clean :app:assembleDebug`.
-- (Future) Verify on device once the UI screen for categories is implemented.
+1. Navigate to Category List.
+2. Note a Parent category's current minimum budget (sum of its sub-categories).
+3. Try to set its budget exactly to that value. Verify it saves.
+4. Increase a sub-category's budget so that the parent's minimum budget now exceeds its set budget.
+5. Save and return to the list. Verify the parent's budget is updated visually.

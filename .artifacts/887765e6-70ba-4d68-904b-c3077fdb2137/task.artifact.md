@@ -1,13 +1,16 @@
-# Task List - Support Uri in TransactionImportFormViewModel
+# Task List - Fix Category List and Budget Bugs
 
-- [x] Modify `TransactionImportFormViewModel.java`
-    - [x] Update constructor to inject `Application`
-    - [x] Add `fileUri` state and public getters/setters
-    - [x] Refactor `readTransactionFileSync` to support `Uri` input streams
-    - [x] Update `clear` to reset `fileUri`
-- [x] Update `TransactionImportFormViewModelTest.java`
-    - [x] Mock `Application` and `ContentResolver`
-    - [x] Add test for loading headers from a `Uri`
+- [x] Fix logic in `Category.java`
+    - [x] Update `setMonthlyBudget` comparison to `>=`
+    - [x] Refactor `equals()` and `hashCode()` to include display fields
+    - [x] Fix `makeChildrenCongruent()` iteration bug
+- [x] Update `CategoryWithTransactions.java`
+    - [x] Ensure `equals()` and `hashCode()` correctly reflect category changes
+- [x] Improve `CategoryRepository.java`
+    - [x] Refactor `updateCategoryTree()` for better consistency
+- [x] Fix budget setting in `CategoryFormViewModel.java`
 - [x] Verification
+    - [x] Add unit test for exact minimum budget
+    - [x] Add unit test for parent budget propagation
     - [x] Run all unit tests
-    - [x] Clean build
+    - [x] Manual verification on device

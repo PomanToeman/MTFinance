@@ -230,6 +230,8 @@ public class CategoryFormViewModel extends ViewModel {
 
     public void saveCategory() {
         executor.execute(this::saveCategorySync);
+
+
     }
 
     public void saveCategorySync() {
@@ -266,6 +268,7 @@ public class CategoryFormViewModel extends ViewModel {
                        category.setParent(trackingRepository.getCategoryByIdRestored(fields.parentId));
                    }
                    trackingRepository.updateCategoryTree(category);
+
                } else {
                    category.setMonthlyBudget(fields.monthlyBudget);
                    trackingRepository.updateCategory(category);
@@ -282,6 +285,7 @@ public class CategoryFormViewModel extends ViewModel {
        }
        finally {
            setIsLoading(false);
+           loadCategoryForEditingSync();
            
        }
 

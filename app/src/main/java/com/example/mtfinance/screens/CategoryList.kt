@@ -71,6 +71,7 @@ fun CategoryListScreen(
                 ChooseTypeForm(typeFilter, { type -> categoryViewModel.setTypeFilter(type) }, includeNone = true)
                 if (categories != null && categories!!.isNotEmpty()) {
                     CategoryList(categories!!, actionOne = { Long -> categoryViewModel.setSelectedCategory(Long)}, actionOneLabel = "Show more", backgroundColor = Color.LightGray, actionTwo = { Long -> NavHostController.navigate(Routes.CATEGORY_FORM.route + "/" + Long)}, actionTwoLabel = "Edit", updateTrigger = updateTrigger)
+
                 } else {
                     Text("No categories Found", color = MaterialTheme.colorScheme.primary)
                 }

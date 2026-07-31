@@ -121,4 +121,6 @@ public class CategoryViewModel extends ViewModel {
     public LiveData<Long> getUpdateTrigger() {
         return updateTrigger;
     }
+
+
 }

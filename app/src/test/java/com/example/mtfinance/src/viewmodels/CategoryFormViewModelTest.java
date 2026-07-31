@@ -123,7 +123,7 @@ public class CategoryFormViewModelTest {
     }
 
     @Test
-    public void setMonthlyBudget_respectsMinimum() {
+    public void setMonthlyBudget_atExactMinimum_succeeds() {
         Category parent = new Category("Parent", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         Category child = new Category("Child", "", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         child.setParent(parent);
@@ -134,10 +134,44 @@ public class CategoryFormViewModelTest {
         
         viewModel.setEditCategory(10L);
         
-        viewModel.setMonthlyBudget(BigDecimal.valueOf(20));
+        // Exact minimum budget is 50 (from child)
+        viewModel.setMonthlyBudget(BigDecimal.valueOf(50));
 
-        assertEquals(0, BigDecimal.valueOf(20).compareTo(viewModel.getMonthlyBudget().getValue()));
-        assertTrue(viewModel.getErrorMessage().getValue().contains("below minimum budget"));
+        assertEquals(0, BigDecimal.valueOf(50).compareTo(viewModel.getMonthlyBudget().getValue()));
+        assertEquals("", viewModel.getErrorMessage().getValue());
+    }
+
+    @Test
+    public void saveCategory_childBudgetIncrease_propagatesToParent() {
+        // Arrange
+        long parentId = 10L;
+        long childId = 20L;
+        Category parent = new Category("Parent", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        parent.setCategoryId(parentId);
+        
+        Category child = new Category("Child", "", BigDecimal.valueOf(50), TrackingType.EXPENSE);
+        child.setCategoryId(childId);
+        child.setParent(parent);
+
+        when(trackingRepository.categoryExists(parentId)).thenReturn(true);
+        when(trackingRepository.categoryExists(childId)).thenReturn(true);
+        when(trackingRepository.getCategoryByIdRestored(parentId)).thenReturn(parent);
+        when(trackingRepository.getCategoryByIdRestored(childId)).thenReturn(child);
+        when(trackingRepository.isRoot(child)).thenReturn(false);
+
+        viewModel.setEditCategory(childId);
+        
+        // Act - Increase child budget to 150 (exceeds parent budget of 100)
+        viewModel.setMonthlyBudget(BigDecimal.valueOf(150));
+        viewModel.saveCategory();
+
+        // Assert
+        ArgumentCaptor<Category> captor = ArgumentCaptor.forClass(Category.class);
+        verify(trackingRepository).updateCategoryTree(captor.capture());
+        
+        Category savedChild = captor.getValue();
+        assertEquals(0, BigDecimal.valueOf(150).compareTo(savedChild.getMonthlyBudget()));
+        assertEquals(0, BigDecimal.valueOf(150).compareTo(savedChild.getParent().getMonthlyBudget()));
     }
 
     @Test

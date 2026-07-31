@@ -508,7 +508,7 @@ fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> 
                 }
             }
             else {
-                setter(value)
+                setter(null)
             }
 
 

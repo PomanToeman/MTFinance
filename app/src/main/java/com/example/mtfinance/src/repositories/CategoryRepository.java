@@ -64,7 +64,11 @@ public class CategoryRepository {
             insert(category.getParent()); // automatically inserts parent if not already in database.
         }
 
-        return categoryDao.insert(category);
+        Long result = categoryDao.insert(category);
+        if (category.getParentId() != null) {
+            updateCategoryTree(category);
+        }
+        return result;
     }
 
     public Category getGeneralCategory() {
@@ -258,6 +262,19 @@ public class CategoryRepository {
         treeContents.add(category);
         treeContents.addAll(category.getChildren(true));
         treeContents.addAll(category.getAncestors());
+        
+        // Ensure system root is included if any propagation reached it
+        Category general = getGeneralCategory();
+        if (category.getType() == TrackingType.EXPENSE && !treeContents.contains(general)) {
+            // Check if any in treeContents has general as ancestor
+            for (Category c : treeContents) {
+                if (c.isDescendantOf(general)) {
+                    treeContents.add(general);
+                    break;
+                }
+            }
+        }
+
         treeContents.remove(null); // for safety
         updateAllCategories(treeContents);
 
