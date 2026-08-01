@@ -234,6 +234,10 @@ public class CategoryFormViewModel extends ViewModel {
 
     }
 
+    /**
+     * This will create or update existing category in edit mode in the database with respective fields.
+     * All fields must be valid before saving/updating.
+     */
     public void saveCategorySync() {
        CategoryFormFields fields = getFields();
 
@@ -285,7 +289,7 @@ public class CategoryFormViewModel extends ViewModel {
        }
        finally {
            setIsLoading(false);
-           loadCategoryForEditingSync();
+           loadCategoryForEditingSync(); // refresh parent category
            
        }
 
