@@ -61,7 +61,8 @@ dependencies {
     implementation(libs.androidx.compose.runtime.livedata)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
-    implementation("com.patrykandpatryk.vico:compose:2.2.0")
+    implementation(libs.compose)
+    implementation(libs.compose.m3)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 

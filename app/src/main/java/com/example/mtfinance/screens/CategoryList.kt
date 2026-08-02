@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,6 +45,19 @@ import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.Category
 
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
+import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
+import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.component.TextComponent
+import com.patrykandpatrick.vico.compose.common.vicoTheme
+import com.patrykandpatrick.vico.compose.pie.PieChart
+import com.patrykandpatrick.vico.compose.pie.PieChartHost
+import com.patrykandpatrick.vico.compose.pie.data.PieChartModelProducer
+import com.patrykandpatrick.vico.compose.pie.data.pieSeries
+import com.patrykandpatrick.vico.compose.pie.rememberPieChart
+import java.math.BigDecimal
 import java.math.RoundingMode
 
 
@@ -138,6 +153,12 @@ fun CategoryDashBoard(
                 selectedCategory!!.category.getChildren(false).toList(),
                 action = { Long -> categoryViewModel.setSelectedCategory(Long) })
             TransactionListforCategory(selectedCategory!!)
+
+
+            CategoryPieChart()
+            CategoryStackedBar()
+
+            
             Button(onClick = { categoryViewModel.resetSelectedCategory() }) {
                 Text(text = "Back", color = Color.Yellow)
             }
@@ -146,6 +167,108 @@ fun CategoryDashBoard(
         }
     }
 }
+
+/**
+ * Pie chart for the selected category (if any)
+ */
+@Composable
+fun CategoryPieChart(
+    categoryViewModel: CategoryViewModel = hiltViewModel(),
+
+) {
+
+    val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
+    val cumulativeTotal by categoryViewModel.totalIncludingSub.observeAsState()
+    val totalExcludingSub by categoryViewModel.totalExcludingSub.observeAsState()
+    val childrenTotals by categoryViewModel.childrenTotals.observeAsState()
+
+    Text("Total distribution - Pie Chart", color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+
+    var values: List<Float>
+
+    var labels = childrenTotals?.map { entry -> entry.key.category.name } ?: emptyList()
+
+
+
+
+    val modelProducer = remember { PieChartModelProducer() }
+
+    LaunchedEffect(cumulativeTotal, totalExcludingSub, childrenTotals) {
+        values = childrenTotals?.map { entry -> entry.value.toFloat() } ?: emptyList()
+        values = values.plus(totalExcludingSub?.toFloat() ?: 0f)
+        labels = childrenTotals?.map { entry -> entry.key.category.name } ?: emptyList()
+        labels = labels.plus(selectedCategory?.category?.name ?: "Main category")
+
+        println(values)
+        modelProducer.runTransaction {
+            pieSeries {
+                series(values)
+
+
+            }
+        }
+
+    }
+
+
+
+
+    PieChartHost(
+        chart =
+            rememberPieChart(
+                sliceProvider =
+                    PieChart.SliceProvider.series(
+                        vicoTheme.pieChartColors.mapIndexed { index, color ->
+                            PieChart.Slice(
+                                fill = Fill(color),
+                                label =
+                                    PieChart.SliceLabel.Inside(
+                                        TextComponent(TextStyle(if (index == 2) Color.Black else Color.White), lineCount = 3)
+                                    ))}),
+                valueFormatter = { _, value, index,  ->
+                    val label = labels.getOrNull(index) ?: ""
+                    "$label\n$${value}"
+                    }),
+
+        modelProducer = modelProducer,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(240.dp),
+
+
+    )
+
+}
+
+@Composable
+fun CategoryStackedBar(
+    categoryViewModel: CategoryViewModel = hiltViewModel(),
+
+) {
+    val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
+    val cumulativeTotal by categoryViewModel.totalIncludingSub.observeAsState()
+    val modelProducer = remember { CartesianChartModelProducer() }
+    val remaining by categoryViewModel.remaining.observeAsState()
+
+    Text("Total distribution - Bar Chart", color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+
+    LaunchedEffect(cumulativeTotal, remaining) {
+        modelProducer.runTransaction {
+            columnModel {
+                columnModel {
+                    series(listOf(cumulativeTotal?.toFloat() ?: 0f, remaining?.toFloat() ?: 0f))
+                }
+            }
+        }
+
+    }
+
+
+
+
+
+}
+
 
 
 

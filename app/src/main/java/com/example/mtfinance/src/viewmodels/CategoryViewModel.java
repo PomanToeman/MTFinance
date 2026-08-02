@@ -23,6 +23,10 @@ import java.util.concurrent.Executor;
 import dagger.hilt.android.lifecycle.HiltViewModel;
 import javax.inject.Inject;
 
+
+/**
+ * Meant to view all and filter categories, as well as view specific details of a category.
+ */
 @HiltViewModel
 public class CategoryViewModel extends ViewModel {
     private final TrackingRepository trackingRepository;
@@ -36,7 +40,7 @@ public class CategoryViewModel extends ViewModel {
     private final MutableLiveData<BigDecimal> totalExcludingSub = new MutableLiveData<>(BigDecimal.ZERO);
     private final MutableLiveData<BigDecimal> remaining = new MutableLiveData<>(BigDecimal.ZERO);
     private final MutableLiveData<Map<CategoryWithTransactions, BigDecimal>> childrenTotals = new MutableLiveData<>();
-    private final MutableLiveData<LocalDate> startDate = new MutableLiveData<>(LocalDate.now().withDayOfMonth(1));
+    private final MutableLiveData<LocalDate> startDate = new MutableLiveData<>(LocalDate.MIN);
     private final MutableLiveData<LocalDate> endDate = new MutableLiveData<>(LocalDate.now());
     private final LiveData<Long> updateTrigger;
 
@@ -169,6 +173,8 @@ public class CategoryViewModel extends ViewModel {
         }
     }
 
+    // GETTERS
+
     public LiveData<CategoryWithTransactions> getSelectedCategory() {
         return selectedCategory;
     }
@@ -185,6 +191,16 @@ public class CategoryViewModel extends ViewModel {
     }
     public LiveData<Map<CategoryWithTransactions, BigDecimal>> getChildrenTotals() {
         return childrenTotals;
+    }
+
+    public LiveData<BigDecimal> getTotalExcludingSub() {
+        return totalExcludingSub;
+    }
+    public LiveData<LocalDate> getStartDate() {
+        return startDate;
+    }
+    public LiveData<LocalDate> getEndDate() {
+        return endDate;
     }
 
 
