@@ -4,9 +4,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public enum TrackingType {
-    EXPENSE("expense", "debit", "withdrawal"),
-    INCOME("income", "credit", "deposit"),
-    ACCOUNT_TRANSFERS("account transfers", "transfer", "money transfer", "savings"),
+    EXPENSE("expense", "debit", "withdrawal", "direct debit", "eftpos purchase"),
+    INCOME("income", "credit", "deposit", "journal credit", "direct credit"),
+    ACCOUNT_TRANSFERS("account transfers", "transfer", "money transfer", "savings", "credit transfer", "debit transfer"),
     OTHER("other", "unknown"); // for errors
 
     private final Set<String> otherNames = new HashSet<>();

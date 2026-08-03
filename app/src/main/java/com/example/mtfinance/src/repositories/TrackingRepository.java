@@ -1,6 +1,8 @@
 package com.example.mtfinance.src.repositories;
 
 
+import static java.nio.file.Files.exists;
+
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 
@@ -16,8 +18,10 @@ import com.example.mtfinance.src.trackingengine.Transaction;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.inject.Inject;
@@ -81,13 +85,18 @@ public class TrackingRepository {
     }
 
     /**
-     * To regonise a relationship between a category and relationship.
+     * To recolonise a relationship between a category and relationship.
      * Both transaction and category must already be in the database.
      * @param transactionId - The ID of a transaction already within a database.
      * @param categoryId - The ID of a category already within a database.
      */
-    public void insertRelationship(Long transactionId, Long categoryId) {
+    public void insertRelationship(Long transactionId, Long categoryId) throws IllegalStateException {
         if (transactionExists(transactionId) && categoryExists(categoryId) ) {
+            if (!categoryRepository.getCategoryById(categoryId).isSameType(transactionRepository.getById(transactionId).getType())) {
+                throw new IllegalStateException(MessageCli.TRANSACTION_TYPE_MISMATCH.getMessage());
+            };
+
+
             CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(categoryId, transactionId);
             categoryWithTransactionsDao.insertCrossRef(crossRef);
         }
@@ -130,7 +139,7 @@ public class TrackingRepository {
 
 
             categoryWithTransactionsDao.deleteCrossRefsForCategory(categoryId);
-            categoryRepository.deleteCategory(categoryRepository.getCategoryById(categoryId));
+            categoryRepository.deleteCategory(categoryRepository.getCategoryByIdRestored(categoryId));
         }
     }
 
@@ -155,6 +164,8 @@ public class TrackingRepository {
          List<Long> categoryIds = categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
          return categoryRepository.getCategoriesByIds(categoryIds);
     }
+
+
 
     public List<Long> getCategoryIdsByTransactionId(Long id) {
          return categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
@@ -185,7 +196,7 @@ public class TrackingRepository {
 
 
 
-    public LiveData<List<CategoryWithTransactions>> getCategoriesWithTransactionsByIds(java.util.Collection<Long> ids) {
+    public List<CategoryWithTransactions> getCategoriesWithTransactionsByIds(java.util.Collection<Long> ids) {
          return categoryWithTransactionsDao.getCategoriesByIds(ids);
     }
 
@@ -213,8 +224,8 @@ public class TrackingRepository {
 
     /**
      * Returns the Category with restored cache (parent and children) for the given ID.
-     * @param id
-     * @return
+     * @param id - the ID of the category to restore.
+     * @return - the category with restored cache.
      */
     public Category getCategoryByIdRestored(Long id) {
         return categoryRepository.getCategoryByIdRestored(id);
@@ -223,12 +234,13 @@ public class TrackingRepository {
     /**
      * Allows for easy checks if a category is a root.
      * @param category
-     * @return
+     * @return - true if the category is a root.
      */
     public boolean isRoot(Category category) {
         if (category == null) return false;
         return categoryRepository.isRoot(category);
     }
+
 
     public boolean isRoot(Long id) {
         return isRoot(getCategoryByIdRestored(id));
@@ -249,7 +261,11 @@ public class TrackingRepository {
      * @return returns the total amount of the category.
      */
     public BigDecimal getTotalInCategory(Category category, boolean includeSub) {
-         return getTotalInCategory(category, includeSub, LocalDate.MIN, LocalDate.MAX);
+         return getTotalInCategory(category, includeSub, LocalDate.MIN, LocalDate.MAX, new HashSet<>());
+    }
+
+    public BigDecimal getTotalInCategory(Category category, boolean includeSub, LocalDate startDate, LocalDate endDate) {
+        return getTotalInCategory(category, includeSub, startDate, endDate, new HashSet<>());
     }
 
     /**
@@ -258,27 +274,20 @@ public class TrackingRepository {
      * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
      * @param startDate - the start date to filter by.
      * @param endDate - the end date to filter by.
+     * @param excludedTransactions - a set of transactions to exclude.
      * @return returns the total amount of the category.
      */
-    public BigDecimal getTotalInCategory(Category category, boolean includeSub, LocalDate startDate, LocalDate endDate) {
+    public BigDecimal getTotalInCategory(Category category, boolean includeSub, LocalDate startDate, LocalDate endDate, Set<Transaction> excludedTransactions) {
         CategoryWithTransactions parentCategorywithTransactions =categoryWithTransactionsDao.getCategoryById(category.getCategoryId());
         if (parentCategorywithTransactions == null) {
             return BigDecimal.ZERO;
         }
 
 
-        Set<Transaction> transactions = new HashSet<>(parentCategorywithTransactions.transactions);
+        Set<Transaction> transactions = getTransactionsForCategory(category, includeSub);
 
-        if (includeSub) {
-            // to cache the children of the category.
-            parentCategorywithTransactions.category = categoryRepository.getCategoryRestored(parentCategorywithTransactions.category);
 
-            for (Category child : parentCategorywithTransactions.category.getChildren(true)) {
-                CategoryWithTransactions childCategory = categoryWithTransactionsDao.getCategoryById(child.getCategoryId());
-                transactions.addAll(childCategory.transactions);
-            }
-        }
-
+        transactions.removeAll(excludedTransactions);
         transactions.removeIf(t -> t.getDate().isBefore(startDate.atStartOfDay()) || t.getDate().isAfter(endDate.atStartOfDay()));
 
 
@@ -289,6 +298,63 @@ public class TrackingRepository {
         return total;
 
 
+    }
+
+    /**
+     * Returns all transactions for the given category, including sub-categories if includeSub is true.
+     * Duplicates are ignored.
+     * Note that category must already be in the database.
+     * @param category - the category to find the transactions.
+     * @param includeSub - if true, includes the transactions of all sub-categories.
+     * @return - returns a set of transactions.
+     */
+    public Set<Transaction> getTransactionsForCategory(Category category, boolean includeSub) {
+        CategoryWithTransactions categoryWithTransactions = categoryWithTransactionsDao.getCategoryById(category.getCategoryId());
+        if (categoryWithTransactions == null) {
+            return new HashSet<>();
+        }
+        Set<Transaction> transactions = new HashSet<>(categoryWithTransactions.transactions);
+        if (includeSub) {
+            for (Category child : category.getChildren(true)) {
+                transactions.addAll(categoryWithTransactionsDao.getCategoryById(child.getCategoryId()).transactions);
+            }
+        }
+        return transactions;
+    }
+
+    /**
+     * This finds all children of the given category.
+     * Note that the children totals can be different if other children have the same transactions.
+     * For example, if children 1 has a transaction and children 2 has the same transaction, the transaction will only count to category's 1 total.
+     * @param category - the category to find the children of.
+     * @param startDate - the start date to filter by.
+     *
+     * @param endDate - the end date to filter by.
+     * @return - returns a map of the children and their totals.
+     */
+    public Map<CategoryWithTransactions, BigDecimal> getChildrenTotals(CategoryWithTransactions category, LocalDate startDate, LocalDate endDate) {
+        Set<Category> children = category.category.getChildren(false);
+        if (children.isEmpty()) {
+            return new HashMap<>();
+        }
+        Set<Transaction> excluded = new HashSet<>(category.transactions); // defensive copy.
+
+        Map<CategoryWithTransactions, BigDecimal> totals = new HashMap<>();
+        for (Category child : children) {
+            if (categoryExists(child.getCategoryId())) {
+                totals.put(categoryWithTransactionsDao.getCategoryById(child.getCategoryId()), getTotalInCategory(child, true, startDate, endDate, excluded));
+                excluded.addAll(getTransactionsForCategory(child, true));
+            }
+        }
+        return totals;
+
+    }
+
+    public LiveData<List<CategoryWithTransactions>> searchCategoriesWithType(String query, TrackingType type) {
+        if (type == null) {
+            return searchCategories(query);
+        }
+        return categoryWithTransactionsDao.searchCategoriesByType(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
     }
 
     public boolean categoryExists(Long id) {
@@ -309,6 +375,8 @@ public class TrackingRepository {
 
 
 
+
+
     // TRANSACTION METHODS
 
     public LiveData<List<Transaction>> getAllTransactions() {
@@ -322,6 +390,14 @@ public class TrackingRepository {
     public LiveData<List<Transaction>> searchTransactions(String query) {
         return transactionRepository.searchTransactions(query);
     }
+
+    public LiveData<List<Transaction>> searchTransactionsWithType(String query, TrackingType type) {
+        if (type == null) {
+            return transactionRepository.searchTransactions(query);
+        }
+        return transactionRepository.searchTransactionsWithType(query, type);
+    }
+
 
     public boolean transactionExists(Long id) {
         return transactionRepository.exists(id);

@@ -43,7 +43,20 @@ public class CategoryWithTransactions implements Details {
 
    @Override
     public String getDetails() {
-       return category.getDetails() + "\n" + transactions + "\nTotal: " + findTotal();
+       return category.getName();
+   }
+
+   @Override
+    public boolean equals(Object obj) {
+       if (obj instanceof CategoryWithTransactions) {
+           return ((CategoryWithTransactions) obj).category.equals(category);
+       }
+       return false;
+   }
+
+   @Override
+    public int hashCode() {
+       return category.hashCode();
    }
 
 

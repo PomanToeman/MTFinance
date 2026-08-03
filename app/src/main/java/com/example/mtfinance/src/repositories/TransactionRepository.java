@@ -3,6 +3,7 @@ package com.example.mtfinance.src.repositories;
 import androidx.lifecycle.LiveData;
 
 import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
+import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
@@ -33,6 +34,11 @@ public class TransactionRepository {
     public LiveData<List<Transaction>> searchTransactions(String query) {
         return transactionDao.searchTransactions(query, TrackingUtlis.EMPTY_DESCRIPTION);
     }
+
+    public LiveData<List<Transaction>> searchTransactionsWithType(String query, TrackingType type) {
+        return transactionDao.searchTransactionsWithType(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
+    }
+
 
 
     public Transaction getById(Long id) {

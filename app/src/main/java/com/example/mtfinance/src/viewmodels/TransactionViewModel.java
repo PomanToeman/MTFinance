@@ -8,7 +8,9 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.Transaction;
+import com.example.mtfinance.src.viewmodels.utlis.SearchCriteria;
 
 import java.util.List;
 
@@ -21,7 +23,8 @@ public class TransactionViewModel extends ViewModel {
     private final TrackingRepository trackingRepository;
     private final LiveData<List<Transaction>> allTransactions;
     private final LiveData<List<Transaction>> filteredTransactions;
-    private final MutableLiveData<String> searchQuery = new MutableLiveData<>("");
+    private final MutableLiveData<SearchCriteria> searchCriteria = new MutableLiveData<>(new SearchCriteria("", null));
+
     private final MutableLiveData<Transaction> selectedTransaction = new MutableLiveData<>();
     private final MutableLiveData<List<Category>> categoriesUnderSelectedTransaction = new MutableLiveData<>();
     @Inject
@@ -30,11 +33,11 @@ public class TransactionViewModel extends ViewModel {
         this.allTransactions = trackingRepository.getAllTransactions();
 
         // to automatically switch sources whenever searchQuery changes.
-        this.filteredTransactions = Transformations.switchMap(searchQuery, query -> {
-            if (query == null || query.isEmpty()) {
+        this.filteredTransactions = Transformations.switchMap(searchCriteria, query -> {
+            if (query == null || (query.getQuery() == null || query.getQuery().trim().isEmpty()) && query.getTypeFilter() == null) {
                 return allTransactions;
             }
-            return trackingRepository.searchTransactions(query);
+            return trackingRepository.searchTransactionsWithType(query.getTrimmedQuery(), query.getTypeFilter());
         });
 
 
@@ -52,13 +55,47 @@ public class TransactionViewModel extends ViewModel {
         }
 
     }
+
+    /**
+     * This automatically changes the filteredTransactions.
+     * null or empty query will return all transactions.
+     * @param query - the query to search for.
+     */
     public void setSearchQuery(String query) {
-        searchQuery.setValue(query != null ? query.trim() : "");
+        SearchCriteria searchCriteria = this.searchCriteria.getValue();
+        searchCriteria.setQuery(query);
+
+        this.searchCriteria.setValue(searchCriteria);
+
     }
 
     public LiveData<String> getSearchQuery() {
-        return searchQuery;
+        return Transformations.map(searchCriteria, searchCriteria ->{
+            if (searchCriteria != null) {
+                return searchCriteria.getQuery();
+            }
+            return "";
+        });
+
     }
+
+    public void setTypeFilter(TrackingType typeFilter) {
+        SearchCriteria searchCriteria = this.searchCriteria.getValue() != null ? this.searchCriteria.getValue() : new SearchCriteria("", null);
+        searchCriteria.setTypeFilter(typeFilter);
+        this.searchCriteria.setValue(searchCriteria);
+
+    }
+
+    public LiveData<TrackingType> getTypeFilter() {
+        return Transformations.map(searchCriteria, searchCriteria ->{
+            if (searchCriteria != null) {
+                return searchCriteria.getTypeFilter();
+            }
+            return null;
+        });
+
+    }
+
 
     public LiveData<List<Transaction>> getFilteredTransactions() {
         return filteredTransactions;
@@ -79,5 +116,8 @@ public class TransactionViewModel extends ViewModel {
     }
 
 
-
+    public void resetSelectedTransaction() {
+        selectedTransaction.setValue(null);
+        categoriesUnderSelectedTransaction.setValue(null);
+    }
 }

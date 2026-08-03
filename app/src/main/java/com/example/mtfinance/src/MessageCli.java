@@ -15,10 +15,12 @@ public enum MessageCli {
     IMPORT_FILE_READ_FAILED("Couldn't read transaction File: %s"),
     IMPORT_SUCCESS("%d Transaction/s successfully imported!"),
     IMPORT_FAILED("%d Transaction/s failed to import!"),
-    IMPORT_NAME_HEADER_MISSING("Name header is missing"),
-    IMPORT_DATE_HEADER_MISSING("Date header is missing"),
-    IMPORT_AMOUNT_HEADER_MISSING("Amount header is missing"),
+    IMPORT_NAME_HEADER_MISSING("Name header is missing or not valid"),
+    IMPORT_DATE_HEADER_MISSING("Date header is missing or not valid"),
+    IMPORT_AMOUNT_HEADER_MISSING("Amount header is missing or not valid"),
     IMPORT_PARSER_MISSING("CSV Parser is not initialized"),
+    IMPORT_TYPE_HEADER_MISSING("Type header is invalid"),
+    IMPORT_DATE_FORMAT_MISSING("Date Formatter is missing"),
 
     // Category
     CATEGORY_DELETED("Category deleted successfully"),
@@ -32,6 +34,8 @@ public enum MessageCli {
     CATEGORY_NAME_EXISTS("Category with this name already exists"),
     CATEGORY_PARENT_NOT_FOUND("Parent category does not exist"),
     CATEGORY_MAX_DEPTH_REACHED("Cannot exceed Maximum Depth of %d"),
+    BELOW_MINIMUM_BUDGET("$%s is below minimum budget of $%s"),
+    CATEGORY_PARENT_SELF("Cannot set parent as self"),
 
     // Transaction
     TRANSACTION_UPDATED("Transaction Updated successfully"),
@@ -46,9 +50,39 @@ public enum MessageCli {
     TRANSACTION_CATEGORIES_NOT_EXIST("Some Categories do not exist."),
     TRANSACTION_DUPLICATE("Identical transaction already exists."),
     TRANSACTION_MIN_CATEGORY("Transaction must have at least one category"),
+    TRANSACTION_TYPE_MISMATCH("Transaction and category types do not match."),
+
 
     // Utils
-    INVALID_AMOUNT("Invalid amount: %s");
+    INVALID_AMOUNT("Invalid amount: %s"),
+
+    //Screen Messages
+    CATEGORY_SELECTED("Category selected: %s"),
+        BUDGET_DISPLAY("Budget: %s"),
+                 TYPE_DISPLAY("Type: %s"),
+    CATEGORY_FORM_HEADER("Category Form"),
+    NO_PARENT_FOUND("No parent found"),
+    NO_SUB_CATEGORIES("No sub-categories"),
+    NO_TRANSACTIONS("No transactions"),
+    CATEGORY_DESCRIPTION("Description: %s"),
+    CATEGORY_MONTHLY_BUDGET("Monthly Budget: $%s"),
+    TRANSACTION_LIST_HEADER("Transaction List"),
+    TRANSACTION_DASHBOARD_HEADER("Transaction Dashboard"),
+    TRANSACTION_FORM_HEADER("Transaction Form"),
+    TRANSACTION_IMPORT_HEADER("Transaction Import"),
+
+    SHOW_MORE_BUTTON("Show More"),
+    EDIT_BUTTON("Edit"),
+    DELETE_BUTTON("Delete"),
+    BACK_BUTTON("Back"),
+    ADD_BUTTON("Add"),
+    IMPORT_BUTTON("Import"),
+    SEARCH_BUTTON("Search"),
+    CLEAR_BUTTON("Clear"),
+    SAVE_BUTTON("Save"),
+    DELETE_BUTTON_CONFIRMATION("Are you sure you want to delete %s?");
+
+
 
     private final String message;
 

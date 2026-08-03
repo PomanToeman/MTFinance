@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import android.content.Context;
 
@@ -29,7 +28,10 @@ import org.junit.runner.RunWith;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -64,7 +66,7 @@ public class TrackingRepositoryTest {
         trackingRepository.insertCategory(category);
 
         List<Category> allCategories = categoryRepository.getAllCategories();
-        // 3 default (General, Groceries, Utilities) + 1 new
+        // 4 default + 2 default expense + 1 new
         assertEquals(7, allCategories.size());
 
         boolean found = false;
@@ -239,38 +241,86 @@ public class TrackingRepositoryTest {
 
         List<CategoryWithTransactions> result = getValue(trackingRepository.getAllCategoriesWithTransactions());
         assertNotNull(result);
-        // 5 default + 1 new = 4
         assertEquals(7, result.size());
     }
 
     @Test
-    public void testGetCategoriesWithTransactionsByIds() throws InterruptedException {
+    public void testGetCategoriesWithTransactionsByIds() {
         Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         categoryRepository.insert(cat1);
         categoryRepository.insert(cat2);
 
         List<Long> ids = Arrays.asList(cat1.getCategoryId(), cat2.getCategoryId());
-        List<CategoryWithTransactions> result = getValue(trackingRepository.getCategoriesWithTransactionsByIds(ids));
+        List<CategoryWithTransactions> result = trackingRepository.getCategoriesWithTransactionsByIds(ids);
         assertNotNull(result);
         assertEquals(2, result.size());
     }
 
-    private <T> T getValue(LiveData<T> liveData) throws InterruptedException {
-        final Object[] data = new Object[1];
-        final CountDownLatch latch = new CountDownLatch(1);
-        final androidx.lifecycle.Observer<T> observer = new androidx.lifecycle.Observer<T>() {
-            @Override
-            public void onChanged(T t) {
-                data[0] = t;
-                latch.countDown();
-            }
-        };
-        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
-            liveData.observeForever(observer);
-        });
-        latch.await(2, TimeUnit.SECONDS);
-        return (T) data[0];
+    @Test
+    public void testGetTransactionsForCategory() {
+        Category parent = new Category("Parent", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
+        Category child = new Category("Child", "", BigDecimal.valueOf(200), TrackingType.EXPENSE);
+        categoryRepository.insert(parent);
+        child.setParent(parent);
+        categoryRepository.insert(child);
+
+        Transaction t1 = new Transaction.Builder("T1", BigDecimal.valueOf(10)).build();
+        Transaction t2 = new Transaction.Builder("T2", BigDecimal.valueOf(20)).build();
+        trackingRepository.insertTransaction(t1, parent.getCategoryId());
+        trackingRepository.insertTransaction(t2, child.getCategoryId());
+
+        Set<Transaction> parentOnly = trackingRepository.getTransactionsForCategory(parent, false);
+        assertEquals(1, parentOnly.size());
+        assertTrue(parentOnly.contains(t1));
+
+        Set<Transaction> parentAndChild = trackingRepository.getTransactionsForCategory(parent, true);
+        assertEquals(2, parentAndChild.size());
+        assertTrue(parentAndChild.contains(t1));
+        assertTrue(parentAndChild.contains(t2));
+    }
+
+    @Test
+    public void testGetChildrenTotals() {
+        Category parent = new Category("Home", "", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
+        Category child1 = new Category("Rent", "", BigDecimal.valueOf(600), TrackingType.EXPENSE);
+        Category child2 = new Category("Food", "", BigDecimal.valueOf(300), TrackingType.EXPENSE);
+        categoryRepository.insert(parent);
+        child1.setParent(parent);
+        child2.setParent(parent);
+        categoryRepository.insert(child1);
+        categoryRepository.insert(child2);
+
+        Transaction t1 = new Transaction.Builder("Rent Payment", BigDecimal.valueOf(600)).build();
+        Transaction t2 = new Transaction.Builder("Groceries", BigDecimal.valueOf(50)).build();
+        Transaction tShared = new Transaction.Builder("Shared", BigDecimal.valueOf(10)).build();
+
+        trackingRepository.insertTransaction(t1, child1.getCategoryId());
+        trackingRepository.insertTransaction(t2, child2.getCategoryId());
+
+        // Associate shared transaction with both children
+        trackingRepository.insertTransaction(tShared, child1.getCategoryId());
+        trackingRepository.insertRelationship(tShared.getTransactionId(), child2.getCategoryId());
+
+        CategoryWithTransactions parentCWT = trackingRepository.getCategoryWithTransactionsByCategoryId(parent.getCategoryId());
+        parentCWT.category = categoryRepository.getCategoryByIdRestored(parent.getCategoryId());
+
+        Map<CategoryWithTransactions, BigDecimal> totals = trackingRepository.getChildrenTotals(parentCWT, LocalDate.MIN, LocalDate.MAX);
+
+        assertEquals(2, totals.size());
+
+        // Find results in map
+        BigDecimal rentTotal = BigDecimal.ZERO;
+        BigDecimal foodTotal = BigDecimal.ZERO;
+        for (Map.Entry<CategoryWithTransactions, BigDecimal> entry : totals.entrySet()) {
+            if (entry.getKey().category.getName().equals("Rent")) rentTotal = entry.getValue();
+            if (entry.getKey().category.getName().equals("Food")) foodTotal = entry.getValue();
+        }
+
+        // Rent gets t1(600) + tShared(10) = 610
+        assertEquals(0, BigDecimal.valueOf(610).compareTo(rentTotal));
+        // Food gets t2(50). tShared is excluded because it was already counted by Rent
+        assertEquals(0, BigDecimal.valueOf(50).compareTo(foodTotal));
     }
 
     @Test
@@ -736,5 +786,22 @@ public class TrackingRepositoryTest {
         // Total for parent including subs in Jan: 100 + 50 = 150
         BigDecimal total = trackingRepository.getTotalInCategory(parent, true, startDate, endDate);
         assertEquals(0, BigDecimal.valueOf(150.0).compareTo(total));
+    }
+
+    private <T> T getValue(LiveData<T> liveData) throws InterruptedException {
+        final Object[] data = new Object[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+        final androidx.lifecycle.Observer<T> observer = new androidx.lifecycle.Observer<T>() {
+            @Override
+            public void onChanged(T t) {
+                data[0] = t;
+                latch.countDown();
+            }
+        };
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            liveData.observeForever(observer);
+        });
+        latch.await(2, TimeUnit.SECONDS);
+        return (T) data[0];
     }
 }

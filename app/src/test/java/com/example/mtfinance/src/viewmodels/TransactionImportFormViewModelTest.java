@@ -10,6 +10,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.app.Application;
+import android.content.ContentResolver;
+import android.net.Uri;
+
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 
 import com.example.mtfinance.src.MessageCli;
@@ -24,9 +28,12 @@ import org.junit.rules.TestRule;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.concurrent.Executor;
 
 
 public class TransactionImportFormViewModelTest {
@@ -40,12 +47,20 @@ public class TransactionImportFormViewModelTest {
     @Mock
     private TrackingRepository trackingRepository;
 
+    @Mock
+    private Application application;
+
+    @Mock
+    private ContentResolver contentResolver;
+
     private TransactionImportFormViewModel viewModel;
+    private final Executor synchronousExecutor = Runnable::run;
 
     @Before
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        viewModel = new TransactionImportFormViewModel(trackingRepository);
+        when(application.getContentResolver()).thenReturn(contentResolver);
+        viewModel = new TransactionImportFormViewModel(trackingRepository, synchronousExecutor, application);
     }
 
     @Test
@@ -65,8 +80,8 @@ public class TransactionImportFormViewModelTest {
         // Arrange
         File tempFile = temporaryFolder.newFile("transactions.csv");
         try (FileWriter writer = new FileWriter(tempFile)) {
-            writer.write("Date,Name,Amount,Description\n");
-            writer.write("2023-01-01,Milk,3.50,Grocery\n");
+            writer.write("Date,Name,Amount\n");
+            writer.write("2023-01-01,Milk,3.50\n");
         }
         
         viewModel.setFilePath(tempFile.getAbsolutePath());
@@ -77,9 +92,30 @@ public class TransactionImportFormViewModelTest {
         // Assert
         assertNotNull(viewModel.getCsvParser().getValue());
         assertNotNull(viewModel.getCsvHeaders().getValue());
-        assertEquals(4, viewModel.getCsvHeaders().getValue().size());
+        assertEquals(3, viewModel.getCsvHeaders().getValue().size());
         assertTrue(viewModel.getCsvHeaders().getValue().contains("Name"));
         assertTrue(viewModel.getCsvHeaders().getValue().contains("Amount"));
+        assertEquals("", viewModel.getErrorMessage().getValue());
+    }
+
+    @Test
+    public void readTransactionFile_validUri_loadsHeaders() throws IOException {
+        // Arrange
+        Uri mockUri = mock(Uri.class);
+        String csvData = "Date,Name,Amount\n2023-01-01,Milk,3.50\n";
+        InputStream inputStream = new ByteArrayInputStream(csvData.getBytes());
+        when(contentResolver.openInputStream(mockUri)).thenReturn(inputStream);
+
+        viewModel.setFileUri(mockUri);
+
+        // Act
+        viewModel.readTransactionFile();
+
+        // Assert
+        assertNotNull(viewModel.getCsvParser().getValue());
+        assertNotNull(viewModel.getCsvHeaders().getValue());
+        assertEquals(3, viewModel.getCsvHeaders().getValue().size());
+        assertTrue(viewModel.getCsvHeaders().getValue().contains("Name"));
         assertEquals("", viewModel.getErrorMessage().getValue());
     }
 
@@ -231,7 +267,7 @@ public class TransactionImportFormViewModelTest {
         when(mockRootCategory.getCategoryId()).thenReturn(1L);
         when(trackingRepository.getRootCategoryByType(any())).thenReturn(mockRootCategory);
         
-        // Mock finding a specific category for "Coffee"
+        // Mock finding a specific category for \"Coffee\"
         java.util.List<Long> foundIds = java.util.List.of(101L);
         when(trackingRepository.autoSearchCategoryIds("Coffee", com.example.mtfinance.src.trackingengine.TrackingType.EXPENSE)).thenReturn(foundIds);
         when(trackingRepository.verifyExistingIdsCategories(anySet())).thenReturn(true);

@@ -31,7 +31,7 @@ These forms allow you to enter, save, edit, and delete data.
 None for now as no front-end has been developed.
 
 ## Tech Stack (More will be added as project develops)
-- **Language**: Java (As I have good proficiency from previous work)
+- **Language**: Java (For core/backend) + Kotlin (for UI and activities)
 - **Local Database**: Room database (Due to simple implementation and native Android support)
 - **Queries and DAO**: CRUD (with SQLite)
 - **Architecture**: MVVM (Model-View-ViewModel)

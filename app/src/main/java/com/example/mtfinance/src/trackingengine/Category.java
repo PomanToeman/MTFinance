@@ -128,11 +128,11 @@ public class Category implements Details {
     public void makeChildrenCongruent() {
 
         if (parent != null) {
-            for (Category child : children) {
-                children.remove(child);
+            Set<Category> copy = new HashSet<>(children);
+            for (Category child : copy) {
                 child.setParentInternal(parent);
             }
-
+            children.clear();
         }
     }
 
@@ -173,7 +173,7 @@ public class Category implements Details {
         TrackingUtlis.checkAmount(monthlyBudget);
         BigDecimal minimum = determineMinimumBudget();
 
-        if (monthlyBudget.compareTo(minimum) > 0) {
+        if (monthlyBudget.compareTo(minimum) >= 0) {
             this.monthlyBudget = monthlyBudget;
 
             // recheck if parent budget is now below minimum.
@@ -328,16 +328,26 @@ public class Category implements Details {
 
     @Override
     public int hashCode() {
-        return categoryId.intValue();
+        int result = categoryId.hashCode();
+        result = 31 * result + name.hashCode();
+        result = 31 * result + (description != null ? description.hashCode() : 0);
+        result = 31 * result + (monthlyBudget != null ? monthlyBudget.hashCode() : 0);
+        result = 31 * result + (parentId != null ? parentId.hashCode() : 0);
+        result = 31 * result + type.hashCode();
+        return result;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof Category) {
-            Category other = (Category) o;
-            return other.getCategoryId().equals(this.getCategoryId());
-        }
-        return false;
+        if (this == o) return true;
+        if (!(o instanceof Category)) return false;
+        Category category = (Category) o;
+        if (!categoryId.equals(category.categoryId)) return false;
+        if (!name.equalsIgnoreCase(category.name)) return false;
+        if (description != null ? !description.equals(category.description) : category.description != null) return false;
+        if (monthlyBudget != null ? monthlyBudget.compareTo(category.monthlyBudget) != 0 : category.monthlyBudget != null) return false;
+        if (parentId != null ? !parentId.equals(category.parentId) : category.parentId != null) return false;
+        return type == category.type;
     }
 
 

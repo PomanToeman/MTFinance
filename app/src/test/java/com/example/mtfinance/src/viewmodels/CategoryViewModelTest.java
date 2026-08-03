@@ -2,7 +2,10 @@ package com.example.mtfinance.src.viewmodels;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,8 +26,11 @@ import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 public class CategoryViewModelTest {
@@ -36,6 +42,7 @@ public class CategoryViewModelTest {
     private TrackingRepository trackingRepository;
 
     private CategoryViewModel viewModel;
+    private final Executor synchronousExecutor = Runnable::run;
 
     @Before
     public void setUp() {
@@ -46,7 +53,14 @@ public class CategoryViewModelTest {
         allCategoriesLiveData.setValue(new ArrayList<>());
         when(trackingRepository.getAllCategoriesWithTransactions()).thenReturn(allCategoriesLiveData);
         
-        viewModel = new CategoryViewModel(trackingRepository);
+        viewModel = new CategoryViewModel(trackingRepository, synchronousExecutor);
+
+        // Observe all LiveData to ensure they are active
+        viewModel.getFilteredCategories().observeForever(res -> {});
+        viewModel.getSelectedCategory().observeForever(res -> {});
+        viewModel.getTotalIncludingSub().observeForever(res -> {});
+        viewModel.getRemaining().observeForever(res -> {});
+        viewModel.getChildrenTotals().observeForever(res -> {});
     }
 
     @Test
@@ -73,73 +87,88 @@ public class CategoryViewModelTest {
         MutableLiveData<List<CategoryWithTransactions>> repoLiveData = new MutableLiveData<>();
         repoLiveData.setValue(searchResults);
 
-        when(trackingRepository.searchCategories(query)).thenReturn(repoLiveData);
-
-        // ACTIVATE the switchMap by adding an observer
-        viewModel.getFilteredCategories().observeForever(res -> {});
+        when(trackingRepository.searchCategoriesWithType(query, null)).thenReturn(repoLiveData);
 
         // Act
         viewModel.setSearchQuery(query);
 
         // Assert
-        verify(trackingRepository).searchCategories(query);
+        verify(trackingRepository).searchCategoriesWithType(query, null);
         assertEquals(searchResults, viewModel.getFilteredCategories().getValue());
     }
 
     @Test
-    public void filterCategories_withEmptyQuery_returnsAllCategories() {
+    public void filterCategories_withQueryAndType_triggersSwitchMap() {
         // Arrange
-        List<CategoryWithTransactions> allCats = new ArrayList<>();
-        CategoryWithTransactions cat = new CategoryWithTransactions();
-        cat.category = new Category("Test", "", BigDecimal.ONE, TrackingType.EXPENSE);
-        allCats.add(cat);
-        
-        // Mock the LiveData behavior
-        MutableLiveData<List<CategoryWithTransactions>> allCategoriesLiveData = new MutableLiveData<>();
-        allCategoriesLiveData.setValue(allCats);
-        when(trackingRepository.getAllCategoriesWithTransactions()).thenReturn(allCategoriesLiveData);
-        
-        // Re-instantiate to pick up new mock
-        viewModel = new CategoryViewModel(trackingRepository);
+        String query = "Water";
+        TrackingType type = TrackingType.EXPENSE;
+        List<CategoryWithTransactions> searchResults = new ArrayList<>();
+        MutableLiveData<List<CategoryWithTransactions>> repoLiveData = new MutableLiveData<>();
+        repoLiveData.setValue(searchResults);
 
-        // ACTIVATE the switchMap
-        viewModel.getFilteredCategories().observeForever(res -> {});
+        when(trackingRepository.searchCategoriesWithType(query, type)).thenReturn(repoLiveData);
 
         // Act
-        viewModel.setSearchQuery("");
+        viewModel.setTypeFilter(type);
+        viewModel.setSearchQuery(query);
 
         // Assert
-        assertEquals(allCats, viewModel.getFilteredCategories().getValue());
+        verify(trackingRepository).searchCategoriesWithType(query, type);
+        assertEquals(searchResults, viewModel.getFilteredCategories().getValue());
     }
 
     @Test
-    public void setSelectedCategory_updatesOnBackgroundThread() throws InterruptedException {
+    public void setTypeFilter_updatesTypeFilterLiveData() {
+        // Act
+        viewModel.setTypeFilter(TrackingType.INCOME);
+
+        // Assert
+        assertEquals(TrackingType.INCOME, viewModel.getTypeFilter().getValue());
+    }
+
+    @Test
+    public void setSelectedCategory_loadsDashboardData() throws InterruptedException {
         // Arrange
-        Long categoryId = 10L;
+        Long categoryId = 1L;
+        Category category = new Category("Groceries", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        category.setCategoryId(categoryId);
         CategoryWithTransactions cwt = new CategoryWithTransactions();
-        cwt.category = new Category("Initial", "", BigDecimal.TEN, TrackingType.EXPENSE);
-        cwt.category.setCategoryId(categoryId);
-        
-        Category restored = new Category("Restored", "", BigDecimal.TEN, TrackingType.EXPENSE);
-        restored.setCategoryId(categoryId);
+        cwt.category = category;
 
         when(trackingRepository.getCategoryWithTransactionsByCategoryId(categoryId)).thenReturn(cwt);
-        when(trackingRepository.getCategoryByIdRestored(categoryId)).thenReturn(restored);
+        when(trackingRepository.getCategoryByIdRestored(categoryId)).thenReturn(category);
+        
+        BigDecimal totalInc = BigDecimal.valueOf(40);
+        when(trackingRepository.getTotalInCategory(any(), anyBoolean(), any(), any())).thenReturn(totalInc);
+        
+        Map<CategoryWithTransactions, BigDecimal> childTotals = new HashMap<>();
+        when(trackingRepository.getChildrenTotals(any(), any(), any())).thenReturn(childTotals);
 
         CountDownLatch latch = new CountDownLatch(1);
         viewModel.getSelectedCategory().observeForever(selected -> {
-            if (selected != null && selected.category != null && "Restored".equals(selected.category.getName())) {
-                latch.countDown();
-            }
+            if (selected != null) latch.countDown();
         });
 
         // Act
         viewModel.setSelectedCategory(categoryId);
 
         // Assert
-        boolean updated = latch.await(2, TimeUnit.SECONDS);
-        assertTrue("Should have updated selected category", updated);
-        assertNotNull(viewModel.getSelectedCategory().getValue());
-        assertEquals("Restored", viewModel.getSelectedCategory().getValue().category.getName());
+        assertTrue(latch.await(2, TimeUnit.SECONDS));
+        assertEquals(totalInc, viewModel.getTotalIncludingSub().getValue());
+        // Remaining = Budget(100) - totalInc(40) = 60
+        assertEquals(0, BigDecimal.valueOf(60).compareTo(viewModel.getRemaining().getValue()));
+        assertEquals(childTotals, viewModel.getChildrenTotals().getValue());
+    }
+
+    @Test
+    public void resetSelectedCategory_clearsDashboardData() {
+        // Act
+        viewModel.resetSelectedCategory();
+
+        // Assert
+        assertNull(viewModel.getSelectedCategory().getValue());
+        assertEquals(BigDecimal.ZERO, viewModel.getTotalIncludingSub().getValue());
+        assertEquals(BigDecimal.ZERO, viewModel.getRemaining().getValue());
+        assertNull(viewModel.getChildrenTotals().getValue());
     }
 }

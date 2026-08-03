@@ -64,7 +64,11 @@ public class CategoryRepository {
             insert(category.getParent()); // automatically inserts parent if not already in database.
         }
 
-        return categoryDao.insert(category);
+        Long result = categoryDao.insert(category);
+        if (category.getParentId() != null) {
+            updateCategoryTree(category);
+        }
+        return result;
     }
 
     public Category getGeneralCategory() {
@@ -128,12 +132,11 @@ public class CategoryRepository {
             return; // not found
         }
 
-        // Re-parent children to grandparent (or root)
-        Long parentId = categoryInDb.getParentId();
-        Set<Category> children = categoryToDelete.getChildren(false);
+
 
         categoryToDelete.makeChildrenCongruent(); // make children at same level as parent
-        updateAllCategories(children); // save new children to Db
+        updateAllCategories(categoryToDelete.getParent().getChildren(false)); // save new children to Db
+
 
         categoryDao.delete(categoryToDelete);
     }
@@ -159,12 +162,27 @@ public class CategoryRepository {
         }
     }
 
-
+    /**
+     * Updates the category in database, will automatically pass root categories to updateRootCategory.
+     *
+     * @param category - the category to update.
+     */
     public void updateCategory(@NonNull Category category) {
-        if (category.equals(getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
-            return;
+        if (isRoot(category)) {
+            updateRootCategory(category);
         }
         categoryDao.update(category);
+    }
+
+    /**
+     * Updates the budget ONLY for the root category. cannot update anything else
+     * @param rootCategory - the root category to update.
+     */
+    public void updateRootCategory(@NonNull Category rootCategory) {
+        Category originalRootCategory = getRootCategoryByType( rootCategory.getType());
+        originalRootCategory.setMonthlyBudget(rootCategory.getMonthlyBudget());
+        categoryDao.update(originalRootCategory);
+
     }
 
     public void updateAllCategories(@NonNull Collection<Category> categories) {
@@ -244,8 +262,22 @@ public class CategoryRepository {
         treeContents.add(category);
         treeContents.addAll(category.getChildren(true));
         treeContents.addAll(category.getAncestors());
+        
+        // Ensure system root is included if any propagation reached it
+        Category general = getGeneralCategory();
+        if (category.getType() == TrackingType.EXPENSE && !treeContents.contains(general)) {
+            // Check if any in treeContents has general as ancestor
+            for (Category c : treeContents) {
+                if (c.isDescendantOf(general)) {
+                    treeContents.add(general);
+                    break;
+                }
+            }
+        }
+
         treeContents.remove(null); // for safety
         updateAllCategories(treeContents);
+
     }
 
 
