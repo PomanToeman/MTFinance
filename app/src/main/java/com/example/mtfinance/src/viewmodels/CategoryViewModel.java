@@ -40,7 +40,7 @@ public class CategoryViewModel extends ViewModel {
     private final MutableLiveData<BigDecimal> totalExcludingSub = new MutableLiveData<>(BigDecimal.ZERO);
     private final MutableLiveData<BigDecimal> remaining = new MutableLiveData<>(BigDecimal.ZERO);
     private final MutableLiveData<Map<CategoryWithTransactions, BigDecimal>> childrenTotals = new MutableLiveData<>();
-    private final MutableLiveData<LocalDate> startDate = new MutableLiveData<>(LocalDate.MIN);
+    private final MutableLiveData<LocalDate> startDate = new MutableLiveData<>(LocalDate.now().withDayOfMonth(1));
     private final MutableLiveData<LocalDate> endDate = new MutableLiveData<>(LocalDate.now());
     private final LiveData<Long> updateTrigger;
 

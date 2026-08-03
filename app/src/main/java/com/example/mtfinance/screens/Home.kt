@@ -17,11 +17,13 @@ import com.example.mtfinance.src.viewmodels.HomeViewModel
  */
 @Composable
 fun HomeScreen(NavHostController: NavHostController, homeViewModel: HomeViewModel = hiltViewModel()) {
+    val pinnedCategory = homeViewModel.pinnedCategory.getValue()
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        MiniHeader("General Category")
+        CategoryStackedBar(pinnedCategory!!)
         Text("Home Screen")
         Button(
             onClick = { NavHostController.navigate(Routes.CATEGORY.route) }
