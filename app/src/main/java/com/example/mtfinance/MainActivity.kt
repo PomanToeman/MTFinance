@@ -3,8 +3,6 @@ package com.example.mtfinance
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import com.example.mtfinance.screens.AppNavigation
-import com.example.mtfinance.screens.CategoryDashBoard
-import com.example.mtfinance.screens.CategoryListScreen
 import com.example.mtfinance.screens.setComposeContent
 import dagger.hilt.android.AndroidEntryPoint
 

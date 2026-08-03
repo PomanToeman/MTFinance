@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,14 +42,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
 
 import androidx.navigation.NavHostController
+import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.Category
 
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
-import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
 import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.TextComponent
 import com.patrykandpatrick.vico.compose.common.vicoTheme
@@ -77,7 +75,7 @@ fun CategoryListScreen(
 
 
     FabRightBottomCorner(actionOne = { NavHostController.navigate(Routes.CATEGORY_FORM.route) }, content = {
-        DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        DefaultColumn(modifier = Modifier.padding(4.dp).verticalScroll(rememberScrollState())) {
             if (selectedCategory == null) {
 
 
@@ -92,7 +90,7 @@ fun CategoryListScreen(
                 }
             }
             else {
-                CategoryDashBoard()
+                FullCategoryDashBoard()
             }
 
         }
@@ -125,10 +123,11 @@ fun Search(searchQuery: String?, onQueryChange: ((String) -> Unit)?) {
 
 }
 @Composable
-fun CategoryDashBoard(
+fun FullCategoryDashBoard(
     categoryViewModel: CategoryViewModel = hiltViewModel()
 ) {
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize(),
@@ -136,27 +135,30 @@ fun CategoryDashBoard(
         horizontalAlignment = Alignment.Start
     ) {
         Header(text = "Category Dashboard")
+
         if (selectedCategory != null) {
-            Text(
-                text = MessageCli.CATEGORY_SELECTED.getMessage(selectedCategory!!.category.name),
-                color = MaterialTheme.colorScheme.primary
-            )
+            MiniHeader(text = selectedCategory!!.category.name + " - " + selectedCategory!!.category.type.toString())
+            CategoryStackedBar( categoryViewModel = categoryViewModel)
             CategoryDetails(selectedCategory!!)
             if (selectedCategory?.category?.parent != null) {
+                MiniHeader("Parent")
                 CategoryListItem(
                     selectedCategory?.category?.parent,
                     actionOne = { Long -> categoryViewModel.setSelectedCategory(Long) })
             } else {
-                Text("No parent", color = MaterialTheme.colorScheme.primary)
+                MiniHeader("Root")
             }
-            CategoryListBasic(
+            MiniHeader("Sub-Categories")
+            CategoryList(
                 selectedCategory!!.category.getChildren(false).toList(),
-                action = { Long -> categoryViewModel.setSelectedCategory(Long) })
+                { Long -> categoryViewModel.setSelectedCategory(Long) })
+            CategoryPieChart( categoryViewModel = categoryViewModel)
+            MiniHeader("Transactions")
             TransactionListforCategory(selectedCategory!!)
 
 
-            CategoryPieChart()
-            CategoryStackedBar()
+
+
 
             
             Button(onClick = { categoryViewModel.resetSelectedCategory() }) {
@@ -246,27 +248,108 @@ fun CategoryStackedBar(
 
 ) {
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
-    val cumulativeTotal by categoryViewModel.totalIncludingSub.observeAsState()
-    val modelProducer = remember { CartesianChartModelProducer() }
-    val remaining by categoryViewModel.remaining.observeAsState()
+    val cumulativeTotal by categoryViewModel.totalIncludingSub.observeAsState(BigDecimal.ZERO)
+    val remaining by categoryViewModel.remaining.observeAsState(BigDecimal.ZERO)
+    val budget = selectedCategory?.category?.monthlyBudget ?: BigDecimal.ONE
+    val startDate by categoryViewModel.startDate.observeAsState()
+    val endDate by categoryViewModel.endDate.observeAsState()
 
-    Text("Total distribution - Bar Chart", color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
 
-    LaunchedEffect(cumulativeTotal, remaining) {
-        modelProducer.runTransaction {
-            columnModel {
-                columnModel {
-                    series(listOf(cumulativeTotal?.toFloat() ?: 0f, remaining?.toFloat() ?: 0f))
+    val isOverBudget = remaining < BigDecimal.ZERO
+
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Budget Usage", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+            Text("From ${startDate?.format(DateFormat.DD_MM_YY.toFormatter())} to ${endDate?.format(DateFormat.DD_MM_YY.toFormatter())}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Right)
+        }
+
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(30.dp)
+        ) {
+            // The "Budget Container" outline. We'll use 80% of width as the 100% budget mark.
+            val budgetFraction = 0.8f
+
+            // Outline Box
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(budgetFraction)
+                    .height(30.dp)
+                    .border(2.dp, if (isOverBudget) Color.Red else Color.Black)
+            )
+
+            // Spent/Remaining Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(30.dp)
+            ) {
+                if (!isOverBudget) {
+                    // Normal state: [Spent | Remaining]
+                    val spentRatio = if (budget > BigDecimal.ZERO) {
+                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
+                    } else 0f
+                    
+                    val remainingRatio = 1f - spentRatio
+
+                    // Spent portion
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(spentRatio * budgetFraction)
+                            .height(30.dp)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                    // Remaining portion (inside outline)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(remainingRatio * budgetFraction)
+                            .height(30.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    )
+                } else {
+                    // Overflow state: [Spent (Red)]
+                    // The bar fills the outline and overflows into the remaining 20% width.
+                    val overflowRatio = if (budget > BigDecimal.ZERO) {
+                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
+                    } else 1f
+                    
+                    // We cap the visual overflow at the screen edge (1.0f)
+                    val visualWidth = (overflowRatio * budgetFraction).coerceAtMost(1f)
+                    
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(visualWidth)
+                            .height(30.dp)
+                            .background(Color.Red)
+                    )
                 }
             }
         }
 
+        // Labels
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                Text("Total Spent", style = MaterialTheme.typography.labelSmall)
+                Text(displayAmount(cumulativeTotal), fontWeight = FontWeight.Bold)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(if (isOverBudget) "Over Budget" else "Remaining", 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = if (isOverBudget) Color.Red else Color.Unspecified)
+                Text(
+                    displayAmount(remaining),
+                    fontWeight = FontWeight.Bold,
+                    color = if (isOverBudget) Color.Red else Color.Unspecified)
+            }
+        }
+        
+        Text("Budget: ${displayAmount(budget)}",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.fillMaxWidth(), 
+            textAlign = TextAlign.Center)
     }
-
-
-
-
-
 }
 
 
@@ -342,7 +425,7 @@ fun CategoryListItem(categoryWithTransactions: CategoryWithTransactions, actionO
 
 @Composable
 fun TransactionListforCategory(categoryItem: CategoryWithTransactions) {
-    Text("Transactions")
+
     if (categoryItem.transactions != null && categoryItem.transactions.isNotEmpty()) {
 
         TransactionList(categoryItem.transactions)
@@ -355,9 +438,11 @@ fun TransactionListforCategory(categoryItem: CategoryWithTransactions) {
 
 @Composable
 fun CategoryDetails(categoryItem: CategoryWithTransactions) {
-    Text(MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.category.description), color = MaterialTheme.colorScheme.primary)
-    Text(MessageCli.CATEGORY_MONTHLY_BUDGET.getMessage(categoryItem.category.monthlyBudget.setScale(2, RoundingMode.HALF_UP).toString()), color = MaterialTheme.colorScheme.primary)
-    Text(MessageCli.TYPE_DISPLAY.getMessage(categoryItem.category.type.toString().lowercase()), color = MaterialTheme.colorScheme.primary)
+    Text("Category Details", color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Left)
+    Column( modifier = Modifier.fillMaxWidth().padding(16.dp).border(width = 2.dp, color = Color.Black, shape = RectangleShape), verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.Start) {
+        Text(MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.category.description), color = MaterialTheme.colorScheme.primary, minLines = 1, maxLines = 10, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(4.dp))
+    }
+
 
 
 
@@ -427,7 +512,115 @@ fun CategoryListBasic(categories: List<Category>, action: ((Long) -> Unit)? = nu
 @Preview(showBackground = true)
 @Composable
 fun PreviewMyApp() {
-
     Header()
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewCategoryStackedBar() {
+    MaterialTheme {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text("Normal State")
+            // Visualizing the structure without a real ViewModel
+            CategoryStackedBarPure(
+                cumulativeTotal = BigDecimal("45.00"),
+                remaining = BigDecimal("55.00"),
+                budget = BigDecimal("100.00")
+            )
+            
+            Text("Over Budget State")
+            CategoryStackedBarPure(
+                cumulativeTotal = BigDecimal("125.00"),
+                remaining = BigDecimal("-25.00"),
+                budget = BigDecimal("100.00")
+            )
+        }
+    }
+}
+
+/**
+ * Pure version for Previews
+ */
+@Composable
+private fun CategoryStackedBarPure(
+    cumulativeTotal: BigDecimal,
+    remaining: BigDecimal,
+    budget: BigDecimal
+) {
+    val isOverBudget = remaining < BigDecimal.ZERO
+
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Budget Usage", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(30.dp)
+        ) {
+            val budgetFraction = 0.8f
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(budgetFraction)
+                    .height(30.dp)
+                    .border(2.dp, if (isOverBudget) Color.Red else Color.Black)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(30.dp)
+            ) {
+                if (!isOverBudget) {
+                    val spentRatio = if (budget > BigDecimal.ZERO) {
+                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
+                    } else 0f
+                    
+                    val remainingRatio = 1f - spentRatio
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(spentRatio * budgetFraction)
+                            .height(30.dp)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(remainingRatio * budgetFraction)
+                            .height(30.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    )
+                } else {
+                    val overflowRatio = if (budget > BigDecimal.ZERO) {
+                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
+                    } else 1f
+                    
+                    val visualWidth = (overflowRatio * budgetFraction).coerceAtMost(1f)
+                    
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(visualWidth)
+                            .height(30.dp)
+                            .background(Color.Red)
+                    )
+                }
+            }
+        }
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                Text("Total Spent", style = MaterialTheme.typography.labelSmall)
+                Text("$${cumulativeTotal.setScale(2, RoundingMode.HALF_UP)}", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(if (isOverBudget) "Over Budget" else "Remaining", 
+                    style = MaterialTheme.typography.labelSmall, 
+                    color = if (isOverBudget) Color.Red else Color.Unspecified)
+                Text("$${remaining.abs().setScale(2, RoundingMode.HALF_UP)}", 
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = if (isOverBudget) Color.Red else Color.Unspecified)
+            }
+        }
+    }
 }
 

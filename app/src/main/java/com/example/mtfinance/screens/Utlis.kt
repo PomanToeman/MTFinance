@@ -4,12 +4,14 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -18,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import java.math.BigDecimal
 
@@ -73,7 +76,7 @@ fun FabRightBottomCorner(actionOne: () -> Unit, actionTwo: (() -> Unit)? = null,
  * Displays an amount with a dollar sign and two decimal places for the user.
  */
 fun displayAmount(amount: BigDecimal): String {
-    return "$" + amount.setScale(2).toString()
+    return "$" + amount.abs().setScale(2).toString()
 }
 
 /**
@@ -114,4 +117,8 @@ fun LoadingDialog(message: String = "Loading...") {
         confirmButton = {})
 }
 
+@Composable
+fun MiniHeader(text: String = "Category List") {
+    Text(text = text, color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+}
 
