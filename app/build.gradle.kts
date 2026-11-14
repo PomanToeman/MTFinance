@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.compose.compiler)
     jacoco
-    id("info.solidsoft.pitest") version "1.15.0"
 }
 
 android {
@@ -117,12 +116,18 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
         "**/*_Factory*.class", "**/*_MembersInjector*.class", "**/*Module_*.*",
         "**/ComposableSingletons$*.*", "**/DataBinderMapperImpl*.*", "**/DataBindingTriggerClass*.*"
     )
-    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+
+    val kotlinClasses = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
         exclude(fileFilter)
     }
+    val javacClasses = fileTree("${project.layout.buildDirectory.get()}/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
+        exclude(fileFilter)
+    }
+    val classesTree = files(kotlinClasses, javacClasses)
+
     val mainSrc = "${project.projectDir}/src/main/java"
     sourceDirectories.setFrom(files(mainSrc))
-    classDirectories.setFrom(files(debugTree))
+    classDirectories.setFrom(classesTree)
     executionData.setFrom(fileTree(project.layout.buildDirectory.get()) {
         include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec", "jacoco/testDebugUnitTest.exec")
     })
