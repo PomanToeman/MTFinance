@@ -3,6 +3,7 @@ package com.example.mtfinance.src;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -84,22 +85,26 @@ public class CategoryRepositoryTest {
         assertEquals(7, allCategories.size());
     }
 
-    @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
+    @Test
     public void insert_DuplicateCategoryName_ThrowsConstraintException() {
         // Arrange
         Category duplicate = new Category(GROCERIES_NAME, "Duplicate", BUDGET_HUNDRED, TrackingType.EXPENSE);
 
         // Act & Assert
-        repository.insert(duplicate);
+        assertThrows(android.database.sqlite.SQLiteConstraintException.class, () -> {
+            repository.insert(duplicate);
+        });
     }
 
-    @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
+    @Test
     public void insert_CaseInsensitiveDuplicateCategoryName_ThrowsConstraintException() {
         // Arrange
         Category duplicate = new Category(GROCERIES_NAME.toLowerCase(), "Duplicate", BUDGET_HUNDRED, TrackingType.EXPENSE);
 
         // Act & Assert
-        repository.insert(duplicate);
+        assertThrows(android.database.sqlite.SQLiteConstraintException.class, () -> {
+            repository.insert(duplicate);
+        });
     }
 
     @Test
