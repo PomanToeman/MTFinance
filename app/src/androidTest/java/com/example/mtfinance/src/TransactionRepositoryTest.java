@@ -8,8 +8,8 @@ import static org.junit.Assert.assertTrue;
 import android.content.Context;
 
 import androidx.room.Room;
-import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.example.mtfinance.src.repositories.TransactionRepository;
 import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
@@ -27,12 +27,23 @@ import java.util.List;
 
 @RunWith(AndroidJUnit4.class)
 public class TransactionRepositoryTest {
+
+    private static final String TRANSACTION_NAME_DINNER = "Dinner";
+    private static final String TRANSACTION_NAME_LUNCH = "Lunch";
+    private static final String TRANSACTION_NAME_COFFEE = "Coffee";
+    private static final String TRANSACTION_NAME_GAS = "Gas";
+    private static final BigDecimal AMOUNT_FIFTY = BigDecimal.valueOf(50.0);
+    private static final BigDecimal AMOUNT_FIFTEEN = BigDecimal.valueOf(15.0);
+    private static final BigDecimal AMOUNT_FIVE = BigDecimal.valueOf(5.0);
+    private static final BigDecimal AMOUNT_FORTY = BigDecimal.valueOf(40.0);
+    private static final long NON_EXISTENT_ID = 999L;
+
     private AppDatabase database;
     private TransactionDao transactionDao;
     private TransactionRepository repository;
 
     @Before
-    public void createDb() {
+    public void setUp() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         transactionDao = database.transactionDao();
@@ -40,108 +51,116 @@ public class TransactionRepositoryTest {
     }
 
     @After
-    public void closeDb() {
+    public void tearDown() {
         database.close();
         TrackingUtlis.resetTransactionCounter();
     }
 
-    // ========================================
-    // INSERT TESTS
-    // ========================================
-
     @Test
-    public void testInsertTransaction() {
-        Transaction transaction = new Transaction.Builder("Dinner", BigDecimal.valueOf(50.0)).build();
+    public void insert_SingleValidTransaction_ReturnsValidId() {
+        // Arrange
+        Transaction transaction = new Transaction.Builder(TRANSACTION_NAME_DINNER, AMOUNT_FIFTY).build();
+
+        // Act
         Long id = repository.insert(transaction);
+
+        // Assert
         assertNotNull(id);
         assertTrue(id > 0);
     }
 
     @Test
-    public void testInsertMultipleTransactions() {
-        Transaction t1 = new Transaction.Builder("Lunch", BigDecimal.valueOf(15.0)).build();
-        Transaction t2 = new Transaction.Builder("Coffee", BigDecimal.valueOf(5.0)).build();
-        
+    public void insert_MultipleValidTransactions_PersistsAllCorrectly() {
+        // Arrange
+        Transaction t1 = new Transaction.Builder(TRANSACTION_NAME_LUNCH, AMOUNT_FIFTEEN).build();
+        Transaction t2 = new Transaction.Builder(TRANSACTION_NAME_COFFEE, AMOUNT_FIVE).build();
+
+        // Act
         repository.insert(t1);
         repository.insert(t2);
-        
-        List<Transaction> all = repository.getAll();
-        assertEquals(2, all.size());
-    }
+        List<Transaction> allTransactions = repository.getAll();
 
-    // ========================================
-    // GET ALL TESTS
-    // ========================================
-
-    @Test
-    public void testGetAllTransactionsEmpty() {
-        List<Transaction> all = repository.getAll();
-        assertTrue(all.isEmpty());
+        // Assert
+        assertEquals(2, allTransactions.size());
     }
 
     @Test
-    public void testGetAllTransactions() {
+    public void getAll_EmptyDatabase_ReturnsEmptyList() {
+        // Arrange / Act
+        List<Transaction> allTransactions = repository.getAll();
+
+        // Assert
+        assertTrue(allTransactions.isEmpty());
+    }
+
+    @Test
+    public void getAll_PopulatedDatabase_ReturnsAllTransactions() {
+        // Arrange
         Transaction t1 = new Transaction.Builder("First", BigDecimal.valueOf(10.0)).build();
         Transaction t2 = new Transaction.Builder("Second", BigDecimal.valueOf(20.0)).build();
-        
         repository.insert(t1);
         repository.insert(t2);
-        
-        List<Transaction> all = repository.getAll();
-        assertEquals(2, all.size());
+
+        // Act
+        List<Transaction> allTransactions = repository.getAll();
+
+        // Assert
+        assertEquals(2, allTransactions.size());
     }
 
-    // ========================================
-    // GET BY ID TESTS
-    // ========================================
-
     @Test
-    public void testGetById() {
-        Transaction transaction = new Transaction.Builder("Gas", BigDecimal.valueOf(40.0)).build();
+    public void getById_ExistingTransactionId_ReturnsCorrectTransaction() {
+        // Arrange
+        Transaction transaction = new Transaction.Builder(TRANSACTION_NAME_GAS, AMOUNT_FORTY).build();
         Long id = repository.insert(transaction);
-        
-        Transaction retrieved = repository.getById(id);
-        assertNotNull(retrieved);
-        assertEquals("Gas", retrieved.getName());
+
+        // Act
+        Transaction retrievedTransaction = repository.getById(id);
+
+        // Assert
+        assertNotNull(retrievedTransaction);
+        assertEquals(TRANSACTION_NAME_GAS, retrievedTransaction.getName());
     }
 
     @Test
-    public void testGetByIdNotFound() {
-        Transaction retrieved = repository.getById(999L);
-        assertNull(retrieved);
+    public void getById_NonExistentTransactionId_ReturnsNull() {
+        // Arrange / Act
+        Transaction retrievedTransaction = repository.getById(NON_EXISTENT_ID);
+
+        // Assert
+        assertNull(retrievedTransaction);
     }
 
-    // ========================================
-    // HASH TESTS
-    // ========================================
-
     @Test
-    public void testGeneratedHash() {
-        Transaction t1 = new Transaction.Builder("Dinner", BigDecimal.valueOf(50.0)).build();
+    public void getGeneratedHash_ValidTransaction_GeneratesExpectedHashFormat() {
+        // Arrange
+        Transaction t1 = new Transaction.Builder(TRANSACTION_NAME_DINNER, AMOUNT_FIFTY).build();
+
+        // Act
         String hash = t1.getGeneratedHash();
-        
+
+        // Assert
         assertNotNull(hash);
-        assertTrue(hash.contains("dinner"));
-        assertTrue(hash.contains("50.0"));
-        
-        // Two identical transactions should have same hash
-        Transaction t2 = new Transaction.Builder("Dinner", BigDecimal.valueOf(50.0))
+        assertTrue(hash.contains(TRANSACTION_NAME_DINNER.toLowerCase()));
+        assertTrue(hash.contains(AMOUNT_FIFTY.toString()));
+
+        Transaction t2 = new Transaction.Builder(TRANSACTION_NAME_DINNER, AMOUNT_FIFTY)
                 .date(t1.getDate())
                 .build();
         assertEquals(hash, t2.getGeneratedHash());
     }
 
     @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
-    public void testInsertDuplicateHashFails() {
-        Transaction t1 = new Transaction.Builder("Dinner", BigDecimal.valueOf(50.0)).build();
+    public void insert_DuplicateHashTransaction_ThrowsConstraintException() {
+        // Arrange
+        Transaction t1 = new Transaction.Builder(TRANSACTION_NAME_DINNER, AMOUNT_FIFTY).build();
         repository.insert(t1);
 
-        // Identical content => same hash
-        Transaction t2 = new Transaction.Builder("Dinner", BigDecimal.valueOf(50.0))
+        Transaction t2 = new Transaction.Builder(TRANSACTION_NAME_DINNER, AMOUNT_FIFTY)
                 .date(t1.getDate())
                 .build();
-        
-        // This should throw SQLiteConstraintException due to UNIQUE constraint on 'hash'
+
+        // Act & Assert
         repository.insert(t2);
     }
 }
