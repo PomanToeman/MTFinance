@@ -3,6 +3,7 @@ package com.example.mtfinance.src;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -264,7 +265,7 @@ public class TrackingRepositoryTest {
         assertEquals(cat1.getCategoryId(), associated.get(0).getCategoryId());
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void deleteRelationship_OnlyOneAssociationRemaining_ThrowsException() {
         // Arrange
         Category cat = new Category("Cat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
@@ -273,7 +274,9 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(trans, cat.getCategoryId());
 
         // Act & Assert
-        trackingRepository.deleteRelationship(trans.getTransactionId(), cat.getCategoryId());
+        assertThrows(IllegalStateException.class, () -> {
+            trackingRepository.deleteRelationship(trans.getTransactionId(), cat.getCategoryId());
+        });
     }
 
     @Test
