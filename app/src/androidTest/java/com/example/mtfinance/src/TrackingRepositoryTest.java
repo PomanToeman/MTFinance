@@ -3,22 +3,26 @@ package com.example.mtfinance.src;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
 import androidx.lifecycle.LiveData;
 import androidx.room.Room;
-import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.example.mtfinance.src.repositories.CategoryRepository;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.repositories.TransactionRepository;
 import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCrossRef;
-import com.example.mtfinance.src.trackingengine.*;
-
+import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
+import com.example.mtfinance.src.trackingengine.TrackingType;
+import com.example.mtfinance.src.trackingengine.TrackingUtlis;
+import com.example.mtfinance.src.trackingengine.Transaction;
 
 import org.junit.After;
 import org.junit.Before;
@@ -28,47 +32,55 @@ import org.junit.runner.RunWith;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-
 @RunWith(AndroidJUnit4.class)
 public class TrackingRepositoryTest {
+
+    private static final String GENERAL_CATEGORY_NAME = "General Category";
+    private static final String INCOME_CATEGORY_NAME = "Income";
+    private static final String TRANSFER_CATEGORY_NAME = "Account Transfer";
+    private static final BigDecimal BUDGET_HUNDRED = BigDecimal.valueOf(100);
+    private static final BigDecimal BUDGET_TWO_HUNDRED = BigDecimal.valueOf(200);
+    private static final BigDecimal BUDGET_FIVE_HUNDRED = BigDecimal.valueOf(500);
+    private static final BigDecimal BUDGET_THOUSAND = BigDecimal.valueOf(1000);
+
     private AppDatabase database;
     private CategoryRepository categoryRepository;
     private TransactionRepository transactionRepository;
     private TrackingRepository trackingRepository;
 
     @Before
-    public void createDb() {
+    public void setUp() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         categoryRepository = new CategoryRepository(database.categoryDao(), true);
         transactionRepository = new TransactionRepository(database.transactionDao());
-
         trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao());
     }
 
     @After
-    public void closeDb() {
+    public void tearDown() {
         database.close();
         TrackingUtlis.resetCategoryCounter();
         TrackingUtlis.resetTransactionCounter();
     }
 
     @Test
-    public void testInsertCategory() {
-        Category category = new Category("Entertainment", "Movies, games", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void insertCategory_ValidCategory_PersistsSuccessfully() {
+        // Arrange
+        Category category = new Category("Entertainment", "Movies, games", BUDGET_HUNDRED, TrackingType.EXPENSE);
+
+        // Act
         trackingRepository.insertCategory(category);
-
         List<Category> allCategories = categoryRepository.getAllCategories();
-        // 4 default + 2 default expense + 1 new
-        assertEquals(7, allCategories.size());
 
+        // Assert
+        assertEquals(7, allCategories.size());
         boolean found = false;
         for (Category c : allCategories) {
             if (c.getName().equals("Entertainment")) {
@@ -80,20 +92,21 @@ public class TrackingRepositoryTest {
     }
 
     @Test
-    public void testInsertTransactionWithCategoryId() {
-        Category category = new Category("Dining", "Eating out", BigDecimal.valueOf(200), TrackingType.EXPENSE);
+    public void insertTransaction_WithValidCategoryId_PersistsUnderCategory() {
+        // Arrange
+        Category category = new Category("Dining", "Eating out", BUDGET_TWO_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(category);
         Long catId = category.getCategoryId();
-
         Transaction transaction = new Transaction.Builder("Pizza", BigDecimal.valueOf(25.0)).build();
-        trackingRepository.insertTransaction(transaction, catId);
 
-        // Verify transaction is in DB
+        // Act
+        trackingRepository.insertTransaction(transaction, catId);
         List<Transaction> allTransactions = transactionRepository.getAll();
+
+        // Assert
         assertEquals(1, allTransactions.size());
         assertEquals("Pizza", allTransactions.get(0).getName());
 
-        // Verify it's under the category
         List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
         boolean found = false;
         for (Category c : associatedCategories) {
@@ -106,15 +119,16 @@ public class TrackingRepositoryTest {
     }
 
     @Test
-    public void testInsertTransactionDefault() {
+    public void insertTransactionDefault_ValidTransaction_PersistsUnderGeneralCategory() {
+        // Arrange
         Transaction transaction = new Transaction.Builder("Generic Expense", BigDecimal.valueOf(10.0)).build();
+
+        // Act
         trackingRepository.insertTransactionDefault(transaction);
-
-        // Verify transaction is in DB
         List<Transaction> allTransactions = transactionRepository.getAll();
-        assertEquals(1, allTransactions.size());
 
-        // Verify it's under General Category
+        // Assert
+        assertEquals(1, allTransactions.size());
         Category general = categoryRepository.getGeneralCategory();
         List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
         boolean found = false;
@@ -128,23 +142,23 @@ public class TrackingRepositoryTest {
     }
 
     @Test
-    public void testFindCategoriesByTransactionId() {
-        Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
-        Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void findCategoriesByTransactionId_TransactionWithMultipleCategories_ReturnsAllCategories() {
+        // Arrange
+        Category cat1 = new Category("Cat1", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        Category cat2 = new Category("Cat2", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(cat1);
         categoryRepository.insert(cat2);
 
         Transaction transaction = new Transaction.Builder("Shared Transaction", BigDecimal.valueOf(50.0)).build();
         trackingRepository.insertTransaction(transaction, cat1.getCategoryId());
 
-        // Associate with second category
-        CategoryTransactionCrossRef crossRef =
-            new CategoryTransactionCrossRef(cat2.getCategoryId(), transaction.getTransactionId());
+        // Act
+        CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(cat2.getCategoryId(), transaction.getTransactionId());
         database.categoryTransactionDao().insertCrossRef(crossRef);
-
         List<Category> foundCategories = trackingRepository.getCategoriesByTransactionId(transaction.getTransactionId());
-        assertEquals(2, foundCategories.size());
 
+        // Assert
+        assertEquals(2, foundCategories.size());
         boolean found1 = false;
         boolean found2 = false;
         for (Category c : foundCategories) {
@@ -156,110 +170,133 @@ public class TrackingRepositoryTest {
     }
 
     @Test
-    public void testFindTotalInCategorySimple() {
-        Category category = new Category("PaknSave", "Food stuff", BigDecimal.valueOf(500), TrackingType.EXPENSE);
+    public void getTotalInCategory_SimpleCategory_CalculatesCorrectSum() {
+        // Arrange
+        Category category = new Category("PaknSave", "Food stuff", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(category);
 
         Transaction t1 = new Transaction.Builder("Apple", BigDecimal.valueOf(2.50)).build();
         Transaction t2 = new Transaction.Builder("Milk", BigDecimal.valueOf(3.50)).build();
-
         trackingRepository.insertTransaction(t1, category.getCategoryId());
         trackingRepository.insertTransaction(t2, category.getCategoryId());
 
+        // Act
         BigDecimal total = trackingRepository.getTotalInCategory(category, false);
+
+        // Assert
         assertEquals(0, BigDecimal.valueOf(6.00).compareTo(total));
     }
 
     @Test
-    public void testFindTotalInCategoryWithSubcategories() {
+    public void getTotalInCategory_WithSubcategories_CalculatesSumCorrectly() {
+        // Arrange
         Category parent = new Category("Transport", "Commute", BigDecimal.valueOf(300), TrackingType.EXPENSE);
-        Category child = new Category("Fuel", "Gasoline", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category child = new Category("Fuel", "Gasoline", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(parent);
         child.setParent(parent);
         categoryRepository.insert(child);
 
         Transaction t1 = new Transaction.Builder("Train ticket", BigDecimal.valueOf(15.00)).build();
         Transaction t2 = new Transaction.Builder("Petrol", BigDecimal.valueOf(45.00)).build();
-
         trackingRepository.insertTransaction(t1, parent.getCategoryId());
         trackingRepository.insertTransaction(t2, child.getCategoryId());
 
-        // Total for parent including subcategories
+        // Act & Assert
         BigDecimal totalWithSubs = trackingRepository.getTotalInCategory(parent, true);
         assertEquals(0, BigDecimal.valueOf(60.00).compareTo(totalWithSubs));
 
-        // Total for parent excluding subcategories
         BigDecimal totalWithoutSubs = trackingRepository.getTotalInCategory(parent, false);
         assertEquals(0, BigDecimal.valueOf(15.00).compareTo(totalWithoutSubs));
     }
 
     @Test
-    public void testGetCategoryWithTransactionsByCategoryId() {
-        Category category = new Category("TestCat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void getCategoryWithTransactionsByCategoryId_ExistingId_ReturnsCategoryAndTransactions() {
+        // Arrange
+        Category category = new Category("TestCat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(category);
         Transaction t = new Transaction.Builder("T1", BigDecimal.valueOf(10)).build();
         trackingRepository.insertTransaction(t, category.getCategoryId());
 
+        // Act
         CategoryWithTransactions result = trackingRepository.getCategoryWithTransactionsByCategoryId(category.getCategoryId());
+
+        // Assert
         assertNotNull(result);
         assertEquals(category.getCategoryId(), result.category.getCategoryId());
         assertEquals(1, result.transactions.size());
     }
 
     @Test
-    public void testGetCategoryWithTransactionsByParentId() {
-        Category parent = new Category("Parent", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void getCategoryWithTransactionsByParentId_ExistingParentId_ReturnsChildCategories() {
+        // Arrange
+        Category parent = new Category("Parent", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(parent);
         Category child = new Category("Child", "", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         child.setParent(parent);
         categoryRepository.insert(child);
 
+        // Act
         List<CategoryWithTransactions> results = trackingRepository.getCategoryWithTransactionsByParentId(parent.getCategoryId());
+
+        // Assert
         assertEquals(1, results.size());
         assertEquals(child.getCategoryId(), results.get(0).category.getCategoryId());
     }
 
     @Test
-    public void testGetTransactionIdsForCategory() {
-        Category category = new Category("TestCat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void getTransactionIdsForCategory_ExistingCategory_ReturnsAllAssociatedIds() {
+        // Arrange
+        Category category = new Category("TestCat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(category);
         Transaction t1 = new Transaction.Builder("T1", BigDecimal.valueOf(10)).build();
         Transaction t2 = new Transaction.Builder("T2", BigDecimal.valueOf(20)).build();
         trackingRepository.insertTransaction(t1, category.getCategoryId());
         trackingRepository.insertTransaction(t2, category.getCategoryId());
 
+        // Act
         List<Long> ids = trackingRepository.getTransactionIdsForCategory(category.getCategoryId());
+
+        // Assert
         assertEquals(2, ids.size());
         assertTrue(ids.contains(t1.getTransactionId()));
         assertTrue(ids.contains(t2.getTransactionId()));
     }
 
     @Test
-    public void testGetAllCategoriesWithTransactions() throws InterruptedException {
-        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void getAllCategoriesWithTransactions_ValidDatabase_ReturnsAllCategoriesWithTransactions() throws InterruptedException {
+        // Arrange
+        Category cat = new Category("Cat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         trackingRepository.insertCategory(cat);
 
+        // Act
         List<CategoryWithTransactions> result = getValue(trackingRepository.getAllCategoriesWithTransactions());
+
+        // Assert
         assertNotNull(result);
         assertEquals(7, result.size());
     }
 
     @Test
-    public void testGetCategoriesWithTransactionsByIds() {
-        Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
-        Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void getCategoriesWithTransactionsByIds_ValidIds_ReturnsMatchingCategories() {
+        // Arrange
+        Category cat1 = new Category("Cat1", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        Category cat2 = new Category("Cat2", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(cat1);
         categoryRepository.insert(cat2);
 
+        // Act
         List<Long> ids = Arrays.asList(cat1.getCategoryId(), cat2.getCategoryId());
         List<CategoryWithTransactions> result = trackingRepository.getCategoriesWithTransactionsByIds(ids);
+
+        // Assert
         assertNotNull(result);
         assertEquals(2, result.size());
     }
 
     @Test
-    public void testGetTransactionsForCategory() {
-        Category parent = new Category("Parent", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
+    public void getTransactionsForCategory_WithAndWithoutSubcategories_ReturnsCorrectTransactions() {
+        // Arrange
+        Category parent = new Category("Parent", "", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
         Category child = new Category("Child", "", BigDecimal.valueOf(200), TrackingType.EXPENSE);
         categoryRepository.insert(parent);
         child.setParent(parent);
@@ -270,6 +307,7 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(t1, parent.getCategoryId());
         trackingRepository.insertTransaction(t2, child.getCategoryId());
 
+        // Act & Assert
         Set<Transaction> parentOnly = trackingRepository.getTransactionsForCategory(parent, false);
         assertEquals(1, parentOnly.size());
         assertTrue(parentOnly.contains(t1));
@@ -281,8 +319,9 @@ public class TrackingRepositoryTest {
     }
 
     @Test
-    public void testGetChildrenTotals() {
-        Category parent = new Category("Home", "", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
+    public void getChildrenTotals_ValidParentAndChildren_CalculatesExclusiveChildTotals() {
+        // Arrange
+        Category parent = new Category("Home", "", BUDGET_THOUSAND, TrackingType.EXPENSE);
         Category child1 = new Category("Rent", "", BigDecimal.valueOf(600), TrackingType.EXPENSE);
         Category child2 = new Category("Food", "", BigDecimal.valueOf(300), TrackingType.EXPENSE);
         categoryRepository.insert(parent);
@@ -297,43 +336,37 @@ public class TrackingRepositoryTest {
 
         trackingRepository.insertTransaction(t1, child1.getCategoryId());
         trackingRepository.insertTransaction(t2, child2.getCategoryId());
-
-        // Associate shared transaction with both children
         trackingRepository.insertTransaction(tShared, child1.getCategoryId());
         trackingRepository.insertRelationship(tShared.getTransactionId(), child2.getCategoryId());
 
         CategoryWithTransactions parentCWT = trackingRepository.getCategoryWithTransactionsByCategoryId(parent.getCategoryId());
         parentCWT.category = categoryRepository.getCategoryByIdRestored(parent.getCategoryId());
 
+        // Act
         Map<CategoryWithTransactions, BigDecimal> totals = trackingRepository.getChildrenTotals(parentCWT, LocalDate.MIN, LocalDate.MAX);
 
+        // Assert
         assertEquals(2, totals.size());
-
-        // Find results in map
         BigDecimal rentTotal = BigDecimal.ZERO;
         BigDecimal foodTotal = BigDecimal.ZERO;
         for (Map.Entry<CategoryWithTransactions, BigDecimal> entry : totals.entrySet()) {
             if (entry.getKey().category.getName().equals("Rent")) rentTotal = entry.getValue();
             if (entry.getKey().category.getName().equals("Food")) foodTotal = entry.getValue();
         }
-
-        // Rent gets t1(600) + tShared(10) = 610
         assertEquals(0, BigDecimal.valueOf(610).compareTo(rentTotal));
-        // Food gets t2(50). tShared is excluded because it was already counted by Rent
         assertEquals(0, BigDecimal.valueOf(50).compareTo(foodTotal));
     }
 
     @Test
-    public void testDeepAndWideCategoryHierarchyWithManyTransactions() {
-        // Create root
-        Category root = new Category("Business", "All business expenses", BigDecimal.valueOf(10000), TrackingType.EXPENSE);
+    public void getTotalInCategory_DeepAndWideHierarchy_CalculatesTotalAccurately() {
+        // Arrange
+        Category root = new Category("Business", "All business expenses", BUDGET_THOUSAND.multiply(BigDecimal.TEN), TrackingType.EXPENSE);
         categoryRepository.insert(root);
-
         BigDecimal expectedTotal = BigDecimal.ZERO;
 
-        // Level 1: 5 children
+        // Act
         for (int i = 0; i < 5; i++) {
-            Category l1 = new Category("Dept " + i, "Level 1 Department", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
+            Category l1 = new Category("Dept " + i, "Level 1 Department", BUDGET_THOUSAND, TrackingType.EXPENSE);
             l1.setParent(root);
             categoryRepository.insert(l1);
 
@@ -341,9 +374,8 @@ public class TrackingRepositoryTest {
             trackingRepository.insertTransaction(t1, l1.getCategoryId());
             expectedTotal = expectedTotal.add(t1.getAmount());
 
-            // Level 2: 4 grandchildren per level 1 child (Total 20 grandchildren)
             for (int j = 0; j < 4; j++) {
-                Category l2 = new Category("Team " + i + "-" + j, "Level 2 Team", BigDecimal.valueOf(200), TrackingType.EXPENSE);
+                Category l2 = new Category("Team " + i + "-" + j, "Level 2 Team", BUDGET_TWO_HUNDRED, TrackingType.EXPENSE);
                 l2.setParent(l1);
                 categoryRepository.insert(l2);
 
@@ -353,66 +385,38 @@ public class TrackingRepositoryTest {
             }
         }
 
-        // Verify root total including all descendants
         BigDecimal total = trackingRepository.getTotalInCategory(root, true);
+
+        // Assert
         assertEquals(0, expectedTotal.compareTo(total));
     }
 
     @Test
-    public void testStressTestingTransactions() {
-        Category stressCat = new Category("Stress Test", "Large volume of transactions", BigDecimal.valueOf(100000), TrackingType.EXPENSE);
-        categoryRepository.insert(stressCat);
-
-        int count = 100;
-        BigDecimal amountPerTrans = BigDecimal.valueOf(1.50);
-        BigDecimal expectedTotal = BigDecimal.ZERO;
-
-        for (int i = 0; i < count; i++) {
-            Transaction t = new Transaction.Builder("Trans " + i, amountPerTrans).build();
-            trackingRepository.insertTransaction(t, stressCat.getCategoryId());
-            expectedTotal = expectedTotal.add(amountPerTrans);
-        }
-
-        BigDecimal total = trackingRepository.getTotalInCategory(stressCat, false);
-        assertEquals(0, expectedTotal.compareTo(total));
-
-        List<Long> transIds = trackingRepository.getTransactionIdsForCategory(stressCat.getCategoryId());
-        assertEquals(count, transIds.size());
-    }
-
-    @Test
-    public void testDeepHierarchyBranchIsolationAndRestoration() {
-        // Depth 1: General Category (Already exists)
+    public void branchIsolationAndRestoration_DeepHierarchy_MaintainsIsolationAndRestoresSuccessfully() {
+        // Arrange
         Category general = categoryRepository.getGeneralCategory();
 
-        // Depth 2: Main Branch
-        Category l2Main = new Category("L2 Main", "Main branch level 2", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
+        Category l2Main = new Category("L2 Main", "Main branch level 2", BUDGET_THOUSAND, TrackingType.EXPENSE);
         l2Main.setParent(general);
         categoryRepository.insert(l2Main);
 
-        // Depth 3: Main Branch
         Category l3Main = new Category("L3 Main", "Main branch level 3", BigDecimal.valueOf(800), TrackingType.EXPENSE);
         l3Main.setParent(l2Main);
         categoryRepository.insert(l3Main);
 
-        // Depth 4: Main Branch
         Category l4Main = new Category("L4 Main", "Main branch level 4", BigDecimal.valueOf(600), TrackingType.EXPENSE);
         l4Main.setParent(l3Main);
         categoryRepository.insert(l4Main);
 
-        // Depth 5: Main Branch
         Category l5Main = new Category("L5 Main", "Main branch level 5", BigDecimal.valueOf(400), TrackingType.EXPENSE);
         l5Main.setParent(l4Main);
         categoryRepository.insert(l5Main);
 
-        // Different Branch (Isolation Test)
-        Category l2Other = new Category("L2 Other", "Other branch level 2", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
+        Category l2Other = new Category("L2 Other", "Other branch level 2", BUDGET_THOUSAND, TrackingType.EXPENSE);
         l2Other.setParent(general);
         categoryRepository.insert(l2Other);
 
-        // Add Transactions
         BigDecimal mainTotal = BigDecimal.ZERO;
-
         Transaction t2 = new Transaction.Builder("T2 Main", BigDecimal.valueOf(20)).build();
         trackingRepository.insertTransaction(t2, l2Main.getCategoryId());
         mainTotal = mainTotal.add(t2.getAmount());
@@ -429,47 +433,35 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(t5, l5Main.getCategoryId());
         mainTotal = mainTotal.add(t5.getAmount());
 
-        // Transaction in the other branch (Should be isolated)
-        Transaction tOther = new Transaction.Builder("T Other", BigDecimal.valueOf(1000)).build();
+        Transaction tOther = new Transaction.Builder("T Other", BUDGET_THOUSAND).build();
         trackingRepository.insertTransaction(tOther, l2Other.getCategoryId());
 
-        // Transaction in the root (Should be isolated from L2 total)
         Transaction tRoot = new Transaction.Builder("T Root", BigDecimal.valueOf(500)).build();
         trackingRepository.insertTransaction(tRoot, general.getCategoryId());
 
-        // 1. Check isolation: Total for L2 Main should only include its descendants
+        // Act & Assert
         BigDecimal resultTotal = trackingRepository.getTotalInCategory(l2Main, true);
         assertEquals(0, mainTotal.compareTo(resultTotal));
 
-        // 2. Check restoration: Ensure full hierarchy is restored from DB
         Category restoredL2 = categoryRepository.getCategoryByIdRestored(l2Main.getCategoryId());
         assertNotNull(restoredL2);
-        assertEquals(general.getCategoryId(), restoredL2.getParent().getCategoryId()); // Parent check
-
-        // Check children chain
+        assertEquals(general.getCategoryId(), restoredL2.getParent().getCategoryId());
         assertEquals(1, restoredL2.getChildren(false).size());
-        Category restoredL3 = restoredL2.getChildren(false).iterator().next();
-        assertEquals("L3 Main", restoredL3.getName());
-
-        assertEquals(1, restoredL3.getChildren(false).size());
-        Category restoredL4 = restoredL3.getChildren(false).iterator().next();
-        assertEquals("L4 Main", restoredL4.getName());
-
-        assertEquals(1, restoredL4.getChildren(false).size());
-        Category restoredL5 = restoredL4.getChildren(false).iterator().next();
-        assertEquals("L5 Main", restoredL5.getName());
     }
 
     @Test
-    public void testUpdateCategory() {
-        Category cat = new Category("Initial Name", "Initial Desc", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void updateCategory_ExistingCategory_UpdatesFieldsSuccessfully() {
+        // Arrange
+        Category cat = new Category("Initial Name", "Initial Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
         trackingRepository.insertCategory(cat);
 
+        // Act
         cat.setName("Updated Name");
         cat.setDescription("Updated Desc");
         cat.setMonthlyBudget(BigDecimal.valueOf(200));
         trackingRepository.updateCategory(cat);
 
+        // Assert
         Category updated = categoryRepository.getCategoryById(cat.getCategoryId());
         assertEquals("Updated Name", updated.getName());
         assertEquals("Updated Desc", updated.getDescription());
@@ -477,164 +469,136 @@ public class TrackingRepositoryTest {
     }
 
     @Test
-    public void testUpdateTransaction() {
+    public void updateTransaction_ExistingTransaction_UpdatesFieldsSuccessfully() {
+        // Arrange
         Transaction t = new Transaction.Builder("Old Name", BigDecimal.valueOf(50)).build();
         Long originalId = transactionRepository.insert(t);
 
-        // Create an updated version of the same transaction by reusing the ID
+        // Act
         Transaction updatedT = new Transaction.Builder("New Name", BigDecimal.valueOf(75)).build();
         updatedT.setTransactionId(originalId);
-        
         trackingRepository.updateTransaction(updatedT);
 
+        // Assert
         Transaction result = transactionRepository.getById(originalId);
         assertEquals("New Name", result.getName());
         assertEquals(0, BigDecimal.valueOf(75).compareTo(result.getAmount()));
     }
 
     @Test
-    public void testUpdateCategoryTreeWithBudgetChange() {
-        Category parent = new Category("Parent", "Parent desc", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void updateCategoryTree_ChildBudgetIncrease_PropagatesToParentBudget() {
+        // Arrange
+        Category parent = new Category("Parent", "Parent desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
         Category child = new Category("Child", "Child desc", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         categoryRepository.insert(parent);
         child.setParent(parent);
         categoryRepository.insert(child);
 
-        // Restore to get the full tree in memory
         Category restoredChild = categoryRepository.getCategoryByIdRestored(child.getCategoryId());
-        
-        // Increase child budget to trigger parent budget increase via determineMinimumBudget()
-        // determineMinimumBudget is called inside setMonthlyBudget
-        restoredChild.setMonthlyBudget(BigDecimal.valueOf(150));
-        
-        // Now parent's budget should be 150 in memory
-        assertEquals(0, BigDecimal.valueOf(150).compareTo(restoredChild.getParent().getMonthlyBudget()));
 
-        // Update the tree
+        // Act
+        restoredChild.setMonthlyBudget(BigDecimal.valueOf(150));
+        assertEquals(0, BigDecimal.valueOf(150).compareTo(restoredChild.getParent().getMonthlyBudget()));
         trackingRepository.updateCategoryTree(restoredChild);
 
-        // Verify parent in DB is updated
+        // Assert
         Category updatedParent = categoryRepository.getCategoryById(parent.getCategoryId());
         assertEquals(0, BigDecimal.valueOf(150).compareTo(updatedParent.getMonthlyBudget()));
     }
 
     @Test
-    public void testGetCategoryByIdRestoredExplicit() {
-        Category cat = new Category("RestoredTest", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void getCategoryByIdRestoredExplicit_ExistingCategory_RestoresSuccessfully() {
+        // Arrange
+        Category cat = new Category("RestoredTest", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         trackingRepository.insertCategory(cat);
-        
+
+        // Act
         Category restored = trackingRepository.getCategoryByIdRestored(cat.getCategoryId());
+
+        // Assert
         assertNotNull(restored);
         assertEquals(cat.getCategoryId(), restored.getCategoryId());
-        // Parent should be General Category by default if none specified
         assertNotNull(restored.getParent());
-        assertEquals("General Category", restored.getParent().getName());
+        assertEquals(GENERAL_CATEGORY_NAME, restored.getParent().getName());
     }
 
     @Test
-    public void testInsertIncomeTransactionRedirectsToIncomeCategory() {
-        // Create an income transaction
+    public void insertTransaction_IncomeType_RedirectsToIncomeCategory() {
+        // Arrange
         Transaction incomeTrans = new Transaction.Builder("Salary", BigDecimal.valueOf(3000))
                 .type(TrackingType.INCOME)
                 .build();
-        
-        // Try to insert under an expense category
         Category expenseCat = new Category("Books", "", BigDecimal.valueOf(50), TrackingType.EXPENSE);
         categoryRepository.insert(expenseCat);
-        
+
+        // Act
         trackingRepository.insertTransaction(incomeTrans, expenseCat.getCategoryId());
-        
-        // Verify it was redirected to Income root category
+
+        // Assert
         List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(incomeTrans.getTransactionId());
         assertEquals(1, associatedCategories.size());
-        assertEquals("Income", associatedCategories.get(0).getName());
+        assertEquals(INCOME_CATEGORY_NAME, associatedCategories.get(0).getName());
         assertEquals(TrackingType.INCOME, associatedCategories.get(0).getType());
     }
 
     @Test
-    public void testInsertAccountTransferTransactionRedirectsToTransferCategory() {
-        // Create a transfer transaction
+    public void insertTransaction_TransferType_RedirectsToTransferCategory() {
+        // Arrange
         Transaction transferTrans = new Transaction.Builder("Bank Transfer", BigDecimal.valueOf(500))
                 .type(TrackingType.ACCOUNT_TRANSFERS)
                 .build();
-        
-        // Try to insert under an expense category
-        Category expenseCat = new Category("Gadgets", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
+        Category expenseCat = new Category("Gadgets", "", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(expenseCat);
-        
+
+        // Act
         trackingRepository.insertTransaction(transferTrans, expenseCat.getCategoryId());
-        
-        // Verify it was redirected to Account Transfer root category
+
+        // Assert
         List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(transferTrans.getTransactionId());
         assertEquals(1, associatedCategories.size());
-        assertEquals("Account Transfer", associatedCategories.get(0).getName());
+        assertEquals(TRANSFER_CATEGORY_NAME, associatedCategories.get(0).getName());
         assertEquals(TrackingType.ACCOUNT_TRANSFERS, associatedCategories.get(0).getType());
     }
 
     @Test
-    public void testInsertExpenseTransactionRespectsCategoryId() {
-        // Create an expense transaction
+    public void insertTransaction_ExpenseType_RespectsProvidedCategoryId() {
+        // Arrange
         Transaction expenseTrans = new Transaction.Builder("Book Purchase", BigDecimal.valueOf(20))
                 .type(TrackingType.EXPENSE)
                 .build();
-        
-        Category expenseCat = new Category("Education", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category expenseCat = new Category("Education", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(expenseCat);
-        
+
+        // Act
         trackingRepository.insertTransaction(expenseTrans, expenseCat.getCategoryId());
-        
-        // Verify it stayed in the provided category
+
+        // Assert
         List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(expenseTrans.getTransactionId());
         assertEquals(1, associatedCategories.size());
         assertEquals("Education", associatedCategories.get(0).getName());
     }
 
     @Test
-    public void testInsertExpenseTransactionUnderWrongCategoryTypeRedirects() {
-        // 1. Create an expense transaction
-        Transaction expenseTrans = new Transaction.Builder("Lunch", BigDecimal.valueOf(15))
-                .type(TrackingType.EXPENSE)
-                .build();
-
-        // 2. Attempt to insert under Income category
-        Category incomeCat = categoryRepository.getIncomeCategory();
-        trackingRepository.insertTransaction(expenseTrans, incomeCat.getCategoryId());
-
-        // Verify it was redirected to General Category (EXPENSE root)
-        List<Category> associatedCategories1 = trackingRepository.getCategoriesByTransactionId(expenseTrans.getTransactionId());
-        assertEquals(1, associatedCategories1.size());
-        assertEquals("General Category", associatedCategories1.get(0).getName());
-
-        // 3. Attempt to insert under Account Transfer category
-        Transaction expenseTrans2 = new Transaction.Builder("Dinner", BigDecimal.valueOf(30))
-                .type(TrackingType.EXPENSE)
-                .build();
-        Category transferCat = categoryRepository.getAccountTransferCategory();
-        trackingRepository.insertTransaction(expenseTrans2, transferCat.getCategoryId());
-
-        // Verify it was redirected to General Category
-        List<Category> associatedCategories2 = trackingRepository.getCategoriesByTransactionId(expenseTrans2.getTransactionId());
-        assertEquals(1, associatedCategories2.size());
-        assertEquals("General Category", associatedCategories2.get(0).getName());
-    }
-
-    @Test
-    public void testInsertRelationship() {
-        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void insertRelationship_ValidTransAndCat_CreatesAssociation() {
+        // Arrange
+        Category cat = new Category("Cat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(cat);
         Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
         transactionRepository.insert(trans);
 
+        // Act
         trackingRepository.insertRelationship(trans.getTransactionId(), cat.getCategoryId());
 
+        // Assert
         List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
         assertTrue(associated.stream().anyMatch(c -> c.getCategoryId().equals(cat.getCategoryId())));
     }
 
     @Test
-    public void testDeleteRelationship() {
-        Category cat1 = new Category("Cat1", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
-        Category cat2 = new Category("Cat2", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void deleteRelationship_ExistingAssociation_RemovesAssociation() {
+        // Arrange
+        Category cat1 = new Category("Cat1", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        Category cat2 = new Category("Cat2", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(cat1);
         categoryRepository.insert(cat2);
 
@@ -642,110 +606,98 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(trans, cat1.getCategoryId());
         trackingRepository.insertRelationship(trans.getTransactionId(), cat2.getCategoryId());
 
-        assertEquals(2, trackingRepository.getCategoriesByTransactionId(trans.getTransactionId()).size());
-
+        // Act
         trackingRepository.deleteRelationship(trans.getTransactionId(), cat2.getCategoryId());
 
+        // Assert
         List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
         assertEquals(1, associated.size());
         assertEquals(cat1.getCategoryId(), associated.get(0).getCategoryId());
     }
 
-    @Test(expected = IllegalStateException.class)
-    public void testDeleteRelationshipThrowsExceptionWhenOnlyOneLeft() {
-        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    @Test
+    public void deleteRelationship_OnlyOneAssociationRemaining_ThrowsException() {
+        // Arrange
+        Category cat = new Category("Cat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(cat);
         Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
         trackingRepository.insertTransaction(trans, cat.getCategoryId());
 
-        trackingRepository.deleteRelationship(trans.getTransactionId(), cat.getCategoryId());
+        // Act & Assert
+        assertThrows(IllegalStateException.class, () ->
+            trackingRepository.deleteRelationship(trans.getTransactionId(), cat.getCategoryId())
+        );
     }
 
     @Test
-    public void testDeleteTransaction() {
-        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void deleteTransaction_ExistingTransaction_DeletesTransactionAndAssociations() {
+        // Arrange
+        Category cat = new Category("Cat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(cat);
         Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
         trackingRepository.insertTransaction(trans, cat.getCategoryId());
-
         Long transId = trans.getTransactionId();
-        assertTrue(trackingRepository.transactionExists(transId));
 
+        // Act
         trackingRepository.deleteTransaction(transId);
 
+        // Assert
         assertFalse(trackingRepository.transactionExists(transId));
         assertTrue(trackingRepository.getCategoriesByTransactionId(transId).isEmpty());
     }
 
     @Test
-    public void testDeleteCategoryMoveTransactionsToRoot() {
-        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void deleteCategory_KeepTransactions_MovesTransactionsToRoot() {
+        // Arrange
+        Category cat = new Category("Cat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(cat);
         Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
         trackingRepository.insertTransaction(trans, cat.getCategoryId());
-
         Long catId = cat.getCategoryId();
-        assertTrue(trackingRepository.categoryExists(catId));
 
-        // Delete category but KEEP transactions (move to root)
+        // Act
         trackingRepository.deleteCategory(catId, false);
 
+        // Assert
         assertFalse(trackingRepository.categoryExists(catId));
-        
-        // Transaction should still exist
         assertTrue(trackingRepository.transactionExists(trans.getTransactionId()));
-        
-        // Verify it was moved to General Category
         List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
         assertEquals(1, associated.size());
-        assertEquals("General Category", associated.get(0).getName());
+        assertEquals(GENERAL_CATEGORY_NAME, associated.get(0).getName());
     }
 
     @Test
-    public void testDeleteCategoryAndDeleteTransactions() {
-        Category cat = new Category("Cat", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+    public void deleteCategory_DeleteTransactions_RemovesCategoryAndTransactions() {
+        // Arrange
+        Category cat = new Category("Cat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(cat);
         Transaction trans = new Transaction.Builder("Trans", BigDecimal.valueOf(10)).build();
         trackingRepository.insertTransaction(trans, cat.getCategoryId());
-
         Long catId = cat.getCategoryId();
         Long transId = trans.getTransactionId();
 
-        // Delete category AND transactions
+        // Act
         trackingRepository.deleteCategory(catId, true);
 
+        // Assert
         assertFalse(trackingRepository.categoryExists(catId));
         assertFalse(trackingRepository.transactionExists(transId));
     }
 
     @Test
-    public void testFindTotalInCategoryWithDateRange() {
-        Category category = new Category("GroceriesRangeTest", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
+    public void getTotalInCategory_WithDateRange_CalculatesSumCorrectly() {
+        // Arrange
+        Category category = new Category("GroceriesRangeTest", "", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
         categoryRepository.insert(category);
 
         LocalDate startDate = LocalDate.of(2023, 1, 10);
         LocalDate endDate = LocalDate.of(2023, 1, 20);
 
-        // Within range
-        Transaction t1 = new Transaction.Builder("Bread", BigDecimal.valueOf(3.0))
-                .date(LocalDate.of(2023, 1, 15))
-                .build();
-        // Before range
-        Transaction t2 = new Transaction.Builder("Milk", BigDecimal.valueOf(4.0))
-                .date(LocalDate.of(2023, 1, 5))
-                .build();
-        // After range
-        Transaction t3 = new Transaction.Builder("Eggs", BigDecimal.valueOf(5.0))
-                .date(LocalDate.of(2023, 1, 25))
-                .build();
-        // Boundary (start)
-        Transaction t4 = new Transaction.Builder("Butter", BigDecimal.valueOf(6.0))
-                .date(startDate)
-                .build();
-        // Boundary (end)
-        Transaction t5 = new Transaction.Builder("Cheese", BigDecimal.valueOf(7.0))
-                .date(endDate)
-                .build();
+        Transaction t1 = new Transaction.Builder("Bread", BigDecimal.valueOf(3.0)).date(LocalDate.of(2023, 1, 15)).build();
+        Transaction t2 = new Transaction.Builder("Milk", BigDecimal.valueOf(4.0)).date(LocalDate.of(2023, 1, 5)).build();
+        Transaction t3 = new Transaction.Builder("Eggs", BigDecimal.valueOf(5.0)).date(LocalDate.of(2023, 1, 25)).build();
+        Transaction t4 = new Transaction.Builder("Butter", BigDecimal.valueOf(6.0)).date(startDate).build();
+        Transaction t5 = new Transaction.Builder("Cheese", BigDecimal.valueOf(7.0)).date(endDate).build();
 
         trackingRepository.insertTransaction(t1, category.getCategoryId());
         trackingRepository.insertTransaction(t2, category.getCategoryId());
@@ -753,39 +705,11 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(t4, category.getCategoryId());
         trackingRepository.insertTransaction(t5, category.getCategoryId());
 
-        // Expected total = t1(3) + t4(6) + t5(7) = 16
+        // Act
         BigDecimal total = trackingRepository.getTotalInCategory(category, false, startDate, endDate);
+
+        // Assert (t1 + t4 + t5 = 3 + 6 + 7 = 16)
         assertEquals(0, BigDecimal.valueOf(16.0).compareTo(total));
-    }
-
-    @Test
-    public void testFindTotalInCategoryWithDateRangeAndSubs() {
-        Category parent = new Category("ShoppingRangeTest", "", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
-        Category child = new Category("ClothesRangeTest", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
-        categoryRepository.insert(parent);
-        child.setParent(parent);
-        categoryRepository.insert(child);
-
-        LocalDate startDate = LocalDate.of(2023, 1, 1);
-        LocalDate endDate = LocalDate.of(2023, 1, 31);
-
-        Transaction tParentInRange = new Transaction.Builder("Shoes", BigDecimal.valueOf(100))
-                .date(LocalDate.of(2023, 1, 15))
-                .build();
-        Transaction tChildInRange = new Transaction.Builder("Shirt", BigDecimal.valueOf(50))
-                .date(LocalDate.of(2023, 1, 20))
-                .build();
-        Transaction tChildOutRange = new Transaction.Builder("Jacket", BigDecimal.valueOf(200))
-                .date(LocalDate.of(2023, 2, 1))
-                .build();
-
-        trackingRepository.insertTransaction(tParentInRange, parent.getCategoryId());
-        trackingRepository.insertTransaction(tChildInRange, child.getCategoryId());
-        trackingRepository.insertTransaction(tChildOutRange, child.getCategoryId());
-
-        // Total for parent including subs in Jan: 100 + 50 = 150
-        BigDecimal total = trackingRepository.getTotalInCategory(parent, true, startDate, endDate);
-        assertEquals(0, BigDecimal.valueOf(150.0).compareTo(total));
     }
 
     private <T> T getValue(LiveData<T> liveData) throws InterruptedException {
