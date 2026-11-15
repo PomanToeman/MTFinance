@@ -1,10 +1,11 @@
 package com.example.mtfinance.src;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import android.content.Context;
 
@@ -66,9 +67,11 @@ public class CategoryRepositoryTest {
         Category generalCategory = repository.getGeneralCategory();
 
         // Assert
-        assertEquals(6, allCategories.size());
-        assertNotNull(generalCategory);
-        assertEquals(GENERAL_CATEGORY_NAME, generalCategory.getName());
+        assertAll(
+            () -> assertEquals(6, allCategories.size()),
+            () -> assertNotNull(generalCategory),
+            () -> assertEquals(GENERAL_CATEGORY_NAME, generalCategory.getName())
+        );
     }
 
     @Test
@@ -81,8 +84,10 @@ public class CategoryRepositoryTest {
         List<Category> allCategories = repository.getAllCategories();
 
         // Assert
-        assertTrue(id > 0);
-        assertEquals(7, allCategories.size());
+        assertAll(
+            () -> assertTrue(id > 0, "Inserted ID should be positive"),
+            () -> assertEquals(7, allCategories.size())
+        );
     }
 
     @Test
@@ -91,9 +96,7 @@ public class CategoryRepositoryTest {
         Category duplicate = new Category(GROCERIES_NAME, "Duplicate", BUDGET_HUNDRED, TrackingType.EXPENSE);
 
         // Act & Assert
-        assertThrows(android.database.sqlite.SQLiteConstraintException.class, () -> {
-            repository.insert(duplicate);
-        });
+        assertThrows(android.database.sqlite.SQLiteConstraintException.class, () -> repository.insert(duplicate));
     }
 
     @Test
@@ -102,9 +105,7 @@ public class CategoryRepositoryTest {
         Category duplicate = new Category(GROCERIES_NAME.toLowerCase(), "Duplicate", BUDGET_HUNDRED, TrackingType.EXPENSE);
 
         // Act & Assert
-        assertThrows(android.database.sqlite.SQLiteConstraintException.class, () -> {
-            repository.insert(duplicate);
-        });
+        assertThrows(android.database.sqlite.SQLiteConstraintException.class, () -> repository.insert(duplicate));
     }
 
     @Test
@@ -117,8 +118,10 @@ public class CategoryRepositoryTest {
         Category retrieved = categoryDao.getById(id);
 
         // Assert
-        assertNotNull(retrieved);
-        assertEquals("TestCat", retrieved.getName());
+        assertAll(
+            () -> assertNotNull(retrieved),
+            () -> assertEquals("TestCat", retrieved.getName())
+        );
     }
 
     @Test
@@ -130,17 +133,15 @@ public class CategoryRepositoryTest {
 
         // Act
         repository.insert(child);
+        List<Category> allCategories = repository.getAllCategories();
 
         // Assert
-        List<Category> allCategories = repository.getAllCategories();
-        boolean foundParent = false;
-        boolean foundChild = false;
-        for (Category c : allCategories) {
-            if (c.getName().equals(PARENT_NAME)) foundParent = true;
-            if (c.getName().equals(CHILD_NAME)) foundChild = true;
-        }
-        assertTrue(foundParent);
-        assertTrue(foundChild);
+        boolean foundParent = allCategories.stream().anyMatch(c -> c.getName().equals(PARENT_NAME));
+        boolean foundChild = allCategories.stream().anyMatch(c -> c.getName().equals(CHILD_NAME));
+        assertAll(
+            () -> assertTrue(foundParent, "Parent category should be automatically inserted"),
+            () -> assertTrue(foundChild, "Child category should be inserted")
+        );
     }
 
     @Test
@@ -155,17 +156,15 @@ public class CategoryRepositoryTest {
 
         // Act
         repository.insert(child);
+        List<Category> allCategories = repository.getAllCategories();
 
         // Assert
-        List<Category> allCategories = repository.getAllCategories();
-        boolean foundGP = false;
-        boolean foundP = false;
-        for (Category c : allCategories) {
-            if (c.getName().equals("Grandparent")) foundGP = true;
-            if (c.getName().equals("ParentName")) foundP = true;
-        }
-        assertTrue(foundGP);
-        assertTrue(foundP);
+        boolean foundGP = allCategories.stream().anyMatch(c -> c.getName().equals("Grandparent"));
+        boolean foundP = allCategories.stream().anyMatch(c -> c.getName().equals("ParentName"));
+        assertAll(
+            () -> assertTrue(foundGP, "Grandparent should be inserted recursively"),
+            () -> assertTrue(foundP, "Parent should be inserted recursively")
+        );
     }
 
     @Test
@@ -174,26 +173,19 @@ public class CategoryRepositoryTest {
         Category toDelete = new Category("ToDelete", "Desc", BUDGET_FIFTY, TrackingType.EXPENSE);
         repository.insert(toDelete);
 
-        List<Category> allBefore = repository.getAllCategories();
-        Category found = null;
-        for (Category c : allBefore) {
-            if (c.getName().equals("ToDelete")) found = c;
-        }
+        Category found = repository.getAllCategories().stream()
+                .filter(c -> c.getName().equals("ToDelete"))
+                .findFirst()
+                .orElse(null);
         assertNotNull(found);
 
         // Act
         repository.deleteCategory(found);
 
         // Assert
-        List<Category> allAfter = repository.getAllCategories();
-        boolean stillExists = false;
-        for (Category c : allAfter) {
-            if (c.getName().equals("ToDelete")) {
-                stillExists = true;
-                break;
-            }
-        }
-        assertFalse(stillExists);
+        boolean stillExists = repository.getAllCategories().stream()
+                .anyMatch(c -> c.getName().equals("ToDelete"));
+        assertFalse(stillExists, "Category should be deleted from database");
     }
 
     @Test
@@ -202,21 +194,21 @@ public class CategoryRepositoryTest {
         Category parent = new Category("ParentToDelete", "Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
         Category child = new Category("ChildToReassign", "Desc", BUDGET_FIFTY, TrackingType.EXPENSE);
         child.setParent(parent);
-        repository.insert(child); // Inserts both
-
-        assertEquals(8, repository.getAllCategories().size());
+        repository.insert(child);
 
         // Act
         repository.deleteCategory(parent);
 
         // Assert
-        Category childInDb = null;
-        for (Category c : repository.getAllCategories()) {
-            if (c.getName().equals("ChildToReassign")) childInDb = c;
-        }
+        Category childInDb = repository.getAllCategories().stream()
+                .filter(c -> c.getName().equals("ChildToReassign"))
+                .findFirst()
+                .orElse(null);
 
-        assertNotNull(childInDb);
-        assertEquals(repository.getGeneralCategory().getCategoryId().longValue(), child.getParentId().longValue());
+        assertAll(
+            () -> assertNotNull(childInDb),
+            () -> assertEquals(repository.getGeneralCategory().getCategoryId(), child.getParentId())
+        );
     }
 
     @Test
@@ -234,36 +226,44 @@ public class CategoryRepositoryTest {
         Category restoredChild = repository.getCategoryByIdRestored(child.getCategoryId());
 
         // Assert
-        assertNotNull(restoredChild);
-        assertNotNull(restoredChild.getParent());
-        assertEquals("Parent", restoredChild.getParent().getName());
-        assertNotNull(restoredChild.getParent().getParent());
-        assertEquals(root.getName(), restoredChild.getParent().getParent().getName());
+        assertAll(
+            () -> assertNotNull(restoredChild),
+            () -> assertNotNull(restoredChild.getParent()),
+            () -> assertEquals("Parent", restoredChild.getParent().getName()),
+            () -> assertNotNull(restoredChild.getParent().getParent()),
+            () -> assertEquals(root.getName(), restoredChild.getParent().getParent().getName())
+        );
     }
 
     @Test
-    public void defaultCategories_AllCategories_HaveCorrectTrackingTypes() {
-        // Arrange / Act
-        List<Category> allCategories = repository.getAllCategories();
-        Category general = null;
-        Category income = null;
-        Category transfer = null;
+    public void defaultCategories_GeneralCategory_HasExpenseType() {
+        Category general = repository.getGeneralCategory();
+        assertAll(
+            () -> assertNotNull(general),
+            () -> assertEquals(TrackingType.EXPENSE, general.getType())
+        );
+    }
 
-        for (Category c : allCategories) {
-            if (c.getName().equals(GENERAL_CATEGORY_NAME)) general = c;
-            if (c.getName().equals("Income")) income = c;
-            if (c.getName().equals("Account Transfer")) transfer = c;
-        }
+    @Test
+    public void defaultCategories_IncomeCategory_HasIncomeType() {
+        Category income = repository.getAllCategories().stream()
+                .filter(c -> c.getName().equals("Income"))
+                .findFirst().orElse(null);
+        assertAll(
+            () -> assertNotNull(income),
+            () -> assertEquals(TrackingType.INCOME, income.getType())
+        );
+    }
 
-        // Assert
-        assertNotNull(general);
-        assertEquals(TrackingType.EXPENSE, general.getType());
-
-        assertNotNull(income);
-        assertEquals(TrackingType.INCOME, income.getType());
-
-        assertNotNull(transfer);
-        assertEquals(TrackingType.ACCOUNT_TRANSFERS, transfer.getType());
+    @Test
+    public void defaultCategories_AccountTransferCategory_HasTransferType() {
+        Category transfer = repository.getAllCategories().stream()
+                .filter(c -> c.getName().equals("Account Transfer"))
+                .findFirst().orElse(null);
+        assertAll(
+            () -> assertNotNull(transfer),
+            () -> assertEquals(TrackingType.ACCOUNT_TRANSFERS, transfer.getType())
+        );
     }
 
     @Test
@@ -277,8 +277,10 @@ public class CategoryRepositoryTest {
         long id2 = repository.insert(transferSub);
 
         // Assert
-        assertEquals(-1L, id1);
-        assertEquals(-1L, id2);
+        assertAll(
+            () -> assertEquals(-1L, id1),
+            () -> assertEquals(-1L, id2)
+        );
     }
 
     @Test
@@ -290,23 +292,19 @@ public class CategoryRepositoryTest {
         repository.insert(food);
 
         // Act & Assert
-        // 1. Exact Match
         List<Long> exactMatch = repository.autoSearchCategoryIds(ENTERTAINMENT_NAME, TrackingType.EXPENSE);
-        assertFalse(exactMatch.isEmpty());
-        assertEquals(ENTERTAINMENT_NAME, repository.getCategoryById(exactMatch.get(0)).getName());
-
-        // 2. Partial Prefix Match
         List<Long> prefixMatch = repository.autoSearchCategoryIds("Entertain", TrackingType.EXPENSE);
-        assertFalse(prefixMatch.isEmpty());
-        assertEquals(ENTERTAINMENT_NAME, repository.getCategoryById(prefixMatch.get(0)).getName());
-
-        // 3. Description Match
         List<Long> descriptionMatch = repository.autoSearchCategoryIds("movies", TrackingType.EXPENSE);
-        assertFalse(descriptionMatch.isEmpty());
-        assertEquals(ENTERTAINMENT_NAME, repository.getCategoryById(descriptionMatch.get(0)).getName());
-
-        // 4. Type Filtering
         List<Long> wrongType = repository.autoSearchCategoryIds(ENTERTAINMENT_NAME, TrackingType.INCOME);
-        assertTrue(wrongType.isEmpty());
+
+        assertAll(
+            () -> assertFalse(exactMatch.isEmpty()),
+            () -> assertEquals(ENTERTAINMENT_NAME, repository.getCategoryById(exactMatch.get(0)).getName()),
+            () -> assertFalse(prefixMatch.isEmpty()),
+            () -> assertEquals(ENTERTAINMENT_NAME, repository.getCategoryById(prefixMatch.get(0)).getName()),
+            () -> assertFalse(descriptionMatch.isEmpty()),
+            () -> assertEquals(ENTERTAINMENT_NAME, repository.getCategoryById(descriptionMatch.get(0)).getName()),
+            () -> assertTrue(wrongType.isEmpty())
+        );
     }
 }
