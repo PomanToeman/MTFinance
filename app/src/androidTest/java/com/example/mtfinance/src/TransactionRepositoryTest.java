@@ -1,11 +1,9 @@
 package com.example.mtfinance.src;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
@@ -67,10 +65,8 @@ public class TransactionRepositoryTest {
         Long id = repository.insert(transaction);
 
         // Assert
-        assertAll(
-            () -> assertNotNull(id),
-            () -> assertTrue(id > 0, "Inserted ID should be positive")
-        );
+        assertNotNull(id);
+        assertTrue(id > 0);
     }
 
     @Test
@@ -122,10 +118,8 @@ public class TransactionRepositoryTest {
         Transaction retrievedTransaction = repository.getById(id);
 
         // Assert
-        assertAll(
-            () -> assertNotNull(retrievedTransaction),
-            () -> assertEquals(TRANSACTION_NAME_GAS, retrievedTransaction.getName())
-        );
+        assertNotNull(retrievedTransaction);
+        assertEquals(TRANSACTION_NAME_GAS, retrievedTransaction.getName());
     }
 
     @Test
@@ -149,15 +143,13 @@ public class TransactionRepositoryTest {
                 .build();
 
         // Assert
-        assertAll(
-            () -> assertNotNull(hash),
-            () -> assertTrue(hash.contains(TRANSACTION_NAME_DINNER.toLowerCase()), "Hash should contain transaction name"),
-            () -> assertTrue(hash.contains(AMOUNT_FIFTY.toString()), "Hash should contain transaction amount"),
-            () -> assertEquals(hash, t2.getGeneratedHash())
-        );
+        assertNotNull(hash);
+        assertTrue(hash.contains(TRANSACTION_NAME_DINNER.toLowerCase()));
+        assertTrue(hash.contains(AMOUNT_FIFTY.toString()));
+        assertEquals(hash, t2.getGeneratedHash());
     }
 
-    @Test
+    @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
     public void insert_DuplicateHashTransaction_ThrowsConstraintException() {
         // Arrange
         Transaction t1 = new Transaction.Builder(TRANSACTION_NAME_DINNER, AMOUNT_FIFTY).build();
@@ -168,6 +160,6 @@ public class TransactionRepositoryTest {
                 .build();
 
         // Act & Assert
-        assertThrows(android.database.sqlite.SQLiteConstraintException.class, () -> repository.insert(t2));
+        repository.insert(t2);
     }
 }
