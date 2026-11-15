@@ -1,8 +1,8 @@
 package com.example.mtfinance;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -35,17 +35,10 @@ public class TrackingEngineUnitTests {
     @Test
     public void checkAmount_NegativeOrZeroAmount_ThrowsIllegalArgumentException() {
         // Arrange, Act & Assert
-        assertThrows(IllegalArgumentException.class,
-                () -> TrackingUtlis.checkAmount(NEGATIVE_AMOUNT_ONE));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> TrackingUtlis.checkAmount(NEGATIVE_AMOUNT_TWO));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> TrackingUtlis.checkAmount(BigDecimal.ZERO));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> new Transaction.Builder("Negative transaction", NEGATIVE_AMOUNT_THREE).build());
+        assertThrows(IllegalArgumentException.class, () -> TrackingUtlis.checkAmount(NEGATIVE_AMOUNT_ONE));
+        assertThrows(IllegalArgumentException.class, () -> TrackingUtlis.checkAmount(NEGATIVE_AMOUNT_TWO));
+        assertThrows(IllegalArgumentException.class, () -> TrackingUtlis.checkAmount(BigDecimal.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> new Transaction.Builder("Negative transaction", NEGATIVE_AMOUNT_THREE).build());
     }
 
     @Test

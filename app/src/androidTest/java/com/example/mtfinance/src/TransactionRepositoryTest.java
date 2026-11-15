@@ -3,7 +3,6 @@ package com.example.mtfinance.src;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -139,19 +138,18 @@ public class TransactionRepositoryTest {
 
         // Act
         String hash = t1.getGeneratedHash();
+        Transaction t2 = new Transaction.Builder(TRANSACTION_NAME_DINNER, AMOUNT_FIFTY)
+                .date(t1.getDate())
+                .build();
 
         // Assert
         assertNotNull(hash);
         assertTrue(hash.contains(TRANSACTION_NAME_DINNER.toLowerCase()));
         assertTrue(hash.contains(AMOUNT_FIFTY.toString()));
-
-        Transaction t2 = new Transaction.Builder(TRANSACTION_NAME_DINNER, AMOUNT_FIFTY)
-                .date(t1.getDate())
-                .build();
         assertEquals(hash, t2.getGeneratedHash());
     }
 
-    @Test
+    @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
     public void insert_DuplicateHashTransaction_ThrowsConstraintException() {
         // Arrange
         Transaction t1 = new Transaction.Builder(TRANSACTION_NAME_DINNER, AMOUNT_FIFTY).build();
@@ -162,8 +160,6 @@ public class TransactionRepositoryTest {
                 .build();
 
         // Act & Assert
-        assertThrows(android.database.sqlite.SQLiteConstraintException.class, () -> {
-            repository.insert(t2);
-        });
+        repository.insert(t2);
     }
 }

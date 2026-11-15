@@ -32,7 +32,7 @@ public class TrackingStressTest {
     private static final String STRESS_CATEGORY_DESC = "Large volume of transactions";
     private static final BigDecimal STRESS_CATEGORY_BUDGET = BigDecimal.valueOf(100000);
     private static final BigDecimal AMOUNT_PER_TRANS = BigDecimal.valueOf(1.50);
-    private static final int TRANSACTION_COUNT = 100;
+    private static final int TRANSACTION_COUNT = 1000;
 
     private AppDatabase database;
     private CategoryRepository categoryRepository;
