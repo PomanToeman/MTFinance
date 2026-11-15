@@ -32,7 +32,7 @@ import javax.inject.Inject;
  * Transactions and Categories follow a many-to-many relationship.
  * Each transaction has one or more categories that is in.
  */
-public class TrackingRepository {
+public class TrackingRepository implements TrackingWriteRepository {
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
     private final CategoryTransactionDao categoryWithTransactionsDao;

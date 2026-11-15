@@ -7,11 +7,12 @@ import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
+import java.util.Collection;
 import java.util.List;
 
 import javax.inject.Inject;
 
-public class TransactionRepository {
+class TransactionRepository implements TransactionWriteRepository {
     private final TransactionDao transactionDao;
 
     @Inject
@@ -19,6 +20,7 @@ public class TransactionRepository {
         this.transactionDao = transactionDao;
     }
 
+    @Override
     public Long insert(Transaction transaction) {
         return transactionDao.insert(transaction);
     }
@@ -39,24 +41,23 @@ public class TransactionRepository {
         return transactionDao.searchTransactionsWithType(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
     }
 
-
-
     public Transaction getById(Long id) {
         return transactionDao.getById(id);
     }
 
-    public List<Transaction> getByIds(java.util.Collection<Long> ids) {
+    public List<Transaction> getByIds(Collection<Long> ids) {
         return transactionDao.getByIds(ids);
     }
 
+    @Override
     public void update(Transaction transaction) {
         transactionDao.update(transaction);
     }
 
+    @Override
     public void delete(Long id) {
         transactionDao.delete(id);
     }
-
 
     public Boolean exists(Long id) {
         return transactionDao.exists(id);
