@@ -85,7 +85,7 @@ public class TrackingRepository {
     }
 
     /**
-     * To recolonise a relationship between a category and relationship.
+     * To realise a relationship between a category and transaction.
      * Both transaction and category must already be in the database.
      * @param transactionId - The ID of a transaction already within a database.
      * @param categoryId - The ID of a category already within a database.
