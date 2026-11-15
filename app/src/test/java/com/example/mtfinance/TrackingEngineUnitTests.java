@@ -1,17 +1,18 @@
 package com.example.mtfinance;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
@@ -35,17 +36,12 @@ public class TrackingEngineUnitTests {
     @Test
     public void checkAmount_NegativeOrZeroAmount_ThrowsIllegalArgumentException() {
         // Arrange, Act & Assert
-        assertThrows(IllegalArgumentException.class,
-                () -> TrackingUtlis.checkAmount(NEGATIVE_AMOUNT_ONE));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> TrackingUtlis.checkAmount(NEGATIVE_AMOUNT_TWO));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> TrackingUtlis.checkAmount(BigDecimal.ZERO));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> new Transaction.Builder("Negative transaction", NEGATIVE_AMOUNT_THREE).build());
+        assertAll(
+            () -> assertThrows(IllegalArgumentException.class, () -> TrackingUtlis.checkAmount(NEGATIVE_AMOUNT_ONE)),
+            () -> assertThrows(IllegalArgumentException.class, () -> TrackingUtlis.checkAmount(NEGATIVE_AMOUNT_TWO)),
+            () -> assertThrows(IllegalArgumentException.class, () -> TrackingUtlis.checkAmount(BigDecimal.ZERO)),
+            () -> assertThrows(IllegalArgumentException.class, () -> new Transaction.Builder("Negative transaction", NEGATIVE_AMOUNT_THREE).build())
+        );
     }
 
     @Test
@@ -59,10 +55,12 @@ public class TrackingEngineUnitTests {
         categoryOne.setParent(categoryTwo); // Cycle prevention check
 
         // Assert
-        assertEquals(categoryOne, categoryTwo.getParent());
-        assertNotEquals(categoryTwo, categoryOne.getParent());
-        assertFalse(categoryOne.isDescendantOf(categoryTwo));
-        assertTrue(categoryTwo.isDescendantOf(categoryOne));
+        assertAll(
+            () -> assertEquals(categoryOne, categoryTwo.getParent()),
+            () -> assertNotEquals(categoryTwo, categoryOne.getParent()),
+            () -> assertFalse(categoryOne.isDescendantOf(categoryTwo)),
+            () -> assertTrue(categoryTwo.isDescendantOf(categoryOne))
+        );
     }
 
     @Test
@@ -75,9 +73,11 @@ public class TrackingEngineUnitTests {
         child.setParent(parent);
 
         // Assert
-        assertEquals(parent, child.getParent());
-        assertTrue(child.isDescendantOf(parent));
-        assertFalse(parent.isDescendantOf(child));
+        assertAll(
+            () -> assertEquals(parent, child.getParent()),
+            () -> assertTrue(child.isDescendantOf(parent)),
+            () -> assertFalse(parent.isDescendantOf(child))
+        );
     }
 
     @Test
@@ -94,9 +94,11 @@ public class TrackingEngineUnitTests {
         level3.setParent(level2);
 
         // Assert
-        assertTrue(level3.isDescendantOf(root));
-        assertTrue(level3.isDescendantOf(level1));
-        assertTrue(level2.isDescendantOf(root));
-        assertFalse(root.isDescendantOf(level3));
+        assertAll(
+            () -> assertTrue(level3.isDescendantOf(root)),
+            () -> assertTrue(level3.isDescendantOf(level1)),
+            () -> assertTrue(level2.isDescendantOf(root)),
+            () -> assertFalse(root.isDescendantOf(level3))
+        );
     }
 }
