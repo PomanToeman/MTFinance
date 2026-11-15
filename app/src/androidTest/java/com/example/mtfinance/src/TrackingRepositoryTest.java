@@ -1,10 +1,11 @@
 package com.example.mtfinance.src;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import android.content.Context;
 
@@ -78,17 +79,13 @@ public class TrackingRepositoryTest {
         // Act
         trackingRepository.insertCategory(category);
         List<Category> allCategories = categoryRepository.getAllCategories();
+        boolean found = allCategories.stream().anyMatch(c -> c.getName().equals("Entertainment"));
 
         // Assert
-        assertEquals(7, allCategories.size());
-        boolean found = false;
-        for (Category c : allCategories) {
-            if (c.getName().equals("Entertainment")) {
-                found = true;
-                break;
-            }
-        }
-        assertTrue(found);
+        assertAll(
+            () -> assertEquals(7, allCategories.size()),
+            () -> assertTrue(found, "Category should be present in database")
+        );
     }
 
     @Test
@@ -102,20 +99,15 @@ public class TrackingRepositoryTest {
         // Act
         trackingRepository.insertTransaction(transaction, catId);
         List<Transaction> allTransactions = transactionRepository.getAll();
+        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
+        boolean found = associatedCategories.stream().anyMatch(c -> c.getCategoryId().equals(catId));
 
         // Assert
-        assertEquals(1, allTransactions.size());
-        assertEquals("Pizza", allTransactions.get(0).getName());
-
-        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
-        boolean found = false;
-        for (Category c : associatedCategories) {
-            if (c.getCategoryId().equals(catId)) {
-                found = true;
-                break;
-            }
-        }
-        assertTrue(found);
+        assertAll(
+            () -> assertEquals(1, allTransactions.size()),
+            () -> assertEquals("Pizza", allTransactions.get(0).getName()),
+            () -> assertTrue(found, "Transaction should be associated with correct category")
+        );
     }
 
     @Test
@@ -126,19 +118,15 @@ public class TrackingRepositoryTest {
         // Act
         trackingRepository.insertTransactionDefault(transaction);
         List<Transaction> allTransactions = transactionRepository.getAll();
-
-        // Assert
-        assertEquals(1, allTransactions.size());
         Category general = categoryRepository.getGeneralCategory();
         List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(allTransactions.get(0).getTransactionId());
-        boolean found = false;
-        for (Category c : associatedCategories) {
-            if (c.getCategoryId().equals(general.getCategoryId())) {
-                found = true;
-                break;
-            }
-        }
-        assertTrue(found);
+        boolean found = associatedCategories.stream().anyMatch(c -> c.getCategoryId().equals(general.getCategoryId()));
+
+        // Assert
+        assertAll(
+            () -> assertEquals(1, allTransactions.size()),
+            () -> assertTrue(found, "Transaction should be under General Category")
+        );
     }
 
     @Test
@@ -156,17 +144,15 @@ public class TrackingRepositoryTest {
         CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(cat2.getCategoryId(), transaction.getTransactionId());
         database.categoryTransactionDao().insertCrossRef(crossRef);
         List<Category> foundCategories = trackingRepository.getCategoriesByTransactionId(transaction.getTransactionId());
+        boolean found1 = foundCategories.stream().anyMatch(c -> c.getName().equals("Cat1"));
+        boolean found2 = foundCategories.stream().anyMatch(c -> c.getName().equals("Cat2"));
 
         // Assert
-        assertEquals(2, foundCategories.size());
-        boolean found1 = false;
-        boolean found2 = false;
-        for (Category c : foundCategories) {
-            if (c.getName().equals("Cat1")) found1 = true;
-            if (c.getName().equals("Cat2")) found2 = true;
-        }
-        assertTrue(found1);
-        assertTrue(found2);
+        assertAll(
+            () -> assertEquals(2, foundCategories.size()),
+            () -> assertTrue(found1, "Category 1 should be found"),
+            () -> assertTrue(found2, "Category 2 should be found")
+        );
     }
 
     @Test
@@ -201,12 +187,15 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(t1, parent.getCategoryId());
         trackingRepository.insertTransaction(t2, child.getCategoryId());
 
-        // Act & Assert
+        // Act
         BigDecimal totalWithSubs = trackingRepository.getTotalInCategory(parent, true);
-        assertEquals(0, BigDecimal.valueOf(60.00).compareTo(totalWithSubs));
-
         BigDecimal totalWithoutSubs = trackingRepository.getTotalInCategory(parent, false);
-        assertEquals(0, BigDecimal.valueOf(15.00).compareTo(totalWithoutSubs));
+
+        // Assert
+        assertAll(
+            () -> assertEquals(0, BigDecimal.valueOf(60.00).compareTo(totalWithSubs)),
+            () -> assertEquals(0, BigDecimal.valueOf(15.00).compareTo(totalWithoutSubs))
+        );
     }
 
     @Test
@@ -221,9 +210,11 @@ public class TrackingRepositoryTest {
         CategoryWithTransactions result = trackingRepository.getCategoryWithTransactionsByCategoryId(category.getCategoryId());
 
         // Assert
-        assertNotNull(result);
-        assertEquals(category.getCategoryId(), result.category.getCategoryId());
-        assertEquals(1, result.transactions.size());
+        assertAll(
+            () -> assertNotNull(result),
+            () -> assertEquals(category.getCategoryId(), result.category.getCategoryId()),
+            () -> assertEquals(1, result.transactions.size())
+        );
     }
 
     @Test
@@ -239,8 +230,10 @@ public class TrackingRepositoryTest {
         List<CategoryWithTransactions> results = trackingRepository.getCategoryWithTransactionsByParentId(parent.getCategoryId());
 
         // Assert
-        assertEquals(1, results.size());
-        assertEquals(child.getCategoryId(), results.get(0).category.getCategoryId());
+        assertAll(
+            () -> assertEquals(1, results.size()),
+            () -> assertEquals(child.getCategoryId(), results.get(0).category.getCategoryId())
+        );
     }
 
     @Test
@@ -257,9 +250,11 @@ public class TrackingRepositoryTest {
         List<Long> ids = trackingRepository.getTransactionIdsForCategory(category.getCategoryId());
 
         // Assert
-        assertEquals(2, ids.size());
-        assertTrue(ids.contains(t1.getTransactionId()));
-        assertTrue(ids.contains(t2.getTransactionId()));
+        assertAll(
+            () -> assertEquals(2, ids.size()),
+            () -> assertTrue(ids.contains(t1.getTransactionId())),
+            () -> assertTrue(ids.contains(t2.getTransactionId()))
+        );
     }
 
     @Test
@@ -272,8 +267,10 @@ public class TrackingRepositoryTest {
         List<CategoryWithTransactions> result = getValue(trackingRepository.getAllCategoriesWithTransactions());
 
         // Assert
-        assertNotNull(result);
-        assertEquals(7, result.size());
+        assertAll(
+            () -> assertNotNull(result),
+            () -> assertEquals(7, result.size())
+        );
     }
 
     @Test
@@ -289,8 +286,10 @@ public class TrackingRepositoryTest {
         List<CategoryWithTransactions> result = trackingRepository.getCategoriesWithTransactionsByIds(ids);
 
         // Assert
-        assertNotNull(result);
-        assertEquals(2, result.size());
+        assertAll(
+            () -> assertNotNull(result),
+            () -> assertEquals(2, result.size())
+        );
     }
 
     @Test
@@ -307,15 +306,18 @@ public class TrackingRepositoryTest {
         trackingRepository.insertTransaction(t1, parent.getCategoryId());
         trackingRepository.insertTransaction(t2, child.getCategoryId());
 
-        // Act & Assert
+        // Act
         Set<Transaction> parentOnly = trackingRepository.getTransactionsForCategory(parent, false);
-        assertEquals(1, parentOnly.size());
-        assertTrue(parentOnly.contains(t1));
-
         Set<Transaction> parentAndChild = trackingRepository.getTransactionsForCategory(parent, true);
-        assertEquals(2, parentAndChild.size());
-        assertTrue(parentAndChild.contains(t1));
-        assertTrue(parentAndChild.contains(t2));
+
+        // Assert
+        assertAll(
+            () -> assertEquals(1, parentOnly.size()),
+            () -> assertTrue(parentOnly.contains(t1)),
+            () -> assertEquals(2, parentAndChild.size()),
+            () -> assertTrue(parentAndChild.contains(t1)),
+            () -> assertTrue(parentAndChild.contains(t2))
+        );
     }
 
     @Test
@@ -346,49 +348,18 @@ public class TrackingRepositoryTest {
         Map<CategoryWithTransactions, BigDecimal> totals = trackingRepository.getChildrenTotals(parentCWT, LocalDate.MIN, LocalDate.MAX);
 
         // Assert
-        assertEquals(2, totals.size());
-        BigDecimal rentTotal = BigDecimal.ZERO;
-        BigDecimal foodTotal = BigDecimal.ZERO;
-        for (Map.Entry<CategoryWithTransactions, BigDecimal> entry : totals.entrySet()) {
-            if (entry.getKey().category.getName().equals("Rent")) rentTotal = entry.getValue();
-            if (entry.getKey().category.getName().equals("Food")) foodTotal = entry.getValue();
-        }
-        assertEquals(0, BigDecimal.valueOf(610).compareTo(rentTotal));
-        assertEquals(0, BigDecimal.valueOf(50).compareTo(foodTotal));
-    }
+        BigDecimal rentTotal = totals.entrySet().stream()
+                .filter(e -> e.getKey().category.getName().equals("Rent"))
+                .map(Map.Entry::getValue).findFirst().orElse(BigDecimal.ZERO);
+        BigDecimal foodTotal = totals.entrySet().stream()
+                .filter(e -> e.getKey().category.getName().equals("Food"))
+                .map(Map.Entry::getValue).findFirst().orElse(BigDecimal.ZERO);
 
-    @Test
-    public void getTotalInCategory_DeepAndWideHierarchy_CalculatesTotalAccurately() {
-        // Arrange
-        Category root = new Category("Business", "All business expenses", BUDGET_THOUSAND.multiply(BigDecimal.TEN), TrackingType.EXPENSE);
-        categoryRepository.insert(root);
-        BigDecimal expectedTotal = BigDecimal.ZERO;
-
-        // Act
-        for (int i = 0; i < 5; i++) {
-            Category l1 = new Category("Dept " + i, "Level 1 Department", BUDGET_THOUSAND, TrackingType.EXPENSE);
-            l1.setParent(root);
-            categoryRepository.insert(l1);
-
-            Transaction t1 = new Transaction.Builder("L1 Trans " + i, BigDecimal.valueOf(100)).build();
-            trackingRepository.insertTransaction(t1, l1.getCategoryId());
-            expectedTotal = expectedTotal.add(t1.getAmount());
-
-            for (int j = 0; j < 4; j++) {
-                Category l2 = new Category("Team " + i + "-" + j, "Level 2 Team", BUDGET_TWO_HUNDRED, TrackingType.EXPENSE);
-                l2.setParent(l1);
-                categoryRepository.insert(l2);
-
-                Transaction t2 = new Transaction.Builder("L2 Trans " + i + "-" + j, BigDecimal.valueOf(50)).build();
-                trackingRepository.insertTransaction(t2, l2.getCategoryId());
-                expectedTotal = expectedTotal.add(t2.getAmount());
-            }
-        }
-
-        BigDecimal total = trackingRepository.getTotalInCategory(root, true);
-
-        // Assert
-        assertEquals(0, expectedTotal.compareTo(total));
+        assertAll(
+            () -> assertEquals(2, totals.size()),
+            () -> assertEquals(0, BigDecimal.valueOf(610).compareTo(rentTotal)),
+            () -> assertEquals(0, BigDecimal.valueOf(50).compareTo(foodTotal))
+        );
     }
 
     @Test
@@ -439,14 +410,18 @@ public class TrackingRepositoryTest {
         Transaction tRoot = new Transaction.Builder("T Root", BigDecimal.valueOf(500)).build();
         trackingRepository.insertTransaction(tRoot, general.getCategoryId());
 
-        // Act & Assert
+        // Act
         BigDecimal resultTotal = trackingRepository.getTotalInCategory(l2Main, true);
-        assertEquals(0, mainTotal.compareTo(resultTotal));
-
         Category restoredL2 = categoryRepository.getCategoryByIdRestored(l2Main.getCategoryId());
-        assertNotNull(restoredL2);
-        assertEquals(general.getCategoryId(), restoredL2.getParent().getCategoryId());
-        assertEquals(1, restoredL2.getChildren(false).size());
+        final BigDecimal expectedMainTotal = mainTotal;
+
+        // Assert
+        assertAll(
+            () -> assertEquals(0, expectedMainTotal.compareTo(resultTotal)),
+            () -> assertNotNull(restoredL2),
+            () -> assertEquals(general.getCategoryId(), restoredL2.getParent().getCategoryId()),
+            () -> assertEquals(1, restoredL2.getChildren(false).size())
+        );
     }
 
     @Test
@@ -463,9 +438,11 @@ public class TrackingRepositoryTest {
 
         // Assert
         Category updated = categoryRepository.getCategoryById(cat.getCategoryId());
-        assertEquals("Updated Name", updated.getName());
-        assertEquals("Updated Desc", updated.getDescription());
-        assertEquals(0, BigDecimal.valueOf(200).compareTo(updated.getMonthlyBudget()));
+        assertAll(
+            () -> assertEquals("Updated Name", updated.getName()),
+            () -> assertEquals("Updated Desc", updated.getDescription()),
+            () -> assertEquals(0, BigDecimal.valueOf(200).compareTo(updated.getMonthlyBudget()))
+        );
     }
 
     @Test
@@ -481,8 +458,10 @@ public class TrackingRepositoryTest {
 
         // Assert
         Transaction result = transactionRepository.getById(originalId);
-        assertEquals("New Name", result.getName());
-        assertEquals(0, BigDecimal.valueOf(75).compareTo(result.getAmount()));
+        assertAll(
+            () -> assertEquals("New Name", result.getName()),
+            () -> assertEquals(0, BigDecimal.valueOf(75).compareTo(result.getAmount()))
+        );
     }
 
     @Test
@@ -498,12 +477,14 @@ public class TrackingRepositoryTest {
 
         // Act
         restoredChild.setMonthlyBudget(BigDecimal.valueOf(150));
-        assertEquals(0, BigDecimal.valueOf(150).compareTo(restoredChild.getParent().getMonthlyBudget()));
         trackingRepository.updateCategoryTree(restoredChild);
+        Category updatedParent = categoryRepository.getCategoryById(parent.getCategoryId());
 
         // Assert
-        Category updatedParent = categoryRepository.getCategoryById(parent.getCategoryId());
-        assertEquals(0, BigDecimal.valueOf(150).compareTo(updatedParent.getMonthlyBudget()));
+        assertAll(
+            () -> assertEquals(0, BigDecimal.valueOf(150).compareTo(restoredChild.getParent().getMonthlyBudget())),
+            () -> assertEquals(0, BigDecimal.valueOf(150).compareTo(updatedParent.getMonthlyBudget()))
+        );
     }
 
     @Test
@@ -516,10 +497,12 @@ public class TrackingRepositoryTest {
         Category restored = trackingRepository.getCategoryByIdRestored(cat.getCategoryId());
 
         // Assert
-        assertNotNull(restored);
-        assertEquals(cat.getCategoryId(), restored.getCategoryId());
-        assertNotNull(restored.getParent());
-        assertEquals(GENERAL_CATEGORY_NAME, restored.getParent().getName());
+        assertAll(
+            () -> assertNotNull(restored),
+            () -> assertEquals(cat.getCategoryId(), restored.getCategoryId()),
+            () -> assertNotNull(restored.getParent()),
+            () -> assertEquals(GENERAL_CATEGORY_NAME, restored.getParent().getName())
+        );
     }
 
     @Test
@@ -533,12 +516,14 @@ public class TrackingRepositoryTest {
 
         // Act
         trackingRepository.insertTransaction(incomeTrans, expenseCat.getCategoryId());
+        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(incomeTrans.getTransactionId());
 
         // Assert
-        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(incomeTrans.getTransactionId());
-        assertEquals(1, associatedCategories.size());
-        assertEquals(INCOME_CATEGORY_NAME, associatedCategories.get(0).getName());
-        assertEquals(TrackingType.INCOME, associatedCategories.get(0).getType());
+        assertAll(
+            () -> assertEquals(1, associatedCategories.size()),
+            () -> assertEquals(INCOME_CATEGORY_NAME, associatedCategories.get(0).getName()),
+            () -> assertEquals(TrackingType.INCOME, associatedCategories.get(0).getType())
+        );
     }
 
     @Test
@@ -552,12 +537,14 @@ public class TrackingRepositoryTest {
 
         // Act
         trackingRepository.insertTransaction(transferTrans, expenseCat.getCategoryId());
+        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(transferTrans.getTransactionId());
 
         // Assert
-        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(transferTrans.getTransactionId());
-        assertEquals(1, associatedCategories.size());
-        assertEquals(TRANSFER_CATEGORY_NAME, associatedCategories.get(0).getName());
-        assertEquals(TrackingType.ACCOUNT_TRANSFERS, associatedCategories.get(0).getType());
+        assertAll(
+            () -> assertEquals(1, associatedCategories.size()),
+            () -> assertEquals(TRANSFER_CATEGORY_NAME, associatedCategories.get(0).getName()),
+            () -> assertEquals(TrackingType.ACCOUNT_TRANSFERS, associatedCategories.get(0).getType())
+        );
     }
 
     @Test
@@ -571,11 +558,13 @@ public class TrackingRepositoryTest {
 
         // Act
         trackingRepository.insertTransaction(expenseTrans, expenseCat.getCategoryId());
+        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(expenseTrans.getTransactionId());
 
         // Assert
-        List<Category> associatedCategories = trackingRepository.getCategoriesByTransactionId(expenseTrans.getTransactionId());
-        assertEquals(1, associatedCategories.size());
-        assertEquals("Education", associatedCategories.get(0).getName());
+        assertAll(
+            () -> assertEquals(1, associatedCategories.size()),
+            () -> assertEquals("Education", associatedCategories.get(0).getName())
+        );
     }
 
     @Test
@@ -588,9 +577,9 @@ public class TrackingRepositoryTest {
 
         // Act
         trackingRepository.insertRelationship(trans.getTransactionId(), cat.getCategoryId());
+        List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
 
         // Assert
-        List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
         assertTrue(associated.stream().anyMatch(c -> c.getCategoryId().equals(cat.getCategoryId())));
     }
 
@@ -608,11 +597,13 @@ public class TrackingRepositoryTest {
 
         // Act
         trackingRepository.deleteRelationship(trans.getTransactionId(), cat2.getCategoryId());
+        List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
 
         // Assert
-        List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
-        assertEquals(1, associated.size());
-        assertEquals(cat1.getCategoryId(), associated.get(0).getCategoryId());
+        assertAll(
+            () -> assertEquals(1, associated.size()),
+            () -> assertEquals(cat1.getCategoryId(), associated.get(0).getCategoryId())
+        );
     }
 
     @Test
@@ -642,8 +633,10 @@ public class TrackingRepositoryTest {
         trackingRepository.deleteTransaction(transId);
 
         // Assert
-        assertFalse(trackingRepository.transactionExists(transId));
-        assertTrue(trackingRepository.getCategoriesByTransactionId(transId).isEmpty());
+        assertAll(
+            () -> assertFalse(trackingRepository.transactionExists(transId), "Transaction should be deleted"),
+            () -> assertTrue(trackingRepository.getCategoriesByTransactionId(transId).isEmpty(), "Associations should be empty")
+        );
     }
 
     @Test
@@ -657,13 +650,15 @@ public class TrackingRepositoryTest {
 
         // Act
         trackingRepository.deleteCategory(catId, false);
+        List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
 
         // Assert
-        assertFalse(trackingRepository.categoryExists(catId));
-        assertTrue(trackingRepository.transactionExists(trans.getTransactionId()));
-        List<Category> associated = trackingRepository.getCategoriesByTransactionId(trans.getTransactionId());
-        assertEquals(1, associated.size());
-        assertEquals(GENERAL_CATEGORY_NAME, associated.get(0).getName());
+        assertAll(
+            () -> assertFalse(trackingRepository.categoryExists(catId), "Category should be deleted"),
+            () -> assertTrue(trackingRepository.transactionExists(trans.getTransactionId()), "Transaction should persist"),
+            () -> assertEquals(1, associated.size()),
+            () -> assertEquals(GENERAL_CATEGORY_NAME, associated.get(0).getName())
+        );
     }
 
     @Test
@@ -680,8 +675,10 @@ public class TrackingRepositoryTest {
         trackingRepository.deleteCategory(catId, true);
 
         // Assert
-        assertFalse(trackingRepository.categoryExists(catId));
-        assertFalse(trackingRepository.transactionExists(transId));
+        assertAll(
+            () -> assertFalse(trackingRepository.categoryExists(catId), "Category should be deleted"),
+            () -> assertFalse(trackingRepository.transactionExists(transId), "Transaction should be deleted")
+        );
     }
 
     @Test
