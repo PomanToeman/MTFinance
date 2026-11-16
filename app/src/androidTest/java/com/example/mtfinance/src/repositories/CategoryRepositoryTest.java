@@ -275,4 +275,27 @@ public class CategoryRepositoryTest {
         Category general = categoryService.getGeneralCategory();
         repository.deleteCategory(general);
     }
+
+    @Test
+    public void updateRootCategoryBudget_ValidRootCategory_UpdatesBudgetSuccessfully() {
+        Category general = categoryService.getGeneralCategory();
+        assertNotNull(general);
+        BigDecimal newBudget = BigDecimal.valueOf(1500);
+
+        repository.updateRootCategoryBudget(general.getCategoryId(), newBudget);
+        Category updatedGeneral = categoryService.getGeneralCategory();
+        assertEquals(0, newBudget.compareTo(updatedGeneral.getMonthlyBudget()));
+
+        BigDecimal typeBudget = BigDecimal.valueOf(2000);
+        repository.updateRootCategoryBudget(TrackingType.EXPENSE, typeBudget);
+        Category updatedGeneral2 = categoryService.getGeneralCategory();
+        assertEquals(0, typeBudget.compareTo(updatedGeneral2.getMonthlyBudget()));
+    }
+
+    @Test(expected = com.example.mtfinance.src.trackingengine.CategoryViolationException.class)
+    public void updateRootCategoryBudget_NonRootCategory_ThrowsCategoryViolationException() {
+        Category category = new Category(ENTERTAINMENT_NAME, "Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        long id = repository.insert(category);
+        repository.updateRootCategoryBudget(id, BigDecimal.valueOf(300));
+    }
 }

@@ -7,7 +7,9 @@ import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryViolationException;
 import com.example.mtfinance.src.trackingengine.TrackingType;
+import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 
 import javax.inject.Inject;
@@ -116,6 +118,36 @@ public class CategoryRepository {
         if (category.getCategoryId() != null && helper.isRoot(category.getCategoryId())) {
             throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
+        categoryDao.update(category);
+    }
+
+    /**
+     * Explicitly updates the monthly budget of a system root category identified by TrackingType.
+     * @param type the tracking type of the root category
+     * @param newBudget the new monthly budget amount
+     */
+    public void updateRootCategoryBudget(@NonNull TrackingType type, @NonNull BigDecimal newBudget) {
+        TrackingUtlis.checkAmount(newBudget);
+        Category root = helper.getRootCategoryByType(type);
+        if (root == null || !helper.isRoot(root)) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+        }
+        root.setMonthlyBudget(newBudget);
+        categoryDao.update(root);
+    }
+
+    /**
+     * Explicitly updates the monthly budget of a system root category identified by ID.
+     * @param categoryId the category ID
+     * @param newBudget the new monthly budget amount
+     */
+    public void updateRootCategoryBudget(@NonNull Long categoryId, @NonNull BigDecimal newBudget) {
+        TrackingUtlis.checkAmount(newBudget);
+        Category category = categoryDao.getById(categoryId);
+        if (category == null || !helper.isRoot(category)) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+        }
+        category.setMonthlyBudget(newBudget);
         categoryDao.update(category);
     }
 

@@ -271,8 +271,7 @@ public class CategoryFormViewModel extends ViewModel {
                     }
                     trackingWriteRepository.updateCategoryTree(category);
                 } else {
-                    category.setMonthlyBudget(fields.monthlyBudget);
-                    trackingWriteRepository.updateCategory(category);
+                    trackingWriteRepository.updateRootCategoryBudget(category.getCategoryId(), fields.monthlyBudget);
                 }
             }
 

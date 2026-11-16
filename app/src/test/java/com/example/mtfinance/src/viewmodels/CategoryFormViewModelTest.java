@@ -237,9 +237,8 @@ public class CategoryFormViewModelTest {
         viewModel.setMonthlyBudget(BigDecimal.valueOf(1200));
         viewModel.saveCategory();
 
-        verify(trackingWriteRepository).updateCategory(root);
+        verify(trackingWriteRepository).updateRootCategoryBudget(rootId, BigDecimal.valueOf(1200));
         assertAll(
-            () -> assertEquals(0, BigDecimal.valueOf(1200).compareTo(root.getMonthlyBudget())),
             () -> assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue())
         );
     }

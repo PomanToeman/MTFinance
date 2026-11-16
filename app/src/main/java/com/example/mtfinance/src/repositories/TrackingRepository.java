@@ -195,4 +195,22 @@ public class TrackingRepository {
     public void updateCategoryTree(@NonNull Category category) {
         categoryRepository.updateCategoryTree(category);
     }
+
+    /**
+     * Explicitly updates the monthly budget of a system root category identified by TrackingType.
+     * @param type the tracking type of the root category
+     * @param newBudget the new monthly budget amount
+     */
+    public void updateRootCategoryBudget(@NonNull com.example.mtfinance.src.trackingengine.TrackingType type, @NonNull java.math.BigDecimal newBudget) {
+        categoryRepository.updateRootCategoryBudget(type, newBudget);
+    }
+
+    /**
+     * Explicitly updates the monthly budget of a system root category identified by ID.
+     * @param categoryId the category ID
+     * @param newBudget the new monthly budget amount
+     */
+    public void updateRootCategoryBudget(@NonNull Long categoryId, @NonNull java.math.BigDecimal newBudget) {
+        categoryRepository.updateRootCategoryBudget(categoryId, newBudget);
+    }
 }
