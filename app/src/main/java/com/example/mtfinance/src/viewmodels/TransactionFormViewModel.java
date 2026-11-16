@@ -6,8 +6,10 @@ import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.MessageCli;
-import com.example.mtfinance.src.repositories.TrackingRepository;
-import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.repositories.CategoryService;
+import com.example.mtfinance.src.repositories.TrackingService;
+import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
@@ -18,7 +20,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
@@ -28,16 +29,17 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 
 /**
  * Meant to manually enter transactions, Will also be used for the import feature.
- *
  */
 @HiltViewModel
 public class TransactionFormViewModel extends ViewModel {
-    // instance fields
-    private final TrackingRepository trackingRepository;
+    private final TrackingService trackingService;
+    private final CategoryService categoryService;
+    private final TransactionService transactionService;
+    private final TrackingWriteRepository trackingWriteRepository;
     private final Executor executor;
 
     private final MutableLiveData<TransactionFormFields> formFields = new MutableLiveData<>(new TransactionFormFields());
-    
+
     private final LiveData<String> name = Transformations.map(formFields, fields -> fields.name);
     private final LiveData<String> description = Transformations.map(formFields, fields -> fields.description);
     private final LiveData<Set<Long>> categoryIds = Transformations.map(formFields, fields -> fields.categoryIds);
@@ -46,51 +48,57 @@ public class TransactionFormViewModel extends ViewModel {
     private final LiveData<LocalDateTime> date = Transformations.map(formFields, fields -> fields.date);
     private final LiveData<Long> transactionId = Transformations.map(formFields, fields -> fields.transactionId);
     private final LiveData<Boolean> editMode = Transformations.map(formFields, fields -> fields.editMode);
-    
+
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>("");
     private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
-    
+
     private final LiveData<Set<CategoryWithTransactions>> cachedCategories;
     private final LiveData<List<CategoryWithTransactions>> categorySelection;
 
-
     @Inject
-    public TransactionFormViewModel(TrackingRepository trackingRepository, Executor executor) {
-        this.trackingRepository = trackingRepository;
+    public TransactionFormViewModel(TrackingService trackingService,
+                                    CategoryService categoryService,
+                                    TransactionService transactionService,
+                                    TrackingWriteRepository trackingWriteRepository,
+                                    Executor executor) {
+        this.trackingService = trackingService;
+        this.categoryService = categoryService;
+        this.transactionService = transactionService;
+        this.trackingWriteRepository = trackingWriteRepository;
         this.executor = executor;
-        
+
         cachedCategories = Transformations.switchMap(categoryIds, ids -> {
             if (ids == null || ids.isEmpty()) {
                 return new MutableLiveData<>(new HashSet<>());
             }
-            return new MutableLiveData<>(new HashSet<>(trackingRepository.getCategoriesWithTransactionsByIds(ids)));
+            return new MutableLiveData<>(new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(ids)));
         });
-        categorySelection = Transformations.switchMap(type , type -> {
-            if (type == null) {
-                return trackingRepository.getAllCategoriesWithTransactions();
+        categorySelection = Transformations.switchMap(type, t -> {
+            if (t == null) {
+                return trackingService.getAllCategoriesWithTransactions();
             }
-            return trackingRepository.searchCategoriesWithType("", type);
+            return trackingService.searchCategoriesWithType("", t);
         });
 
-        clearSync(); // set default values
-
+        clearSync();
     }
 
-    // setters
+    /**
+     * Sets transaction name field.
+     * @param name - transaction name
+     */
     public void setName(String name) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
             fields.name = name;
             updateFields(fields);
         }
-
     }
 
     /**
-     * Sets the description of the transaction.
-     * Note that empty descriptions will default to EMPTY_DESCRIPTION.
-     * @param description - the description of the transaction
+     * Sets transaction description field.
+     * @param description - transaction description
      */
     public void setDescription(String description) {
         TransactionFormFields fields = formFields.getValue();
@@ -99,14 +107,23 @@ public class TransactionFormViewModel extends ViewModel {
             updateFields(fields);
         }
     }
+
+    /**
+     * Adds a category association to the transaction.
+     * @param categoryId - category ID
+     */
     public void addCategoryId(Long categoryId) {
-       TransactionFormFields fields = formFields.getValue();
-       if (fields != null) {
-           fields.categoryIds.add(categoryId);
-           updateFields(fields);
-       }
+        TransactionFormFields fields = formFields.getValue();
+        if (fields != null) {
+            fields.categoryIds.add(categoryId);
+            updateFields(fields);
+        }
     }
 
+    /**
+     * Removes a category association from the transaction.
+     * @param categoryId - category ID
+     */
     public void removeCategoryId(Long categoryId) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null) {
@@ -114,6 +131,11 @@ public class TransactionFormViewModel extends ViewModel {
             updateFields(fields);
         }
     }
+
+    /**
+     * Sets the transaction monetary amount.
+     * @param amount - amount
+     */
     public void setAmount(BigDecimal amount) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
@@ -123,10 +145,8 @@ public class TransactionFormViewModel extends ViewModel {
     }
 
     /**
-     * Sets the type of the transaction.
-     * Please set your type before setting category IDs, as the categories and transactions must be the same type.
-     * Will clear category IDs if type is changed.
-     * @param type - the type of the transaction
+     * Sets the tracking type filter.
+     * @param type - tracking type
      */
     public void setType(TrackingType type) {
         TransactionFormFields fields = formFields.getValue();
@@ -138,6 +158,11 @@ public class TransactionFormViewModel extends ViewModel {
         fields.categoryIds = new HashSet<>();
         updateFields(fields);
     }
+
+    /**
+     * Sets transaction date and time.
+     * @param date - date and time
+     */
     public void setDate(LocalDateTime date) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
@@ -145,9 +170,19 @@ public class TransactionFormViewModel extends ViewModel {
             updateFields(fields);
         }
     }
+
+    /**
+     * Sets transaction date (start of day).
+     * @param date - date
+     */
     public void setDate(LocalDate date) {
         setDate(date.atStartOfDay());
     }
+
+    /**
+     * Sets the transaction ID for editing mode.
+     * @param transactionId - transaction ID
+     */
     public void setTransactionId(Long transactionId) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null) {
@@ -159,38 +194,43 @@ public class TransactionFormViewModel extends ViewModel {
         }
     }
 
-
-    // private setters
     private void setIsLoading(boolean isLoading) {
         this.isLoading.postValue(isLoading);
     }
+
     private void setErrorMessage(String errorMessage) {
         this.errorMessage.postValue(errorMessage);
     }
+
     private void setSuccessMessage(String successMessage) {
         this.successMessage.postValue(successMessage);
     }
 
+    /**
+     * Loads transaction details for editing asynchronously.
+     */
     public void loadTransactionForEditing() {
         executor.execute(this::loadTransactionForEditingSync);
     }
 
+    /**
+     * Loads transaction details for editing synchronously.
+     */
     public void loadTransactionForEditingSync() {
         TransactionFormFields fields = formFields.getValue();
         if (fields == null || fields.transactionId == null) return;
 
-        if (trackingRepository.transactionExists(fields.transactionId)) {
-            Transaction transaction = trackingRepository.getTransactionById(fields.transactionId);
+        if (transactionService.transactionExists(fields.transactionId)) {
+            Transaction transaction = transactionService.getById(fields.transactionId);
             fields.name = transaction.getName();
             fields.description = transaction.getDescription();
-            fields.categoryIds = new HashSet<>(trackingRepository.getCategoryIdsByTransactionId(fields.transactionId));
+            fields.categoryIds = new HashSet<>(trackingService.getCategoryIdsByTransactionId(fields.transactionId));
             fields.amount = transaction.getAmount();
             fields.type = transaction.getType();
             fields.date = transaction.getDate();
             fields.editMode = true;
             formFields.postValue(fields);
-        }
-        else {
+        } else {
             setErrorMessage(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
             fields.transactionId = null;
             fields.editMode = false;
@@ -198,14 +238,16 @@ public class TransactionFormViewModel extends ViewModel {
         }
     }
 
-
     /**
-     * resets to default values.
+     * Resets form fields asynchronously.
      */
     public void clear() {
         executor.execute(this::clearSync);
     }
 
+    /**
+     * Resets form fields synchronously.
+     */
     public void clearSync() {
         TransactionFormFields fields = new TransactionFormFields();
         formFields.postValue(fields);
@@ -215,86 +257,83 @@ public class TransactionFormViewModel extends ViewModel {
     }
 
     /**
-     * Forms must be valid before creating a transaction.
+     * Saves transaction form asynchronously.
      */
     public void saveTransaction() {
         executor.execute(this::saveTransactionSync);
     }
 
+    /**
+     * Saves transaction form synchronously.
+     */
     public void saveTransactionSync() {
         TransactionFormFields fields = formFields.getValue();
         if (fields == null) return;
 
         try {
             setIsLoading(true);
-
             validateFormSync(fields);
 
             if (Boolean.TRUE.equals(fields.editMode)) {
-                Transaction transaction = trackingRepository.getTransactionById(fields.transactionId);
+                Transaction transaction = transactionService.getById(fields.transactionId);
                 transaction.setDescription(fields.description);
-                trackingRepository.updateTransaction(transaction);
+                trackingWriteRepository.updateTransaction(transaction);
 
-                List<Long> oldCategoryIds = trackingRepository.getCategoryIdsByTransactionId(fields.transactionId);
+                List<Long> oldCategoryIds = trackingService.getCategoryIdsByTransactionId(fields.transactionId);
                 Set<Long> newCategoryIds = fields.categoryIds;
 
-                // Add new relationships
                 for (Long catId : newCategoryIds) {
                     if (!oldCategoryIds.contains(catId)) {
-                        trackingRepository.insertRelationship(fields.transactionId, catId);
+                        trackingWriteRepository.insertRelationship(fields.transactionId, catId);
                     }
                 }
 
-                // Remove old relationships
                 for (Long catId : oldCategoryIds) {
                     if (!newCategoryIds.contains(catId)) {
-                        trackingRepository.deleteRelationship(fields.transactionId, catId);
+                        trackingWriteRepository.deleteRelationship(fields.transactionId, catId);
                     }
                 }
 
                 setErrorMessage("");
-                System.out.println(MessageCli.TRANSACTION_UPDATED.getMessage() + fields.transactionId);
                 setSuccessMessage(MessageCli.TRANSACTION_UPDATED.getMessage());
-
-            }
-            else {
+            } else {
                 Transaction newTransaction = new Transaction.Builder(fields.name, fields.amount)
                         .description(fields.description)
                         .type(fields.type)
                         .date(fields.date)
                         .build();
 
-
                 boolean first = true;
                 for (Long catId : fields.categoryIds) {
                     if (first) {
-                        trackingRepository.insertTransaction(newTransaction, catId);
+                        trackingWriteRepository.insertTransaction(newTransaction, catId);
                         first = false;
                     } else {
-                        trackingRepository.insertRelationship(newTransaction.getTransactionId(), catId);
+                        trackingWriteRepository.insertRelationship(newTransaction.getTransactionId(), catId);
                     }
                 }
 
                 setErrorMessage("");
-                System.out.println(MessageCli.TRANSACTION_SAVED.getMessage() + newTransaction.getTransactionId());
                 setSuccessMessage(MessageCli.TRANSACTION_SAVED.getMessage());
             }
-
-
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             setErrorMessage(MessageCli.TRANSACTION_SAVE_FAILED.getMessage(e.getMessage()));
             setSuccessMessage("");
-        }
-        finally {
+        } finally {
             setIsLoading(false);
         }
     }
 
+    /**
+     * Deletes selected transaction asynchronously.
+     */
     public void deleteTransaction() {
         executor.execute(this::deleteTransactionSync);
     }
 
+    /**
+     * Deletes selected transaction synchronously.
+     */
     public void deleteTransactionSync() {
         TransactionFormFields fields = formFields.getValue();
         if (fields == null || fields.transactionId == null) {
@@ -303,7 +342,7 @@ public class TransactionFormViewModel extends ViewModel {
         }
         try {
             setIsLoading(true);
-            trackingRepository.deleteTransaction(fields.transactionId);
+            trackingWriteRepository.deleteTransaction(fields.transactionId);
             clearSync();
             setSuccessMessage(MessageCli.TRANSACTION_DELETED.getMessage());
         } catch (Exception e) {
@@ -321,22 +360,9 @@ public class TransactionFormViewModel extends ViewModel {
         if (fields.categoryIds == null || fields.categoryIds.isEmpty()) {
             throw new IllegalArgumentException(MessageCli.TRANSACTION_CATEGORY_EMPTY.getMessage());
         }
-        if (!trackingRepository.verifyExistingIdsCategories(fields.categoryIds)) {
+        if (!categoryService.verifyExistingIds(fields.categoryIds)) {
             throw new IllegalArgumentException(MessageCli.TRANSACTION_CATEGORIES_NOT_EXIST.getMessage());
         }
-
-        if (Boolean.FALSE.equals(fields.editMode)) {
-            // Check for identical transaction (duplicate detection)
-            Transaction dummy = new Transaction.Builder(fields.name, fields.amount)
-                    .description(fields.description)
-                    .type(fields.type)
-                    .date(fields.date)
-                    .build();
-            if (trackingRepository.transactionHashExists(dummy.getGeneratedHash())) {
-                throw new IllegalArgumentException(MessageCli.TRANSACTION_DUPLICATE.getMessage());
-            }
-        }
-
     }
 
     private static class TransactionFormFields {
@@ -350,10 +376,6 @@ public class TransactionFormViewModel extends ViewModel {
         Boolean editMode = false;
     }
 
-    /**
-     * Updates the fields. Set if on main thread, post if not.
-     * @param fields - the fields to update
-     */
     private void updateFields(TransactionFormFields fields) {
         try {
             formFields.setValue(fields);
@@ -362,8 +384,6 @@ public class TransactionFormViewModel extends ViewModel {
         }
     }
 
-
-    // public getters
     public LiveData<String> getName() { return name; }
     public LiveData<String> getDescription() { return description; }
     public LiveData<Set<Long>> getCategoryIds() { return categoryIds; }

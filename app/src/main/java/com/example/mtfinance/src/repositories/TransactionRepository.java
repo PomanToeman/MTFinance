@@ -1,17 +1,14 @@
 package com.example.mtfinance.src.repositories;
 
-import androidx.lifecycle.LiveData;
-
 import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
-import com.example.mtfinance.src.trackingengine.TrackingType;
-import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
-
-import java.util.List;
 
 import javax.inject.Inject;
 
-public class TransactionRepository {
+/**
+ * Package-private repository for transaction write and mutation operations.
+ */
+class TransactionRepository implements TransactionWriteRepository {
     private final TransactionDao transactionDao;
 
     @Inject
@@ -19,51 +16,31 @@ public class TransactionRepository {
         this.transactionDao = transactionDao;
     }
 
+    /**
+     * Inserts a new transaction into the database.
+     * @param transaction - the transaction to be inserted
+     * @return the row ID of the inserted transaction
+     */
+    @Override
     public Long insert(Transaction transaction) {
         return transactionDao.insert(transaction);
     }
 
-    public List<Transaction> getAll() {
-        return transactionDao.getAll();
-    }
-
-    public LiveData<List<Transaction>> getAllLive() {
-        return transactionDao.getAllLive();
-    }
-
-    public LiveData<List<Transaction>> searchTransactions(String query) {
-        return transactionDao.searchTransactions(query, TrackingUtlis.EMPTY_DESCRIPTION);
-    }
-
-    public LiveData<List<Transaction>> searchTransactionsWithType(String query, TrackingType type) {
-        return transactionDao.searchTransactionsWithType(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
-    }
-
-
-
-    public Transaction getById(Long id) {
-        return transactionDao.getById(id);
-    }
-
-    public List<Transaction> getByIds(java.util.Collection<Long> ids) {
-        return transactionDao.getByIds(ids);
-    }
-
+    /**
+     * Updates an existing transaction in the database.
+     * @param transaction - the transaction to be updated
+     */
+    @Override
     public void update(Transaction transaction) {
         transactionDao.update(transaction);
     }
 
+    /**
+     * Deletes a transaction from the database by its ID.
+     * @param id - the transaction ID
+     */
+    @Override
     public void delete(Long id) {
         transactionDao.delete(id);
-    }
-
-
-    public Boolean exists(Long id) {
-        return transactionDao.exists(id);
-    }
-
-    public boolean hashExists(String hash) {
-        if (hash == null || hash.isEmpty()) return false;
-        return transactionDao.hashExists(hash);
     }
 }

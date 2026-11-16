@@ -1,4 +1,4 @@
-package com.example.mtfinance.src.stress;
+package com.example.mtfinance.src.repositories;
 
 import static org.junit.Assert.assertEquals;
 
@@ -8,9 +8,6 @@ import androidx.room.Room;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import com.example.mtfinance.src.repositories.CategoryRepository;
-import com.example.mtfinance.src.repositories.TrackingRepository;
-import com.example.mtfinance.src.repositories.TransactionRepository;
 import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
@@ -38,14 +35,21 @@ public class TrackingStressTest {
     private CategoryRepository categoryRepository;
     private TransactionRepository transactionRepository;
     private TrackingRepository trackingRepository;
+    private CategoryService categoryService;
+    private TransactionService transactionService;
+    private TrackingService trackingService;
 
     @Before
     public void setUp() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
-        categoryRepository = new CategoryRepository(database.categoryDao(), true);
+        categoryService = new CategoryServiceImpl(database.categoryDao(), true);
+        transactionService = new TransactionServiceImpl(database.transactionDao());
+        trackingService = new TrackingServiceImpl(database.categoryDao(), database.transactionDao(), database.categoryTransactionDao(), categoryService);
+
+        categoryRepository = new CategoryRepository(database.categoryDao(), categoryService);
         transactionRepository = new TransactionRepository(database.transactionDao());
-        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao());
+        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao(), categoryService, transactionService);
     }
 
     @After
@@ -57,23 +61,20 @@ public class TrackingStressTest {
 
     @Test
     public void stressTestTransactions_LargeVolumeOfInserts_CalculatesTotalAndSizeAccurately() {
-        // Arrange
         Category stressCat = new Category(STRESS_CATEGORY_NAME, STRESS_CATEGORY_DESC, STRESS_CATEGORY_BUDGET, TrackingType.EXPENSE);
         categoryRepository.insert(stressCat);
 
         BigDecimal expectedTotal = BigDecimal.ZERO;
 
-        // Act
         for (int i = 0; i < TRANSACTION_COUNT; i++) {
             Transaction transaction = new Transaction.Builder("Trans " + i, AMOUNT_PER_TRANS).build();
             trackingRepository.insertTransaction(transaction, stressCat.getCategoryId());
             expectedTotal = expectedTotal.add(AMOUNT_PER_TRANS);
         }
 
-        BigDecimal calculatedTotal = trackingRepository.getTotalInCategory(stressCat, false);
-        List<Long> transactionIds = trackingRepository.getTransactionIdsForCategory(stressCat.getCategoryId());
+        BigDecimal calculatedTotal = trackingService.getTotalInCategory(stressCat, false);
+        List<Long> transactionIds = trackingService.getTransactionIdsForCategory(stressCat.getCategoryId());
 
-        // Assert
         assertEquals(0, expectedTotal.compareTo(calculatedTotal));
         assertEquals(TRANSACTION_COUNT, transactionIds.size());
     }

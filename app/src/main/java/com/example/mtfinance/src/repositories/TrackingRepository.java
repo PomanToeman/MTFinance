@@ -1,28 +1,14 @@
 package com.example.mtfinance.src.repositories;
 
-
-import static java.nio.file.Files.exists;
-
 import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
 
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCrossRef;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionDao;
 import com.example.mtfinance.src.trackingengine.Category;
-import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
-import com.example.mtfinance.src.trackingengine.TrackingType;
-import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import javax.inject.Inject;
 
@@ -32,17 +18,24 @@ import javax.inject.Inject;
  * Transactions and Categories follow a many-to-many relationship.
  * Each transaction has one or more categories that is in.
  */
-public class TrackingRepository {
+public class TrackingRepository implements TrackingWriteRepository {
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
     private final CategoryTransactionDao categoryWithTransactionsDao;
+    private final CategoryService categoryService;
+    private final TransactionService transactionService;
 
-    // constructor
     @Inject
-    public TrackingRepository(CategoryRepository categoryRepository, TransactionRepository transactionRepository, CategoryTransactionDao categoryWithTransactionsDao) {
+    public TrackingRepository(CategoryRepository categoryRepository,
+                              TransactionRepository transactionRepository,
+                              CategoryTransactionDao categoryWithTransactionsDao,
+                              CategoryService categoryService,
+                              TransactionService transactionService) {
         this.categoryRepository = categoryRepository;
         this.transactionRepository = transactionRepository;
         this.categoryWithTransactionsDao = categoryWithTransactionsDao;
+        this.categoryService = categoryService;
+        this.transactionService = transactionService;
     }
 
     /**
@@ -52,6 +45,7 @@ public class TrackingRepository {
      * You need to insert a category first before inserting any transactions under it.
      * @param category - the category to be inserted
      */
+    @Override
     public void insertCategory(Category category) {
         categoryRepository.insert(category);
     }
@@ -62,52 +56,64 @@ public class TrackingRepository {
      * will automatically insert under income or accountTransfer categories if not expense (regardless of category input).
      * It's best to insert the category first before inserting the transaction.
      *
-     *
      * @param transaction - The transaction to be inserted.
-     * @param CategoryId - The ID of a category already within a database.
+     * @param categoryId - The ID of a category already within a database.
      */
-    public void insertTransaction(@NonNull Transaction transaction, @NonNull Long CategoryId) {
-
-        Category category = categoryRepository.getCategoryById(CategoryId);
+    @Override
+    public void insertTransaction(@NonNull Transaction transaction, @NonNull Long categoryId) {
+        Category category = categoryService.getCategoryById(categoryId);
         if (category == null) {
             return;
         }
         if (!category.isSameType(transaction.getType())) {
-            insertTransaction(transaction, categoryRepository.getRootCategoryByType(transaction.getType()).getCategoryId());
+            insertTransaction(transaction, categoryService.getRootCategoryByType(transaction.getType()).getCategoryId());
             return;
         }
 
         transactionRepository.insert(transaction);
 
-        // to define relationship.
-        CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(CategoryId, transaction.getTransactionId());
+        CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(categoryId, transaction.getTransactionId());
         categoryWithTransactionsDao.insertCrossRef(crossRef);
     }
 
     /**
-     * To recolonise a relationship between a category and relationship.
+     * If you just want to insert a transaction with no specific category, use this method.
+     * This method will put it under the general category (or other roots if not expense type).
+     * @param transaction - The transaction to be inserted.
+     */
+    @Override
+    public void insertTransactionDefault(@NonNull Transaction transaction) {
+        Category generalCategory = categoryService.getRootCategoryByType(transaction.getType());
+        insertTransaction(transaction, generalCategory.getCategoryId());
+    }
+
+    /**
+     * To recolonise a relationship between a category and transaction.
      * Both transaction and category must already be in the database.
      * @param transactionId - The ID of a transaction already within a database.
      * @param categoryId - The ID of a category already within a database.
      */
+    @Override
     public void insertRelationship(Long transactionId, Long categoryId) throws IllegalStateException {
-        if (transactionExists(transactionId) && categoryExists(categoryId) ) {
-            if (!categoryRepository.getCategoryById(categoryId).isSameType(transactionRepository.getById(transactionId).getType())) {
+        if (transactionService.transactionExists(transactionId) && categoryService.categoryExists(categoryId)) {
+            if (!categoryService.getCategoryById(categoryId).isSameType(transactionService.getById(transactionId).getType())) {
                 throw new IllegalStateException(MessageCli.TRANSACTION_TYPE_MISMATCH.getMessage());
-            };
-
+            }
 
             CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(categoryId, transactionId);
             categoryWithTransactionsDao.insertCrossRef(crossRef);
         }
     }
+
+    @Override
     public void deleteRelationship(Long transactionId, Long categoryId) throws IllegalStateException {
-        if (getCategoryIdsByTransactionId(transactionId).size() <= 1) {
+        if (categoryWithTransactionsDao.getCategoryIdsForTransaction(transactionId).size() <= 1) {
             throw new IllegalStateException(MessageCli.TRANSACTION_MIN_CATEGORY.getMessage());
         }
         categoryWithTransactionsDao.deleteCrossRef(categoryId, transactionId);
     }
 
+    @Override
     public void deleteTransaction(Long transactionId) {
         categoryWithTransactionsDao.deleteCrossRefsForTransaction(transactionId);
         transactionRepository.delete(transactionId);
@@ -116,294 +122,42 @@ public class TrackingRepository {
     /**
      * Note when deleting a category, all transactions are automatically moved to their root category if you do
      * not delete transactions.
-     * Cannot delete a root is well.
+     * Cannot delete a root as well.
      * @param categoryId - The ID of a category that will be deleted.
      * @param deleteTransactions - If true, all transactions under the category will be deleted.
      */
+    @Override
     public void deleteCategory(Long categoryId, boolean deleteTransactions) {
-        if (categoryExists(categoryId) && !isRoot(categoryId)) {
-
-            List<Long> transactionIds = getTransactionIdsForCategory(categoryId);
+        if (categoryService.categoryExists(categoryId) && !categoryService.isRoot(categoryId)) {
+            List<Long> transactionIds = categoryWithTransactionsDao.getTransactionIdsForCategory(categoryId);
             if (deleteTransactions) {
                 for (Long transactionId : transactionIds) {
                     deleteTransaction(transactionId);
                 }
-            }
-            else {
-                Long rootCategoryId = categoryRepository.getRootCategoryByType(categoryRepository.getCategoryById(categoryId).getType()).getCategoryId();
+            } else {
+                Long rootCategoryId = categoryService.getRootCategoryByType(categoryService.getCategoryById(categoryId).getType()).getCategoryId();
                 for (Long transactionId : transactionIds) {
                     insertRelationship(transactionId, rootCategoryId);
                 }
-
             }
 
-
             categoryWithTransactionsDao.deleteCrossRefsForCategory(categoryId);
-            categoryRepository.deleteCategory(categoryRepository.getCategoryByIdRestored(categoryId));
+            categoryRepository.deleteCategory(categoryService.getCategoryByIdRestored(categoryId));
         }
     }
 
-    /**
-     * If you just want to insert a transaction with no specific category, use this method.
-     * This method will put it under the general category (or other roots if not expense type).
-     * @param transaction - The transaction to be inserted.
-     */
-    public void insertTransactionDefault(@NonNull Transaction transaction) {
-        Category generalCategory = categoryRepository.getRootCategoryByType(transaction.getType());
-        insertTransaction(transaction, generalCategory.getCategoryId());
-
-    }
-
-    /**
-     * finds all categories that has a given transaction with the same ID.
-     *
-     * @param id - The given ID of the transaction
-     * @return - returns a set of categories that has the given transaction ID.
-     */
-     public List<Category> getCategoriesByTransactionId(Long id) {
-         List<Long> categoryIds = categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
-         return categoryRepository.getCategoriesByIds(categoryIds);
-    }
-
-
-
-    public List<Long> getCategoryIdsByTransactionId(Long id) {
-         return categoryWithTransactionsDao.getCategoryIdsForTransaction(id);
-    }
-
-    /**
-     * Live Data is to ensure these instances stay in sync with Room when one updates.
-     * @return
-     */
-
-    public LiveData<List<CategoryWithTransactions>> getAllCategoriesWithTransactions() {
-         return categoryWithTransactionsDao.getAllCategoriesWithTransactions();
-    }
-
-    public CategoryWithTransactions getCategoryWithTransactionsByCategoryId(Long id) {
-         return categoryWithTransactionsDao.getCategoryById(id);
-
-    }
-
-
-    public List<CategoryWithTransactions> getCategoryWithTransactionsByParentId(Long parentId) {
-         return categoryWithTransactionsDao.getCategoriesWithTransactionsByParentId(parentId);
-    }
-
-    public List<Long> getTransactionIdsForCategory(Long categoryId) {
-         return categoryWithTransactionsDao.getTransactionIdsForCategory(categoryId);
-    }
-
-
-
-    public List<CategoryWithTransactions> getCategoriesWithTransactionsByIds(java.util.Collection<Long> ids) {
-         return categoryWithTransactionsDao.getCategoriesByIds(ids);
-    }
-
-    public LiveData<List<CategoryWithTransactions>> searchCategories(String query) {
-         return categoryWithTransactionsDao.searchCategories(query, TrackingUtlis.EMPTY_DESCRIPTION);
-    }
-
-    public List<Long> autoSearchCategoryIds(String query, TrackingType type) {
-        return categoryRepository.autoSearchCategoryIds(query, type);
-    }
-
-
-
+    @Override
     public void updateCategory(Category category) {
         categoryRepository.updateCategory(category);
     }
 
+    @Override
     public void updateTransaction(Transaction transaction) {
         transactionRepository.update(transaction);
     }
 
+    @Override
     public void updateCategoryTree(Category category) {
         categoryRepository.updateCategoryTree(category);
-    }
-
-    /**
-     * Returns the Category with restored cache (parent and children) for the given ID.
-     * @param id - the ID of the category to restore.
-     * @return - the category with restored cache.
-     */
-    public Category getCategoryByIdRestored(Long id) {
-        return categoryRepository.getCategoryByIdRestored(id);
-    }
-
-    /**
-     * Allows for easy checks if a category is a root.
-     * @param category
-     * @return - true if the category is a root.
-     */
-    public boolean isRoot(Category category) {
-        if (category == null) return false;
-        return categoryRepository.isRoot(category);
-    }
-
-
-    public boolean isRoot(Long id) {
-        return isRoot(getCategoryByIdRestored(id));
-    }
-
-
-
-
-
-
-
-
-
-    /**
-     *Includes all given transactions
-     * @param category - the category to find the total.
-     * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
-     * @return returns the total amount of the category.
-     */
-    public BigDecimal getTotalInCategory(Category category, boolean includeSub) {
-         return getTotalInCategory(category, includeSub, LocalDate.MIN, LocalDate.MAX, new HashSet<>());
-    }
-
-    public BigDecimal getTotalInCategory(Category category, boolean includeSub, LocalDate startDate, LocalDate endDate) {
-        return getTotalInCategory(category, includeSub, startDate, endDate, new HashSet<>());
-    }
-
-    /**
-     *Includes all given transactions within the given date range.
-     * @param category - the category to find the total.
-     * @param includeSub adds the transactions' amounts of all sub-categories if true. Ignores duplicates.
-     * @param startDate - the start date to filter by.
-     * @param endDate - the end date to filter by.
-     * @param excludedTransactions - a set of transactions to exclude.
-     * @return returns the total amount of the category.
-     */
-    public BigDecimal getTotalInCategory(Category category, boolean includeSub, LocalDate startDate, LocalDate endDate, Set<Transaction> excludedTransactions) {
-        CategoryWithTransactions parentCategorywithTransactions =categoryWithTransactionsDao.getCategoryById(category.getCategoryId());
-        if (parentCategorywithTransactions == null) {
-            return BigDecimal.ZERO;
-        }
-
-
-        Set<Transaction> transactions = getTransactionsForCategory(category, includeSub);
-
-
-        transactions.removeAll(excludedTransactions);
-        transactions.removeIf(t -> t.getDate().isBefore(startDate.atStartOfDay()) || t.getDate().isAfter(endDate.atStartOfDay()));
-
-
-        BigDecimal total = new BigDecimal("0");
-        for (Transaction transaction : transactions) {
-            total = total.add(transaction.getAmount());
-        }
-        return total;
-
-
-    }
-
-    /**
-     * Returns all transactions for the given category, including sub-categories if includeSub is true.
-     * Duplicates are ignored.
-     * Note that category must already be in the database.
-     * @param category - the category to find the transactions.
-     * @param includeSub - if true, includes the transactions of all sub-categories.
-     * @return - returns a set of transactions.
-     */
-    public Set<Transaction> getTransactionsForCategory(Category category, boolean includeSub) {
-        CategoryWithTransactions categoryWithTransactions = categoryWithTransactionsDao.getCategoryById(category.getCategoryId());
-        if (categoryWithTransactions == null) {
-            return new HashSet<>();
-        }
-        Set<Transaction> transactions = new HashSet<>(categoryWithTransactions.transactions);
-        if (includeSub) {
-            for (Category child : category.getChildren(true)) {
-                transactions.addAll(categoryWithTransactionsDao.getCategoryById(child.getCategoryId()).transactions);
-            }
-        }
-        return transactions;
-    }
-
-    /**
-     * This finds all children of the given category.
-     * Note that the children totals can be different if other children have the same transactions.
-     * For example, if children 1 has a transaction and children 2 has the same transaction, the transaction will only count to category's 1 total.
-     * @param category - the category to find the children of.
-     * @param startDate - the start date to filter by.
-     *
-     * @param endDate - the end date to filter by.
-     * @return - returns a map of the children and their totals.
-     */
-    public Map<CategoryWithTransactions, BigDecimal> getChildrenTotals(CategoryWithTransactions category, LocalDate startDate, LocalDate endDate) {
-        Set<Category> children = category.category.getChildren(false);
-        if (children.isEmpty()) {
-            return new HashMap<>();
-        }
-        Set<Transaction> excluded = new HashSet<>(category.transactions); // defensive copy.
-
-        Map<CategoryWithTransactions, BigDecimal> totals = new HashMap<>();
-        for (Category child : children) {
-            if (categoryExists(child.getCategoryId())) {
-                totals.put(categoryWithTransactionsDao.getCategoryById(child.getCategoryId()), getTotalInCategory(child, true, startDate, endDate, excluded));
-                excluded.addAll(getTransactionsForCategory(child, true));
-            }
-        }
-        return totals;
-
-    }
-
-    public LiveData<List<CategoryWithTransactions>> searchCategoriesWithType(String query, TrackingType type) {
-        if (type == null) {
-            return searchCategories(query);
-        }
-        return categoryWithTransactionsDao.searchCategoriesByType(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
-    }
-
-    public boolean categoryExists(Long id) {
-        return categoryRepository.exists(id);
-    }
-
-    public boolean verifyExistingIdsCategories(Collection<Long> ids) {
-        return categoryRepository.verifyExistingIds(ids);
-    }
-
-    public boolean categoryNameExists(String name) {
-        return categoryRepository.nameExists(name);
-    }
-
-    public Category getRootCategoryByType(TrackingType type) {
-        return categoryRepository.getRootCategoryByType(type);
-    }
-
-
-
-
-
-    // TRANSACTION METHODS
-
-    public LiveData<List<Transaction>> getAllTransactions() {
-        return transactionRepository.getAllLive();
-    }
-
-    public Transaction getTransactionById(Long id) {
-        return transactionRepository.getById(id);
-    }
-
-    public LiveData<List<Transaction>> searchTransactions(String query) {
-        return transactionRepository.searchTransactions(query);
-    }
-
-    public LiveData<List<Transaction>> searchTransactionsWithType(String query, TrackingType type) {
-        if (type == null) {
-            return transactionRepository.searchTransactions(query);
-        }
-        return transactionRepository.searchTransactionsWithType(query, type);
-    }
-
-
-    public boolean transactionExists(Long id) {
-        return transactionRepository.exists(id);
-    }
-
-    public boolean transactionHashExists(String hash) {
-        return transactionRepository.hashExists(hash);
     }
 }

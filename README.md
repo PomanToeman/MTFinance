@@ -2,43 +2,40 @@
 
 First solo project: a simple Java-powered Android app called MT Finance. A finance-tracking app that lets you enter transactions with predefined budgets and categories to easily manage personal finances and goals.
 
-## Key Features (will update as features are added)
+## Key Features
 
 ### Categories
-The main feature of the tracking app! Allows you to put transactions in specific categories to track particular spending (such as groceries, gaming, utilities, etc.). Can also put sub-categories into categories for more organised actions. The parent category keeps track of all general expenses, while a sub-category can track something specific. Can have up to 5 subs.
+The main feature of the tracking app! Allows you to put transactions in specific categories to track particular spending (such as groceries, gaming, utilities, etc.). Can also put sub-categories into categories for more organized tracking. The parent category keeps track of all general expenses, while sub-categories track specific spending (supports up to 5 levels of depth).
 
-### Default Categories (these are automatically in place)
-- **General Category** - A general Expense style category. All expense categories are sub-categories of this.
-- **Groceries and Utilities** - Expense categories under General Categories.
-- **Income Category** - Separate category to track income. Mainly meant to exclude them from expense style categories.
-- **Account Transfers** - Separate category for organization purposes.
+### Default System Categories
+- **General Category** - The root Expense category. All expense categories are descendants of this root.
+- **Groceries and Utilities** - Default expense categories under General Category.
+- **Income Category** - Dedicated root category to track income transactions and exclude them from expense calculations.
+- **Account Transfers** - Dedicated root category for transfer transactions between accounts.
+- **Other Category** - Fallback category for logging erroneous or unclassified transactions.
 
 ### Transactions
-The actual transactions you get from banking apps (via CSV import), or manual entry. Will be able to store and track all necessary details like name, amount, date, type (i.e. expense), and more.
+Tracks banking transactions entered manually or imported via CSV files. Persists essential details including transaction name, amount, date, type (expense, income, account transfer), generated unique hash, and multi-category associations.
 
-### Forms
-These forms allow you to enter, save, edit, and delete data.
-- **Category Form** - Allows you to create, edit, and delete your categories (cannot edit or delete root categories).
-- **Transaction Form** - Allows you to create, edit, and delete transactions (including putting them under categories).
-- **Import Form** - Allows you to import transactions from CSV files exported by banking apps.
+### Forms & Workflows
+- **Category Form** - Enables creating, editing, re-parenting, and deleting categories with budget constraints and cycle prevention.
+- **Transaction Form** - Enables creating, editing, tagging multiple categories, and deleting transactions.
+- **Import Form** - Imports CSV files exported by banking apps with automated header mapping and auto-category assignment.
 
-### Lists and dashboards
- Lists all of a certain data, ability to search filter and bring up a dashboard when selecting one.
-- **Category List** - A list of all categories, can see extra details like sub-categories and total spending upon selection.
-- **Transaction List** - A list of all transactions, can see extra details like categories under upon selection.
+### Lists & Dashboards
+- **Category List & Dashboard** - Displays category trees, total spending (including/excluding subcategories), remaining monthly budget, and child category breakdowns.
+- **Transaction List** - Displays filtered transaction streams with real-time search and type filtering.
 
-# User Guide
-None for now as no front-end has been developed.
+## Tech Stack & Architecture
 
-## Tech Stack (More will be added as project develops)
-- **Language**: Java (For core/backend) + Kotlin (for UI and activities)
-- **Local Database**: Room database (Due to simple implementation and native Android support)
-- **Queries and DAO**: CRUD (with SQLite)
-- **Architecture**: MVVM (Model-View-ViewModel)
-- **Dependency Injection**: Hilt
-- **UI**: Jetpack Compose
-- **Testing**: JUnit, Mockito
-- **Other**: ViewModel, LiveData, Gradle.
-
-
-
+- **Language**: Java 11 (Core logic, domain model, services, repositories) + Kotlin 2.4 (Jetpack Compose UI & Navigation)
+- **Architecture**: **MVVM + CQRS (Command Query Responsibility Segregation)**
+  - **Read Services**: Public read-only services (`CategoryService`, `TransactionService`, `TrackingService`) communicating directly with Room DAOs for fast, focused query execution.
+  - **Write Repositories**: Encapsulated package-private write-only repositories (`CategoryRepository`, `TransactionRepository`, `TrackingRepository`) enforcing tracking business rules, budget validation, and transaction redirect policies.
+- **Local Persistence**: Room Database (SQLite) with custom Converters, CrossRef DAOs, and automated root category initialization.
+- **Dependency Injection**: Hilt (`@HiltViewModel`, `DatabaseModule` bindings)
+- **UI Framework**: Jetpack Compose + Material 3, Navigation Compose, Hilt Navigation Compose
+- **Testing Infrastructure**:
+  - **JVM Unit Tests**: **JUnit 5 Jupiter** (`assertAll`, `assertThrows`, `@BeforeEach`, custom `InstantExecutorExtension` for LiveData testing)
+  - **Android Instrumented Integration Tests**: **JUnit 4** (`AndroidJUnit4`, `Room.inMemoryDatabaseBuilder`)
+- **Other Core Components**: LiveData, ViewModel, Commons CSV, Gradle Kotlin DSL, KSP, Jacoco Code Coverage
