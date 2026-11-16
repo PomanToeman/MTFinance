@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModel;
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
-import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
@@ -29,7 +29,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 public class CategoryFormViewModel extends ViewModel {
     private final CategoryService categoryService;
     private final TrackingService trackingService;
-    private final TrackingWriteRepository trackingWriteRepository;
+    private final TrackingRepository trackingWriteRepository;
     private final Executor executor;
 
     private final MutableLiveData<CategoryFormFields> formFields = new MutableLiveData<>(new CategoryFormFields());
@@ -50,7 +50,7 @@ public class CategoryFormViewModel extends ViewModel {
     private final LiveData<Category> cachedParentCategory;
 
     @Inject
-    public CategoryFormViewModel(CategoryService categoryService, TrackingService trackingService, TrackingWriteRepository trackingWriteRepository, Executor executor) {
+    public CategoryFormViewModel(CategoryService categoryService, TrackingService trackingService, TrackingRepository trackingWriteRepository, Executor executor) {
         this.categoryService = categoryService;
         this.trackingService = trackingService;
         this.trackingWriteRepository = trackingWriteRepository;

@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 import com.example.mtfinance.InstantExecutorExtension;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
-import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 
@@ -37,7 +37,7 @@ public class CategoryFormViewModelTest {
     private TrackingService trackingService;
 
     @Mock
-    private TrackingWriteRepository trackingWriteRepository;
+    private TrackingRepository trackingWriteRepository;
 
     private CategoryFormViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
