@@ -2,28 +2,50 @@ package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
 
+import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryViolationException;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 
 import java.util.Collection;
 
 import javax.inject.Inject;
 
-class CategoryRepository implements CategoryWriteRepository {
+/**
+ * Concrete repository class managing category write operations and business policy validations.
+ */
+public class CategoryRepository {
     private final CategoryDao categoryDao;
     private final CategoryService categoryService;
+    private final CategoryRepositoryHelper helper;
 
+    /**
+     * Constructs a CategoryRepository with required DAO, service, and helper.
+     * @param categoryDao the category Room DAO
+     * @param categoryService the category query service
+     */
     @Inject
     public CategoryRepository(CategoryDao categoryDao, CategoryService categoryService) {
         this.categoryDao = categoryDao;
         this.categoryService = categoryService;
+        this.helper = new CategoryRepositoryHelper(categoryDao);
     }
 
-    @Override
+    /**
+     * Inserts a category into the database.
+     * Enforces business rules: cannot insert root category duplicates or invalid tracking types.
+     * Throws CategoryViolationException if constraints are violated.
+     * @param category - the category to be inserted
+     * @return the generated category ID
+     */
     public Long insert(@NonNull Category category) {
         if (category.equals(categoryService.getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
-            return -1L;
+            throw new CategoryViolationException(MessageCli.CATEGORY_SAVE_FAILED.getMessage("Invalid category type or root duplication"));
+        }
+
+        if (categoryNameExists(category.getName())) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
         }
 
         if (category.getParent() == null && category.getParentId() != null) {
@@ -31,9 +53,9 @@ class CategoryRepository implements CategoryWriteRepository {
         }
 
         if (category.getParent() == null) {
-            category.setParent(categoryService.getGeneralCategory()); // ensures the greatest parent is the general category
+            category.setParent(categoryService.getGeneralCategory());
         } else if (category.getParent().getCategoryId() == null || !categoryService.categoryExists(category.getParent().getCategoryId())) {
-            insert(category.getParent()); // automatically inserts parent if not already in database.
+            insert(category.getParent());
         }
 
         Long result = categoryDao.insert(category);
@@ -46,11 +68,21 @@ class CategoryRepository implements CategoryWriteRepository {
         return result;
     }
 
-    @Override
+    /**
+     * Deletes a category from the database.
+     * Cannot delete root categories or non-existent categories. Re-parents children if necessary.
+     * Throws CategoryViolationException if attempting to delete a root category or non-existent category.
+     * @param categoryToDelete - the category to delete
+     */
     public void deleteCategory(@NonNull Category categoryToDelete) {
-        if (categoryToDelete.equals(categoryService.getGeneralCategory())) {
-            return; // cannot delete general/root category
+        if (categoryToDelete.getCategoryId() == null || !categoryService.categoryExists(categoryToDelete.getCategoryId())) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
+
+        if (helper.isRoot(categoryToDelete)) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+        }
+
         if (categoryToDelete.getChildren(false).isEmpty()) {
             categoryDao.delete(categoryToDelete);
             return;
@@ -58,7 +90,7 @@ class CategoryRepository implements CategoryWriteRepository {
 
         Category categoryInDb = categoryService.getCategoryById(categoryToDelete.getCategoryId());
         if (categoryInDb == null) {
-            return; // not found
+            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
 
         Category parentOfDeleted = categoryToDelete.getParent();
@@ -78,29 +110,40 @@ class CategoryRepository implements CategoryWriteRepository {
     }
 
     /**
-     * Updates the category in database, will automatically pass root categories to updateRootCategory.
-     *
-     * @param category - the category to update.
+     * Updates an existing category in the database.
+     * Prevents modifying system root categories via standard update.
+     * Throws CategoryViolationException if trying to update a root category.
+     * @param category - the category to update
      */
-    @Override
     public void updateCategory(@NonNull Category category) {
+        if (category.getCategoryId() != null && helper.isRoot(category.getCategoryId())) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+        }
         categoryDao.update(category);
     }
 
-    @Override
+    /**
+     * Updates multiple categories in bulk.
+     * Throws CategoryViolationException if any category is a root category.
+     * @param categories - collection of categories to update
+     */
     public void updateAllCategories(Collection<Category> categories) {
+        for (Category c : categories) {
+            if (c.getCategoryId() != null && helper.isRoot(c.getCategoryId())) {
+                throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+            }
+        }
         categoryDao.updateAll(categories);
     }
 
     /**
-     * This assumes the category Tree has been modified.
-     * Only works when Category has its cache restored.
-     * @param category - the category inside the tree (must have cache restored).
+     * Updates the category tree structure and validates parent hierarchy.
+     * Throws CategoryViolationException if root category is modified or hierarchy rules fail.
+     * @param category - the category inside the tree with cache restored
      */
-    @Override
     public void updateCategoryTree(@NonNull Category category) {
-        if (category.equals(categoryService.getGeneralCategory())) {
-            return;
+        if (helper.isRoot(category)) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
 
         if (category.getParent() == null && category.getParentId() != null) {
@@ -113,14 +156,7 @@ class CategoryRepository implements CategoryWriteRepository {
             insert(category.getParent());
         }
 
-        Long parentId = category.getParentId();
-        while (parentId != null) {
-            if (parentId.equals(category.getCategoryId())) {
-                throw new IllegalArgumentException("Cannot set a category as a child of its own descendant.");
-            }
-            Category p = categoryService.getCategoryById(parentId);
-            parentId = p != null ? p.getParentId() : null;
-        }
+        helper.validateCategoryTree(category);
 
         categoryDao.update(category);
         if (category.getParent() != null) {
@@ -129,5 +165,9 @@ class CategoryRepository implements CategoryWriteRepository {
         if (!category.getChildren(false).isEmpty()) {
             categoryDao.updateAll(category.getChildren(false));
         }
+    }
+
+    private boolean categoryNameExists(String name) {
+        return categoryService.categoryNameExists(name);
     }
 }

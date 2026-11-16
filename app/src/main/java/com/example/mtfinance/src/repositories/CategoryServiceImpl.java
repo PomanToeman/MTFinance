@@ -8,7 +8,6 @@ import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
-import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -16,43 +15,36 @@ import java.util.Set;
 
 import javax.inject.Inject;
 
+/**
+ * Concrete service class managing read-only category query responsibilities via Room DAOs
+ * and leveraging CategoryRepositoryHelper for centralized initialization and validation.
+ */
 public class CategoryServiceImpl implements CategoryService {
 
-    public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
-    public final Category incomeCategory = new Category("Income", "Tracks income transactions", BigDecimal.valueOf(1000), TrackingType.INCOME);
-    public final Category accountTransferCategory = new Category("Account Transfer", "Account Transfers", BigDecimal.valueOf(1000), TrackingType.ACCOUNT_TRANSFERS);
-    public final Category otherCategory = new Category("Other Category (only for errors)", "Use this as a log for erroneous transactions", BigDecimal.valueOf(1000), TrackingType.OTHER);
-
-    public final List<Category> defaultExpenseCategories = List.of(
-            new Category("Groceries", "Grocery shopping", BigDecimal.valueOf(100), TrackingType.EXPENSE),
-            new Category("Utilities", "Utilities", BigDecimal.valueOf(100), TrackingType.EXPENSE));
-
     private final CategoryDao categoryDao;
+    private final CategoryRepositoryHelper helper;
 
+    /**
+     * Constructs a CategoryServiceImpl with the specified CategoryDao.
+     * @param categoryDao the Room DAO for categories
+     */
     @Inject
     public CategoryServiceImpl(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
-        populateDefaultCategories();
+        this.helper = new CategoryRepositoryHelper(categoryDao);
+        helper.populateDefaultCategories();
     }
 
+    /**
+     * Test constructor supporting optional default category population.
+     * @param categoryDao the Room DAO for categories
+     * @param populateDefaultCategories whether to populate default categories
+     */
     @VisibleForTesting
     public CategoryServiceImpl(CategoryDao categoryDao, boolean populateDefaultCategories) {
         this.categoryDao = categoryDao;
-        if (populateDefaultCategories) populateDefaultCategories();
-    }
-
-    private synchronized void populateDefaultCategories() {
-        if (categoryDao.getAll().isEmpty()) {
-            categoryDao.insert(generalCategory);
-            categoryDao.insert(incomeCategory);
-            categoryDao.insert(accountTransferCategory);
-            categoryDao.insert(otherCategory);
-
-            for (Category category : defaultExpenseCategories) {
-                category.setParent(generalCategory);
-                categoryDao.insert(category);
-            }
-        }
+        this.helper = new CategoryRepositoryHelper(categoryDao);
+        if (populateDefaultCategories) helper.populateDefaultCategories();
     }
 
     @Override
@@ -61,7 +53,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .filter(c -> "General Category".equals(c.getName()))
                 .findFirst()
                 .orElse(null);
-        return dbGeneral != null ? getCategoryByIdRestored(dbGeneral.getCategoryId()) : getCategoryRestored(generalCategory);
+        return dbGeneral != null ? getCategoryByIdRestored(dbGeneral.getCategoryId()) : getCategoryRestored(helper.generalCategory);
     }
 
     @Override
@@ -70,7 +62,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .filter(c -> "Income".equals(c.getName()))
                 .findFirst()
                 .orElse(null);
-        return dbIncome != null ? getCategoryByIdRestored(dbIncome.getCategoryId()) : incomeCategory;
+        return dbIncome != null ? getCategoryByIdRestored(dbIncome.getCategoryId()) : helper.incomeCategory;
     }
 
     @Override
@@ -79,7 +71,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .filter(c -> "Account Transfer".equals(c.getName()))
                 .findFirst()
                 .orElse(null);
-        return dbTransfer != null ? getCategoryByIdRestored(dbTransfer.getCategoryId()) : accountTransferCategory;
+        return dbTransfer != null ? getCategoryByIdRestored(dbTransfer.getCategoryId()) : helper.accountTransferCategory;
     }
 
     @Override
@@ -88,7 +80,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .filter(c -> "Other Category (only for errors)".equals(c.getName()))
                 .findFirst()
                 .orElse(null);
-        return dbOther != null ? getCategoryByIdRestored(dbOther.getCategoryId()) : otherCategory;
+        return dbOther != null ? getCategoryByIdRestored(dbOther.getCategoryId()) : helper.otherCategory;
     }
 
     @Override
@@ -179,15 +171,12 @@ public class CategoryServiceImpl implements CategoryService {
         if (category == null) {
             return false;
         }
-        return category.equals(getRootCategoryByType(category.getType()));
+        return helper.isRoot(category);
     }
 
     @Override
     public boolean isRoot(Long categoryId) {
-        if (categoryExists(categoryId)) {
-            return isRoot(getCategoryById(categoryId));
-        }
-        return false;
+        return helper.isRoot(categoryId);
     }
 
     @Override

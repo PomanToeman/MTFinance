@@ -69,10 +69,6 @@ public abstract class DatabaseModule {
 
     @Binds
     @Singleton
-    public abstract TrackingWriteRepository bindTrackingWriteRepository(TrackingRepository trackingRepository);
-
-    @Binds
-    @Singleton
     public abstract CategoryService bindCategoryService(CategoryServiceImpl categoryServiceImpl);
 
     @Binds

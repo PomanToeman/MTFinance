@@ -1,16 +1,24 @@
 package com.example.mtfinance.src.repositories;
 
+import androidx.annotation.NonNull;
+
+import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import com.example.mtfinance.src.trackingengine.Transaction;
+import com.example.mtfinance.src.trackingengine.TransactionViolationException;
 
 import javax.inject.Inject;
 
 /**
- * Package-private repository for transaction write and mutation operations.
+ * Concrete repository class for transaction write and mutation operations.
  */
-class TransactionRepository implements TransactionWriteRepository {
+public class TransactionRepository {
     private final TransactionDao transactionDao;
 
+    /**
+     * Constructs a TransactionRepository with the specified TransactionDao.
+     * @param transactionDao the Room DAO for transactions
+     */
     @Inject
     public TransactionRepository(TransactionDao transactionDao) {
         this.transactionDao = transactionDao;
@@ -18,20 +26,23 @@ class TransactionRepository implements TransactionWriteRepository {
 
     /**
      * Inserts a new transaction into the database.
+     * Throws TransactionViolationException if insertion fails.
      * @param transaction - the transaction to be inserted
      * @return the row ID of the inserted transaction
      */
-    @Override
-    public Long insert(Transaction transaction) {
-        return transactionDao.insert(transaction);
+    public Long insert(@NonNull Transaction transaction) {
+        Long result = transactionDao.insert(transaction);
+        if (result == null || result <= 0) {
+            throw new TransactionViolationException(MessageCli.TRANSACTION_SAVE_FAILED.getMessage("Database insert failed"));
+        }
+        return result;
     }
 
     /**
      * Updates an existing transaction in the database.
      * @param transaction - the transaction to be updated
      */
-    @Override
-    public void update(Transaction transaction) {
+    public void update(@NonNull Transaction transaction) {
         transactionDao.update(transaction);
     }
 
@@ -39,8 +50,7 @@ class TransactionRepository implements TransactionWriteRepository {
      * Deletes a transaction from the database by its ID.
      * @param id - the transaction ID
      */
-    @Override
-    public void delete(Long id) {
+    public void delete(@NonNull Long id) {
         transactionDao.delete(id);
     }
 }
