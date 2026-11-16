@@ -12,6 +12,7 @@ import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
@@ -44,6 +45,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 public class TransactionImportFormViewModel extends ViewModel {
     private final CategoryService categoryService;
     private final TrackingService trackingService;
+    private final TransactionService transactionService;
     private final TrackingWriteRepository trackingWriteRepository;
     private final Executor executor;
     private final Application application;
@@ -68,9 +70,15 @@ public class TransactionImportFormViewModel extends ViewModel {
     private final MutableLiveData<List<String>> csvHeaders = new MutableLiveData<>();
 
     @Inject
-    public TransactionImportFormViewModel(CategoryService categoryService, TrackingService trackingService, TrackingWriteRepository trackingWriteRepository, Executor executor, Application application) {
+    public TransactionImportFormViewModel(CategoryService categoryService,
+                                          TrackingService trackingService,
+                                          TransactionService transactionService,
+                                          TrackingWriteRepository trackingWriteRepository,
+                                          Executor executor,
+                                          Application application) {
         this.categoryService = categoryService;
         this.trackingService = trackingService;
+        this.transactionService = transactionService;
         this.trackingWriteRepository = trackingWriteRepository;
         this.executor = executor;
         this.application = application;
@@ -206,7 +214,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         try {
             setIsLoading(Boolean.TRUE);
             validateImport();
-            TransactionFormViewModel transactionForm = new TransactionFormViewModel(this.trackingService, this.categoryService, this.trackingWriteRepository, Runnable::run);
+            TransactionFormViewModel transactionForm = new TransactionFormViewModel(this.trackingService, this.categoryService, this.transactionService, this.trackingWriteRepository, Runnable::run);
             CSVParser csvParser = this.csvParser.getValue();
             String nameHeader = this.nameHeader.getValue();
             String dateHeader = this.dateHeader.getValue();

@@ -6,6 +6,7 @@ import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TrackingWriteRepository;
 import com.example.mtfinance.src.trackingengine.Category;
@@ -21,8 +22,12 @@ import javax.inject.Inject;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
+/**
+ * ViewModel responsible for category creation, editing, parent hierarchy configuration, and deletion forms.
+ */
 @HiltViewModel
 public class CategoryFormViewModel extends ViewModel {
+    private final CategoryService categoryService;
     private final TrackingService trackingService;
     private final TrackingWriteRepository trackingWriteRepository;
     private final Executor executor;
@@ -45,25 +50,30 @@ public class CategoryFormViewModel extends ViewModel {
     private final LiveData<Category> cachedParentCategory;
 
     @Inject
-    public CategoryFormViewModel(TrackingService trackingService, TrackingWriteRepository trackingWriteRepository, Executor executor) {
+    public CategoryFormViewModel(CategoryService categoryService, TrackingService trackingService, TrackingWriteRepository trackingWriteRepository, Executor executor) {
+        this.categoryService = categoryService;
         this.trackingService = trackingService;
         this.trackingWriteRepository = trackingWriteRepository;
         this.executor = executor;
         isEditMode = Transformations.map(formFields, fields -> fields.editCategoryId != null);
         isRoot = Transformations.map(formFields, fields -> {
             if (fields.editCategoryId == null) return false;
-            return trackingService.isRoot(fields.editCategoryId);
+            return categoryService.isRoot(fields.editCategoryId);
         });
 
         categorySelection = Transformations.switchMap(type, t -> trackingService.searchCategoriesWithType("", t));
         this.cachedParentCategory = Transformations.switchMap(formFields, fields -> {
             if (fields.parentId == null) return null;
-            return new MutableLiveData<>(trackingService.getCategoryByIdRestored(fields.parentId));
+            return new MutableLiveData<>(categoryService.getCategoryByIdRestored(fields.parentId));
         });
 
         clearSync();
     }
 
+    /**
+     * Sets the category ID for editing and loads its attributes.
+     * @param categoryId - the category ID to edit, or null for creation
+     */
     public void setEditCategory(Long categoryId) {
         CategoryFormFields fields = getFields();
         fields.editCategoryId = categoryId;
@@ -73,19 +83,25 @@ public class CategoryFormViewModel extends ViewModel {
         }
     }
 
+    /**
+     * Asynchronously loads category details for editing.
+     */
     public void loadCategoryForEditing() {
         executor.execute(this::loadCategoryForEditingSync);
     }
 
+    /**
+     * Synchronously loads category details for editing.
+     */
     public void loadCategoryForEditingSync() {
         CategoryFormFields fields = getFields();
         if (fields.editCategoryId == null) return;
 
-        if (!trackingService.categoryExists(fields.editCategoryId)) {
+        if (!categoryService.categoryExists(fields.editCategoryId)) {
             setErrorMessage(MessageCli.CATEGORY_NOT_FOUND.getMessage());
             return;
         }
-        Category category = trackingService.getCategoryByIdRestored(fields.editCategoryId);
+        Category category = categoryService.getCategoryByIdRestored(fields.editCategoryId);
 
         fields.name = category.getName();
         fields.description = category.getDescription();
@@ -95,6 +111,10 @@ public class CategoryFormViewModel extends ViewModel {
         updateFields(fields);
     }
 
+    /**
+     * Sets the category name field.
+     * @param name - category name
+     */
     public void setName(String name) {
         if (name == null) return;
         CategoryFormFields fields = getFields();
@@ -102,16 +122,28 @@ public class CategoryFormViewModel extends ViewModel {
         updateFields(fields);
     }
 
+    /**
+     * Sets the category description field.
+     * @param description - category description
+     */
     public void setDescription(String description) {
         CategoryFormFields fields = getFields();
         fields.description = description;
         updateFields(fields);
     }
 
+    /**
+     * Sets the parent category ID asynchronously.
+     * @param parentId - parent category ID
+     */
     public void setParentId(Long parentId) {
         executor.execute(() -> setParentIdSync(parentId));
     }
 
+    /**
+     * Sets the parent category ID synchronously with hierarchy depth validation.
+     * @param parentId - parent category ID
+     */
     public void setParentIdSync(Long parentId) {
         CategoryFormFields fields = getFields();
         if (parentId == null) {
@@ -124,11 +156,11 @@ public class CategoryFormViewModel extends ViewModel {
             return;
         }
 
-        if (!trackingService.categoryExists(parentId)) {
+        if (!categoryService.categoryExists(parentId)) {
             setErrorMessage(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
             return;
         }
-        if (trackingService.getCategoryByIdRestored(parentId).getAncestors().size() >= Category.MAX_DEPTH) {
+        if (categoryService.getCategoryByIdRestored(parentId).getAncestors().size() >= Category.MAX_DEPTH) {
             setErrorMessage(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
             return;
         }
@@ -136,6 +168,10 @@ public class CategoryFormViewModel extends ViewModel {
         updateFields(fields);
     }
 
+    /**
+     * Sets the monthly budget field with minimum budget validation.
+     * @param monthlyBudget - monthly budget
+     */
     public void setMonthlyBudget(BigDecimal monthlyBudget) {
         CategoryFormFields fields = getFields();
         if (monthlyBudget == null) {
@@ -162,13 +198,21 @@ public class CategoryFormViewModel extends ViewModel {
         updateLiveData(this.successMessage, successMessage);
     }
 
+    /**
+     * Deletes the currently edited category asynchronously.
+     * @param deleteTransactions - whether to delete transactions associated with this category
+     */
     public void deleteCategory(boolean deleteTransactions) {
         executor.execute(() -> deleteCategorySync(deleteTransactions));
     }
 
+    /**
+     * Deletes the currently edited category synchronously.
+     * @param deleteTransactions - whether to delete transactions associated with this category
+     */
     public void deleteCategorySync(boolean deleteTransactions) {
         CategoryFormFields fields = getFields();
-        if (fields.editCategoryId == null || !trackingService.categoryExists(fields.editCategoryId)) {
+        if (fields.editCategoryId == null || !categoryService.categoryExists(fields.editCategoryId)) {
             setErrorMessage(MessageCli.CATEGORY_DELETE_NONE.getMessage());
             return;
         }
@@ -186,10 +230,16 @@ public class CategoryFormViewModel extends ViewModel {
         }
     }
 
+    /**
+     * Saves the category form asynchronously.
+     */
     public void saveCategory() {
         executor.execute(this::saveCategorySync);
     }
 
+    /**
+     * Saves the category form synchronously.
+     */
     public void saveCategorySync() {
         CategoryFormFields fields = getFields();
 
@@ -207,17 +257,17 @@ public class CategoryFormViewModel extends ViewModel {
                 }
                 trackingWriteRepository.insertCategory(newCategory);
             } else {
-                Category category = trackingService.getCategoryByIdRestored(fields.editCategoryId);
+                Category category = categoryService.getCategoryByIdRestored(fields.editCategoryId);
                 if (category == null) {
                     return;
                 }
 
-                if (!trackingService.isRoot(category)) {
+                if (!categoryService.isRoot(category)) {
                     category.setName(fields.name);
                     category.setDescription(fields.description);
                     category.setMonthlyBudget(fields.monthlyBudget);
                     if (fields.parentId != null) {
-                        category.setParent(trackingService.getCategoryByIdRestored(fields.parentId));
+                        category.setParent(categoryService.getCategoryByIdRestored(fields.parentId));
                     }
                     trackingWriteRepository.updateCategoryTree(category);
                 } else {
@@ -240,11 +290,11 @@ public class CategoryFormViewModel extends ViewModel {
             throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EMPTY.getMessage());
         }
 
-        if (trackingService.categoryNameExists(fields.name)) {
+        if (categoryService.categoryNameExists(fields.name)) {
             if (fields.editCategoryId == null) {
                 throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
             } else {
-                Category current = trackingService.getCategoryByIdRestored(fields.editCategoryId);
+                Category current = categoryService.getCategoryByIdRestored(fields.editCategoryId);
                 if (current != null && !current.getName().equalsIgnoreCase(fields.name.trim())) {
                     throw new IllegalArgumentException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
                 }
@@ -256,15 +306,21 @@ public class CategoryFormViewModel extends ViewModel {
             throw new IllegalArgumentException(MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
         }
 
-        if (fields.parentId != null && !trackingService.categoryExists(fields.parentId)) {
+        if (fields.parentId != null && !categoryService.categoryExists(fields.parentId)) {
             throw new IllegalArgumentException(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
         }
     }
 
+    /**
+     * Clears form fields asynchronously.
+     */
     public void clear() {
         executor.execute(this::clearSync);
     }
 
+    /**
+     * Clears form fields synchronously.
+     */
     public void clearSync() {
         CategoryFormFields fields = new CategoryFormFields();
         updateFields(fields);

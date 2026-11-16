@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
 
 import java.util.concurrent.Executor;
@@ -19,19 +20,21 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 @HiltViewModel
 public class HomeViewModel extends ViewModel {
 
+    private final CategoryService categoryService;
     private final TrackingService trackingService;
+    private final Executor executor;
 
     private final MutableLiveData<String> title = new MutableLiveData<>();
     private final MutableLiveData<String> subtitle = new MutableLiveData<>();
     private final MutableLiveData<String> description = new MutableLiveData<>();
     private final MutableLiveData<CategoryViewModel> pinnedCategory = new MutableLiveData<>();
-    private final Executor executor;
 
     @Inject
-    public HomeViewModel(TrackingService trackingService, Executor executor) {
+    public HomeViewModel(CategoryService categoryService, TrackingService trackingService, Executor executor) {
+        this.categoryService = categoryService;
         this.trackingService = trackingService;
         this.executor = executor;
-        CategoryViewModel categoryViewModel = new CategoryViewModel(trackingService, executor);
+        CategoryViewModel categoryViewModel = new CategoryViewModel(categoryService, trackingService, executor);
         categoryViewModel.setSelectedCategory(1L);
         this.pinnedCategory.setValue(categoryViewModel);
     }

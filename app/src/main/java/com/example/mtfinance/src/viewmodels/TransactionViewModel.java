@@ -5,7 +5,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
-import com.example.mtfinance.src.repositories.TrackingService;
+import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.Transaction;
@@ -19,7 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 
 @HiltViewModel
 public class TransactionViewModel extends ViewModel {
-    private final TrackingService trackingService;
+    private final TransactionService transactionService;
     private final LiveData<List<Transaction>> allTransactions;
     private final LiveData<List<Transaction>> filteredTransactions;
     private final MutableLiveData<SearchCriteria> searchCriteria = new MutableLiveData<>(new SearchCriteria("", null));
@@ -28,23 +28,22 @@ public class TransactionViewModel extends ViewModel {
     private final MutableLiveData<List<Category>> categoriesUnderSelectedTransaction = new MutableLiveData<>();
 
     @Inject
-    public TransactionViewModel(TrackingService trackingService) {
-        this.trackingService = trackingService;
-        this.allTransactions = trackingService.getAllTransactions();
+    public TransactionViewModel(TransactionService transactionService) {
+        this.transactionService = transactionService;
+        this.allTransactions = transactionService.getAllLive();
 
         this.filteredTransactions = Transformations.switchMap(searchCriteria, query -> {
             if (query == null || (query.getQuery() == null || query.getQuery().trim().isEmpty()) && query.getTypeFilter() == null) {
                 return allTransactions;
             }
-            return trackingService.searchTransactionsWithType(query.getTrimmedQuery(), query.getTypeFilter());
+            return transactionService.searchTransactionsWithType(query.getTrimmedQuery(), query.getTypeFilter());
         });
     }
 
     public void setSelectedTransaction(Long id) {
-        Transaction transaction = trackingService.getTransactionById(id);
+        Transaction transaction = transactionService.getById(id);
         if (transaction != null) {
             selectedTransaction.setValue(transaction);
-            categoriesUnderSelectedTransaction.setValue(trackingService.getCategoriesByTransactionId(id));
         }
     }
 

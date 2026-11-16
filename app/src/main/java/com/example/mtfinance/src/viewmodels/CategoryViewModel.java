@@ -8,6 +8,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
@@ -28,6 +29,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
  */
 @HiltViewModel
 public class CategoryViewModel extends ViewModel {
+    private final CategoryService categoryService;
     private final TrackingService trackingService;
     private final Executor executor;
     private final LiveData<List<CategoryWithTransactions>> allCategories;
@@ -44,7 +46,8 @@ public class CategoryViewModel extends ViewModel {
     private final LiveData<Long> updateTrigger;
 
     @Inject
-    public CategoryViewModel(TrackingService trackingService, Executor executor) {
+    public CategoryViewModel(CategoryService categoryService, TrackingService trackingService, Executor executor) {
+        this.categoryService = categoryService;
         this.trackingService = trackingService;
         this.executor = executor;
         this.allCategories = trackingService.getAllCategoriesWithTransactions();
@@ -107,7 +110,7 @@ public class CategoryViewModel extends ViewModel {
         executor.execute(() -> {
             CategoryWithTransactions selected = trackingService.getCategoryWithTransactionsByCategoryId(categoryId);
             if (selected != null) {
-                selected.category = trackingService.getCategoryByIdRestored(categoryId);
+                selected.category = categoryService.getCategoryByIdRestored(categoryId);
                 updateLiveData(selectedCategory, selected);
                 loadTotals(selected);
             }
