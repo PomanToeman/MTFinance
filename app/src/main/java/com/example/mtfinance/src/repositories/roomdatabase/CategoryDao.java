@@ -24,6 +24,9 @@ public interface CategoryDao {
     @Query("SELECT * FROM categories WHERE categoryId = :id")
     Category getById(Long id);
 
+    @Query("SELECT * FROM categories WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    Category getByName(String name);
+
     @Delete
     void delete(Category category);
 
