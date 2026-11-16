@@ -2,6 +2,8 @@ package com.example.mtfinance.src.viewmodels;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 @ExtendWith(InstantExecutorExtension.class)
@@ -55,6 +58,7 @@ public class CategoryFormViewModelTest {
         viewModel.getType().observeForever(t -> {});
         viewModel.getIsRoot().observeForever(b -> {});
         viewModel.IsEditMode().observeForever(b -> {});
+        viewModel.getFieldErrors().observeForever(m -> {});
     }
 
     @Test
@@ -121,12 +125,14 @@ public class CategoryFormViewModelTest {
     }
 
     @Test
-    public void saveCategory_emptyName_failsValidation() {
+    public void saveCategory_emptyName_populatesFieldErrorAndFailsValidation() {
         viewModel.setName("");
         viewModel.saveCategory();
 
+        Map<CategoryFormViewModel.CategoryErrorFields, String> errors = viewModel.getFieldErrors().getValue();
         assertAll(
-            () -> assertTrue(viewModel.getErrorMessage().getValue().contains("Name cannot be empty")),
+            () -> assertNotNull(errors),
+            () -> assertTrue(errors.get(CategoryFormViewModel.CategoryErrorFields.NAME).contains("Name cannot be empty")),
             () -> assertEquals("", viewModel.getSuccessMessage().getValue())
         );
     }
@@ -244,7 +250,7 @@ public class CategoryFormViewModelTest {
     }
 
     @Test
-    public void saveCategory_duplicateName_failsValidation() {
+    public void saveCategory_duplicateName_populatesFieldError() {
         String duplicateName = "Groceries";
         when(categoryService.categoryNameExists(duplicateName)).thenReturn(true);
 
@@ -253,7 +259,39 @@ public class CategoryFormViewModelTest {
 
         viewModel.saveCategory();
 
-        assertTrue(viewModel.getErrorMessage().getValue().contains("already exists"));
+        Map<CategoryFormViewModel.CategoryErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertTrue(errors.get(CategoryFormViewModel.CategoryErrorFields.NAME).contains("already exists"))
+        );
+    }
+
+    @Test
+    public void validateForm_invalidParentId_populatesParentIdFieldError() {
+        long invalidParentId = 99L;
+        when(categoryService.categoryExists(invalidParentId)).thenReturn(false);
+
+        viewModel.setName("Valid Name");
+        viewModel.setMonthlyBudget(BigDecimal.TEN);
+        viewModel.setParentId(invalidParentId);
+
+        viewModel.saveCategory();
+
+        Map<CategoryFormViewModel.CategoryErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertTrue(errors.get(CategoryFormViewModel.CategoryErrorFields.PARENT_ID).contains("Parent category does not exist"))
+        );
+    }
+
+    @Test
+    public void clear_clearsAllFieldErrors() {
+        viewModel.setName("");
+        viewModel.saveCategory();
+        assertTrue(viewModel.hasFieldErrors());
+
+        viewModel.clear();
+        assertFalse(viewModel.hasFieldErrors());
     }
 
     @Test
