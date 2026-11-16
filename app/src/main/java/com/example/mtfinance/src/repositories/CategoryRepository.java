@@ -21,7 +21,7 @@ import javax.inject.Inject;
 public class CategoryRepository {
     private final AppDatabase appDatabase;
     private final CategoryDao categoryDao;
-    private final CategoryQueries helper;
+    private final CategoryTreeHelper helper;
 
     /**
      * Constructs a CategoryRepository with required AppDatabase, DAO, and helper.
@@ -32,7 +32,7 @@ public class CategoryRepository {
     public CategoryRepository(AppDatabase appDatabase, CategoryDao categoryDao) {
         this.appDatabase = appDatabase;
         this.categoryDao = categoryDao;
-        this.helper = new CategoryQueries(categoryDao);
+        this.helper = new CategoryTreeHelper(categoryDao);
     }
 
     /**
@@ -63,7 +63,7 @@ public class CategoryRepository {
             throw new CategoryViolationException(MessageCli.CATEGORY_SAVE_FAILED.getMessage("Invalid category type or root duplication"));
         }
 
-        if (helper.categoryNameExists(category.getName())) {
+        if (category.getName() != null && categoryDao.nameExists(category.getName().trim())) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
         }
 
@@ -73,7 +73,7 @@ public class CategoryRepository {
 
         if (category.getParent() == null) {
             category.setParent(helper.getGeneralCategory());
-        } else if (category.getParent().getCategoryId() == null || !helper.categoryExists(category.getParent().getCategoryId())) {
+        } else if (category.getParent().getCategoryId() == null || !categoryDao.exists(category.getParent().getCategoryId())) {
             insertInternal(category.getParent());
         }
 
@@ -102,7 +102,7 @@ public class CategoryRepository {
     }
 
     private void deleteCategoryInternal(@NonNull Category categoryToDelete) {
-        if (categoryToDelete.getCategoryId() == null || !helper.categoryExists(categoryToDelete.getCategoryId())) {
+        if (categoryToDelete.getCategoryId() == null || !categoryDao.exists(categoryToDelete.getCategoryId())) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
 
@@ -147,7 +147,7 @@ public class CategoryRepository {
     }
 
     private void updateCategoryInternal(@NonNull Category category) {
-        if (category.getCategoryId() == null || !helper.categoryExists(category.getCategoryId())) {
+        if (category.getCategoryId() == null || !categoryDao.exists(category.getCategoryId())) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
         if (helper.isRoot(category.getCategoryId())) {
@@ -234,7 +234,7 @@ public class CategoryRepository {
 
         if (category.getParent() == null) {
             category.setParent(helper.getGeneralCategory());
-        } else if (category.getParent().getCategoryId() == null || !helper.categoryExists(category.getParent().getCategoryId())) {
+        } else if (category.getParent().getCategoryId() == null || !categoryDao.exists(category.getParent().getCategoryId())) {
             insertInternal(category.getParent());
         }
 
