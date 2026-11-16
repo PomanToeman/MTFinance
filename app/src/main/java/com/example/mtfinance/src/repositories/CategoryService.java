@@ -1,53 +1,163 @@
 package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 
+import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
+import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-public interface CategoryService {
-    Category getGeneralCategory();
-    Category getIncomeCategory();
-    Category getAccountTransferCategory();
-    Category getOtherCategory();
-    Category getRootCategoryByType(TrackingType type);
-    Category getCategoryById(Long id);
+import javax.inject.Inject;
+import javax.inject.Singleton;
 
-    /**
-     * Returns the Category with restored cache (parent and children) for the given ID.
-     * Category must already be in the database.
-     * @param id - the ID of the category to restore.
-     * @return - the category with restored cache.
-     */
-    Category getCategoryByIdRestored(@NonNull Long id);
+/**
+ * Concrete service class managing read-only category query responsibilities via Room DAOs
+ * and leveraging CategoryRepositoryHelper for centralized initialization and validation.
+ */
+@Singleton
+public class CategoryService {
+
+    private final CategoryDao categoryDao;
+    private final CategoryRepositoryHelper helper;
 
     /**
-     * Returns the Category with restored cache (parent and children) for the given instance.
-     * Category must already be in the database, and will use that version for restoration.
-     * @param category - the category to restore.
-     * @return - the category with restored cache.
+     * Constructs a CategoryService with the specified CategoryDao.
+     * @param categoryDao the Room DAO for categories
      */
-    Category getCategoryRestored(@NonNull Category category);
-
-    List<Category> getAllCategories();
-    List<Category> getCategoriesByIds(Collection<Long> ids);
-    boolean categoryExists(Long id);
-    boolean categoryNameExists(String name);
-    boolean verifyExistingIds(Collection<Long> ids);
+    @Inject
+    public CategoryService(CategoryDao categoryDao) {
+        this.categoryDao = categoryDao;
+        this.helper = new CategoryRepositoryHelper(categoryDao);
+        helper.populateDefaultCategories();
+    }
 
     /**
-     * Allows for easy checks if a category is a root.
-     * @param category - the category to check.
-     * @return - true if the category is a root.
+     * Test constructor supporting optional default category population.
+     * @param categoryDao the Room DAO for categories
+     * @param populateDefaultCategories whether to populate default categories
      */
-    boolean isRoot(Category category);
-    boolean isRoot(Long categoryId);
+    @VisibleForTesting
+    public CategoryService(CategoryDao categoryDao, boolean populateDefaultCategories) {
+        this.categoryDao = categoryDao;
+        this.helper = new CategoryRepositoryHelper(categoryDao);
+        if (populateDefaultCategories) helper.populateDefaultCategories();
+    }
 
-    /**
-     * Meant for auto sorting the best categories for a given transaction (or query).
-     */
-    List<Long> autoSearchCategoryIds(String query, TrackingType type);
+    public Category getGeneralCategory() {
+        Category dbGeneral = categoryDao.getAll().stream()
+                .filter(c -> "General Category".equals(c.getName()))
+                .findFirst()
+                .orElse(null);
+        return dbGeneral != null ? getCategoryByIdRestored(dbGeneral.getCategoryId()) : getCategoryRestored(helper.generalCategory);
+    }
+
+    public Category getIncomeCategory() {
+        Category dbIncome = categoryDao.getAll().stream()
+                .filter(c -> "Income".equals(c.getName()))
+                .findFirst()
+                .orElse(null);
+        return dbIncome != null ? getCategoryByIdRestored(dbIncome.getCategoryId()) : helper.incomeCategory;
+    }
+
+    public Category getAccountTransferCategory() {
+        Category dbTransfer = categoryDao.getAll().stream()
+                .filter(c -> "Account Transfer".equals(c.getName()))
+                .findFirst()
+                .orElse(null);
+        return dbTransfer != null ? getCategoryByIdRestored(dbTransfer.getCategoryId()) : helper.accountTransferCategory;
+    }
+
+    public Category getOtherCategory() {
+        Category dbOther = categoryDao.getAll().stream()
+                .filter(c -> "Other Category (only for errors)".equals(c.getName()))
+                .findFirst()
+                .orElse(null);
+        return dbOther != null ? getCategoryByIdRestored(dbOther.getCategoryId()) : helper.otherCategory;
+    }
+
+    public Category getRootCategoryByType(TrackingType type) {
+        return helper.getRootCategoryByType(type);
+    }
+
+    public Category getCategoryById(Long id) {
+        return categoryDao.getById(id);
+    }
+
+    public Category getCategoryByIdRestored(@NonNull Long id) {
+        return getCategoryByIdRestoredInternal(id, new HashSet<>());
+    }
+
+    private Category getCategoryByIdRestoredInternal(Long id, Set<Long> visited) {
+        if (id == null || visited.contains(id)) return null;
+        visited.add(id);
+
+        Category category = categoryDao.getById(id);
+        if (category != null) {
+            Category parent = getCategoryByIdRestoredInternal(category.getParentId(), visited);
+            if (parent != null) {
+                category.setParent(parent);
+            }
+
+            for (Category child : categoryDao.getByParentId(category.getCategoryId())) {
+                if (child != null) {
+                    Category childRestored = getCategoryByIdRestoredInternal(child.getCategoryId(), visited);
+                    if (childRestored != null) {
+                        childRestored.setParent(category);
+                    }
+                }
+            }
+        }
+        return category;
+    }
+
+    public Category getCategoryRestored(@NonNull Category category) {
+        return category.getCategoryId() != null ? getCategoryByIdRestored(category.getCategoryId()) : category;
+    }
+
+    public List<Category> getAllCategories() {
+        return categoryDao.getAll();
+    }
+
+    public List<Category> getCategoriesByIds(Collection<Long> ids) {
+        return categoryDao.getByIds(ids);
+    }
+
+    public boolean categoryExists(Long id) {
+        if (id == null) return false;
+        return categoryDao.exists(id);
+    }
+
+    public boolean categoryNameExists(String name) {
+        if (name == null || name.isEmpty()) return false;
+        return categoryDao.nameExists(name.trim());
+    }
+
+    public boolean verifyExistingIds(Collection<Long> ids) {
+        if (ids == null) {
+            return false;
+        }
+        List<Long> existingIds = categoryDao.veifyExitsingIds(ids);
+        return existingIds.size() == ids.size();
+    }
+
+    public boolean isRoot(Category category) {
+        if (category == null) {
+            return false;
+        }
+        return helper.isRoot(category);
+    }
+
+    public boolean isRoot(Long categoryId) {
+        return helper.isRoot(categoryId);
+    }
+
+    public List<Long> autoSearchCategoryIds(String query, TrackingType type) {
+        return categoryDao.autoSearchBestFittingCategories(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
+    }
 }

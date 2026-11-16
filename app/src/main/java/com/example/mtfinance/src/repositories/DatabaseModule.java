@@ -13,7 +13,6 @@ import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import dagger.Binds;
 import dagger.Module;
 import dagger.Provides;
 import dagger.hilt.InstallIn;
@@ -66,18 +65,6 @@ public abstract class DatabaseModule {
                                                        TransactionService transactionService) {
         return new TrackingRepository(categoryRepository, transactionRepository, categoryWithTransactionsDao, categoryService, transactionService);
     }
-
-    @Binds
-    @Singleton
-    public abstract CategoryService bindCategoryService(CategoryServiceImpl categoryServiceImpl);
-
-    @Binds
-    @Singleton
-    public abstract TransactionService bindTransactionService(TransactionServiceImpl transactionServiceImpl);
-
-    @Binds
-    @Singleton
-    public abstract TrackingService bindTrackingService(TrackingServiceImpl trackingServiceImpl);
 
     @Provides
     @Singleton
