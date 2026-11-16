@@ -2,6 +2,8 @@ package com.example.mtfinance.src.viewmodels;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.times;
@@ -25,6 +27,7 @@ import org.mockito.MockitoAnnotations;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
@@ -50,6 +53,11 @@ public class TransactionFormViewModelTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         viewModel = new TransactionFormViewModel(trackingService, categoryService, transactionService, trackingWriteRepository, synchronousExecutor);
+
+        viewModel.getName().observeForever(s -> {});
+        viewModel.getAmount().observeForever(a -> {});
+        viewModel.getCategoryIds().observeForever(c -> {});
+        viewModel.getFieldErrors().observeForever(m -> {});
     }
 
     @Test
@@ -68,6 +76,40 @@ public class TransactionFormViewModelTest {
         verify(trackingWriteRepository).insertTransaction(any(Transaction.class), anyLong());
         verify(trackingWriteRepository, times(categoryIds.size() - 1)).insertRelationship(anyLong(), anyLong());
         assertEquals("Transaction saved successfully", viewModel.getSuccessMessage().getValue());
+    }
+
+    @Test
+    public void saveTransaction_emptyName_populatesFieldErrorAndFailsValidation() {
+        Set<Long> categoryIds = new HashSet<>(Arrays.asList(1L));
+        when(categoryService.verifyExistingIds(categoryIds)).thenReturn(true);
+
+        viewModel.setName("");
+        viewModel.setAmount(BigDecimal.TEN);
+        viewModel.addCategoryId(1L);
+
+        viewModel.saveTransaction();
+
+        Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertTrue(errors.get(TransactionFormViewModel.TransactionErrorFields.NAME).contains("Name cannot be empty")),
+            () -> assertEquals("", viewModel.getSuccessMessage().getValue())
+        );
+    }
+
+    @Test
+    public void saveTransaction_emptyCategories_populatesFieldErrorAndFailsValidation() {
+        viewModel.setName("Valid Name");
+        viewModel.setAmount(BigDecimal.TEN);
+
+        viewModel.saveTransaction();
+
+        Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertTrue(errors.get(TransactionFormViewModel.TransactionErrorFields.CATEGORY_IDS).contains("Category cannot be empty")),
+            () -> assertEquals("", viewModel.getSuccessMessage().getValue())
+        );
     }
 
     @Test
