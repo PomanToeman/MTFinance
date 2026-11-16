@@ -7,11 +7,14 @@ import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Package-private helper class responsible for centralized default/root category initialization,
- * root category verification, type resolution, and recursive tree validation across services and repositories.
+ * root category verification, type resolution, category restoration, existence checks,
+ * and recursive tree validation across services and repositories.
  */
 class CategoryRepositoryHelper {
     public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
@@ -50,66 +53,117 @@ class CategoryRepositoryHelper {
         }
     }
 
+    public Category getGeneralCategory() {
+        Category dbGeneral = categoryDao.getAll().stream()
+                .filter(c -> generalCategory.getName().equals(c.getName()))
+                .findFirst()
+                .orElse(null);
+        return dbGeneral != null ? getCategoryByIdRestored(dbGeneral.getCategoryId()) : getCategoryRestored(generalCategory);
+    }
+
+    public Category getIncomeCategory() {
+        Category dbIncome = categoryDao.getAll().stream()
+                .filter(c -> incomeCategory.getName().equals(c.getName()))
+                .findFirst()
+                .orElse(null);
+        return dbIncome != null ? getCategoryByIdRestored(dbIncome.getCategoryId()) : incomeCategory;
+    }
+
+    public Category getAccountTransferCategory() {
+        Category dbTransfer = categoryDao.getAll().stream()
+                .filter(c -> accountTransferCategory.getName().equals(c.getName()))
+                .findFirst()
+                .orElse(null);
+        return dbTransfer != null ? getCategoryByIdRestored(dbTransfer.getCategoryId()) : accountTransferCategory;
+    }
+
+    public Category getOtherCategory() {
+        Category dbOther = categoryDao.getAll().stream()
+                .filter(c -> otherCategory.getName().equals(c.getName()))
+                .findFirst()
+                .orElse(null);
+        return dbOther != null ? getCategoryByIdRestored(dbOther.getCategoryId()) : otherCategory;
+    }
+
     /**
      * Resolves the root category for the given TrackingType from database or defaults.
      * @param type the tracking type
      * @return the root Category
      */
     public Category getRootCategoryByType(@NonNull TrackingType type) {
-        String rootName;
-        Category fallback;
         switch (type) {
             case EXPENSE:
-                rootName = "General Category";
-                fallback = generalCategory;
-                break;
+                return getGeneralCategory();
             case INCOME:
-                rootName = "Income";
-                fallback = incomeCategory;
-                break;
+                return getIncomeCategory();
             case ACCOUNT_TRANSFERS:
-                rootName = "Account Transfer";
-                fallback = accountTransferCategory;
-                break;
+                return getAccountTransferCategory();
             default:
-                rootName = "Other Category (only for errors)";
-                fallback = otherCategory;
-                break;
+                return getOtherCategory();
         }
-
-        Category dbRoot = categoryDao.getAll().stream()
-                .filter(c -> rootName.equals(c.getName()))
-                .findFirst()
-                .orElse(null);
-        return dbRoot != null ? dbRoot : fallback;
     }
 
     /**
      * Checks if the given category is a system root category.
+     * Uses dynamic comparison against root category name for its type without hardcoded string literals.
      * @param category the category to check
      * @return true if it is a root category
      */
     public boolean isRoot(@NonNull Category category) {
-        return isRoot(category.getCategoryId()) ||
-                "General Category".equals(category.getName()) ||
-                "Income".equals(category.getName()) ||
-                "Account Transfer".equals(category.getName()) ||
-                "Other Category (only for errors)".equals(category.getName());
+        Category root = getRootCategoryByType(category.getType());
+        return category.getName().equals(root.getName()) || (category.getCategoryId() != null && isRoot(category.getCategoryId()));
     }
 
     /**
      * Checks if the category ID corresponds to a system root category.
-     * @param categoryId the category ID
+     * @param categoryId the non-null category ID
      * @return true if it is a root category
      */
-    public boolean isRoot(Long categoryId) {
-        if (categoryId == null) return false;
+    public boolean isRoot(@NonNull Long categoryId) {
         Category c = categoryDao.getById(categoryId);
         if (c == null) return false;
-        return "General Category".equals(c.getName()) ||
-                "Income".equals(c.getName()) ||
-                "Account Transfer".equals(c.getName()) ||
-                "Other Category (only for errors)".equals(c.getName());
+        return isRoot(c);
+    }
+
+    public Category getCategoryByIdRestored(@NonNull Long id) {
+        return getCategoryByIdRestoredInternal(id, new HashSet<>());
+    }
+
+    private Category getCategoryByIdRestoredInternal(Long id, Set<Long> visited) {
+        if (id == null || visited.contains(id)) return null;
+        visited.add(id);
+
+        Category category = categoryDao.getById(id);
+        if (category != null) {
+            Category parent = getCategoryByIdRestoredInternal(category.getParentId(), visited);
+            if (parent != null) {
+                category.setParent(parent);
+            }
+
+            for (Category child : categoryDao.getByParentId(category.getCategoryId())) {
+                if (child != null) {
+                    Category childRestored = getCategoryByIdRestoredInternal(child.getCategoryId(), visited);
+                    if (childRestored != null) {
+                        childRestored.setParent(category);
+                    }
+                }
+            }
+        }
+        return category;
+    }
+
+    public Category getCategoryRestored(@NonNull Category category) {
+        return category.getCategoryId() != null ? getCategoryByIdRestored(category.getCategoryId()) : category;
+    }
+
+    public boolean categoryExists(Long id) {
+        if (id == null) return false;
+        return categoryDao.exists(id);
+    }
+
+    public boolean categoryNameExists(String name) {
+        if (name == null || name.isEmpty()) return false;
+        return categoryDao.nameExists(name.trim());
     }
 
     /**

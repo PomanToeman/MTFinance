@@ -3,8 +3,10 @@ package com.example.mtfinance.src.repositories;
 import androidx.annotation.NonNull;
 
 import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCrossRef;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionDao;
+import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryViolationException;
 import com.example.mtfinance.src.trackingengine.Transaction;
@@ -16,34 +18,36 @@ import javax.inject.Inject;
 
 /**
  * Concrete Tracking repository class for managing categories and transactions together
- * across Room database DAOs and enforcing business policies.
+ * across Room database DAOs and enforcing business policies without service dependencies.
  */
 public class TrackingRepository {
     private final CategoryRepository categoryRepository;
     private final TransactionRepository transactionRepository;
     private final CategoryTransactionDao categoryWithTransactionsDao;
-    private final CategoryService categoryService;
-    private final TransactionService transactionService;
+    private final CategoryDao categoryDao;
+    private final TransactionDao transactionDao;
+    private final CategoryRepositoryHelper helper;
 
     /**
-     * Constructs a TrackingRepository with required repositories, DAOs, and services.
+     * Constructs a TrackingRepository with required repositories, DAOs, and helper.
      * @param categoryRepository the category write repository
      * @param transactionRepository the transaction write repository
      * @param categoryWithTransactionsDao the cross-ref DAO
-     * @param categoryService the category query service
-     * @param transactionService the transaction query service
+     * @param categoryDao the category DAO
+     * @param transactionDao the transaction DAO
      */
     @Inject
     public TrackingRepository(CategoryRepository categoryRepository,
                               TransactionRepository transactionRepository,
                               CategoryTransactionDao categoryWithTransactionsDao,
-                              CategoryService categoryService,
-                              TransactionService transactionService) {
+                              CategoryDao categoryDao,
+                              TransactionDao transactionDao) {
         this.categoryRepository = categoryRepository;
         this.transactionRepository = transactionRepository;
         this.categoryWithTransactionsDao = categoryWithTransactionsDao;
-        this.categoryService = categoryService;
-        this.transactionService = transactionService;
+        this.categoryDao = categoryDao;
+        this.transactionDao = transactionDao;
+        this.helper = new CategoryRepositoryHelper(categoryDao);
     }
 
     /**
@@ -62,12 +66,12 @@ public class TrackingRepository {
      * @param categoryId - The ID of a category already within the database.
      */
     public void insertTransaction(@NonNull Transaction transaction, @NonNull Long categoryId) {
-        Category category = categoryService.getCategoryById(categoryId);
+        Category category = categoryDao.getById(categoryId);
         if (category == null) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
         if (!category.isSameType(transaction.getType())) {
-            insertTransaction(transaction, categoryService.getRootCategoryByType(transaction.getType()).getCategoryId());
+            insertTransaction(transaction, helper.getRootCategoryByType(transaction.getType()).getCategoryId());
             return;
         }
 
@@ -82,7 +86,7 @@ public class TrackingRepository {
      * @param transaction - The transaction to be inserted.
      */
     public void insertTransactionDefault(@NonNull Transaction transaction) {
-        Category generalCategory = categoryService.getRootCategoryByType(transaction.getType());
+        Category generalCategory = helper.getRootCategoryByType(transaction.getType());
         insertTransaction(transaction, generalCategory.getCategoryId());
     }
 
@@ -93,14 +97,16 @@ public class TrackingRepository {
      * @param categoryId - The category ID
      */
     public void insertRelationship(@NonNull Long transactionId, @NonNull Long categoryId) {
-        if (!transactionService.transactionExists(transactionId)) {
+        if (!transactionDao.exists(transactionId)) {
             throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
         }
-        if (!categoryService.categoryExists(categoryId)) {
+        if (!helper.categoryExists(categoryId)) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
 
-        if (!categoryService.getCategoryById(categoryId).isSameType(transactionService.getById(transactionId).getType())) {
+        Category category = categoryDao.getById(categoryId);
+        Transaction transaction = transactionDao.getById(transactionId);
+        if (category == null || transaction == null || !category.isSameType(transaction.getType())) {
             throw new TransactionViolationException(MessageCli.TRANSACTION_TYPE_MISMATCH.getMessage());
         }
 
@@ -137,10 +143,10 @@ public class TrackingRepository {
      * @param deleteTransactions - If true, delete all associated transactions
      */
     public void deleteCategory(@NonNull Long categoryId, boolean deleteTransactions) {
-        if (!categoryService.categoryExists(categoryId)) {
+        if (!helper.categoryExists(categoryId)) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
-        if (categoryService.isRoot(categoryId)) {
+        if (helper.isRoot(categoryId)) {
             throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
 
@@ -150,14 +156,20 @@ public class TrackingRepository {
                 deleteTransaction(transactionId);
             }
         } else {
-            Long rootCategoryId = categoryService.getRootCategoryByType(categoryService.getCategoryById(categoryId).getType()).getCategoryId();
-            for (Long transactionId : transactionIds) {
-                insertRelationship(transactionId, rootCategoryId);
+            Category category = categoryDao.getById(categoryId);
+            if (category != null) {
+                Long rootCategoryId = helper.getRootCategoryByType(category.getType()).getCategoryId();
+                for (Long transactionId : transactionIds) {
+                    insertRelationship(transactionId, rootCategoryId);
+                }
             }
         }
 
         categoryWithTransactionsDao.deleteCrossRefsForCategory(categoryId);
-        categoryRepository.deleteCategory(categoryService.getCategoryByIdRestored(categoryId));
+        Category category = helper.getCategoryByIdRestored(categoryId);
+        if (category != null) {
+            categoryRepository.deleteCategory(category);
+        }
     }
 
     /**

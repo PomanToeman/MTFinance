@@ -9,9 +9,7 @@ import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -50,35 +48,19 @@ public class CategoryService {
     }
 
     public Category getGeneralCategory() {
-        Category dbGeneral = categoryDao.getAll().stream()
-                .filter(c -> "General Category".equals(c.getName()))
-                .findFirst()
-                .orElse(null);
-        return dbGeneral != null ? getCategoryByIdRestored(dbGeneral.getCategoryId()) : getCategoryRestored(helper.generalCategory);
+        return helper.getGeneralCategory();
     }
 
     public Category getIncomeCategory() {
-        Category dbIncome = categoryDao.getAll().stream()
-                .filter(c -> "Income".equals(c.getName()))
-                .findFirst()
-                .orElse(null);
-        return dbIncome != null ? getCategoryByIdRestored(dbIncome.getCategoryId()) : helper.incomeCategory;
+        return helper.getIncomeCategory();
     }
 
     public Category getAccountTransferCategory() {
-        Category dbTransfer = categoryDao.getAll().stream()
-                .filter(c -> "Account Transfer".equals(c.getName()))
-                .findFirst()
-                .orElse(null);
-        return dbTransfer != null ? getCategoryByIdRestored(dbTransfer.getCategoryId()) : helper.accountTransferCategory;
+        return helper.getAccountTransferCategory();
     }
 
     public Category getOtherCategory() {
-        Category dbOther = categoryDao.getAll().stream()
-                .filter(c -> "Other Category (only for errors)".equals(c.getName()))
-                .findFirst()
-                .orElse(null);
-        return dbOther != null ? getCategoryByIdRestored(dbOther.getCategoryId()) : helper.otherCategory;
+        return helper.getOtherCategory();
     }
 
     public Category getRootCategoryByType(TrackingType type) {
@@ -90,34 +72,11 @@ public class CategoryService {
     }
 
     public Category getCategoryByIdRestored(@NonNull Long id) {
-        return getCategoryByIdRestoredInternal(id, new HashSet<>());
-    }
-
-    private Category getCategoryByIdRestoredInternal(Long id, Set<Long> visited) {
-        if (id == null || visited.contains(id)) return null;
-        visited.add(id);
-
-        Category category = categoryDao.getById(id);
-        if (category != null) {
-            Category parent = getCategoryByIdRestoredInternal(category.getParentId(), visited);
-            if (parent != null) {
-                category.setParent(parent);
-            }
-
-            for (Category child : categoryDao.getByParentId(category.getCategoryId())) {
-                if (child != null) {
-                    Category childRestored = getCategoryByIdRestoredInternal(child.getCategoryId(), visited);
-                    if (childRestored != null) {
-                        childRestored.setParent(category);
-                    }
-                }
-            }
-        }
-        return category;
+        return helper.getCategoryByIdRestored(id);
     }
 
     public Category getCategoryRestored(@NonNull Category category) {
-        return category.getCategoryId() != null ? getCategoryByIdRestored(category.getCategoryId()) : category;
+        return helper.getCategoryRestored(category);
     }
 
     public List<Category> getAllCategories() {
@@ -129,13 +88,11 @@ public class CategoryService {
     }
 
     public boolean categoryExists(Long id) {
-        if (id == null) return false;
-        return categoryDao.exists(id);
+        return helper.categoryExists(id);
     }
 
     public boolean categoryNameExists(String name) {
-        if (name == null || name.isEmpty()) return false;
-        return categoryDao.nameExists(name.trim());
+        return helper.categoryNameExists(name);
     }
 
     public boolean verifyExistingIds(Collection<Long> ids) {
@@ -154,6 +111,7 @@ public class CategoryService {
     }
 
     public boolean isRoot(Long categoryId) {
+        if (categoryId == null) return false;
         return helper.isRoot(categoryId);
     }
 

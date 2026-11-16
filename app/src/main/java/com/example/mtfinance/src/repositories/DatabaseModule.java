@@ -46,8 +46,8 @@ public abstract class DatabaseModule {
 
     @Provides
     @Singleton
-    static CategoryRepository provideCategoryRepository(CategoryDao categoryDao, CategoryService categoryService) {
-        return new CategoryRepository(categoryDao, categoryService);
+    static CategoryRepository provideCategoryRepository(CategoryDao categoryDao) {
+        return new CategoryRepository(categoryDao);
     }
 
     @Provides
@@ -61,9 +61,9 @@ public abstract class DatabaseModule {
     static TrackingRepository provideTrackingRepository(CategoryRepository categoryRepository,
                                                        TransactionRepository transactionRepository,
                                                        CategoryTransactionDao categoryWithTransactionsDao,
-                                                       CategoryService categoryService,
-                                                       TransactionService transactionService) {
-        return new TrackingRepository(categoryRepository, transactionRepository, categoryWithTransactionsDao, categoryService, transactionService);
+                                                       CategoryDao categoryDao,
+                                                       TransactionDao transactionDao) {
+        return new TrackingRepository(categoryRepository, transactionRepository, categoryWithTransactionsDao, categoryDao, transactionDao);
     }
 
     @Provides

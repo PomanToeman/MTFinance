@@ -17,18 +17,15 @@ import javax.inject.Inject;
  */
 public class CategoryRepository {
     private final CategoryDao categoryDao;
-    private final CategoryService categoryService;
     private final CategoryRepositoryHelper helper;
 
     /**
-     * Constructs a CategoryRepository with required DAO, service, and helper.
+     * Constructs a CategoryRepository with required DAO and helper.
      * @param categoryDao the category Room DAO
-     * @param categoryService the category query service
      */
     @Inject
-    public CategoryRepository(CategoryDao categoryDao, CategoryService categoryService) {
+    public CategoryRepository(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
-        this.categoryService = categoryService;
         this.helper = new CategoryRepositoryHelper(categoryDao);
     }
 
@@ -40,21 +37,21 @@ public class CategoryRepository {
      * @return the generated category ID
      */
     public Long insert(@NonNull Category category) {
-        if (category.equals(categoryService.getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
+        if (category.equals(helper.getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
             throw new CategoryViolationException(MessageCli.CATEGORY_SAVE_FAILED.getMessage("Invalid category type or root duplication"));
         }
 
-        if (categoryNameExists(category.getName())) {
+        if (helper.categoryNameExists(category.getName())) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
         }
 
         if (category.getParent() == null && category.getParentId() != null) {
-            category.setParent(categoryService.getCategoryByIdRestored(category.getParentId()));
+            category.setParent(helper.getCategoryByIdRestored(category.getParentId()));
         }
 
         if (category.getParent() == null) {
-            category.setParent(categoryService.getGeneralCategory());
-        } else if (category.getParent().getCategoryId() == null || !categoryService.categoryExists(category.getParent().getCategoryId())) {
+            category.setParent(helper.getGeneralCategory());
+        } else if (category.getParent().getCategoryId() == null || !helper.categoryExists(category.getParent().getCategoryId())) {
             insert(category.getParent());
         }
 
@@ -75,7 +72,7 @@ public class CategoryRepository {
      * @param categoryToDelete - the category to delete
      */
     public void deleteCategory(@NonNull Category categoryToDelete) {
-        if (categoryToDelete.getCategoryId() == null || !categoryService.categoryExists(categoryToDelete.getCategoryId())) {
+        if (categoryToDelete.getCategoryId() == null || !helper.categoryExists(categoryToDelete.getCategoryId())) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
 
@@ -88,17 +85,17 @@ public class CategoryRepository {
             return;
         }
 
-        Category categoryInDb = categoryService.getCategoryById(categoryToDelete.getCategoryId());
+        Category categoryInDb = categoryDao.getById(categoryToDelete.getCategoryId());
         if (categoryInDb == null) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
 
         Category parentOfDeleted = categoryToDelete.getParent();
         if (parentOfDeleted == null && categoryToDelete.getParentId() != null) {
-            parentOfDeleted = categoryService.getCategoryByIdRestored(categoryToDelete.getParentId());
+            parentOfDeleted = helper.getCategoryByIdRestored(categoryToDelete.getParentId());
         }
         if (parentOfDeleted == null) {
-            parentOfDeleted = categoryService.getGeneralCategory();
+            parentOfDeleted = helper.getGeneralCategory();
         }
 
         for (Category child : categoryInDb.getChildren(false)) {
@@ -147,12 +144,12 @@ public class CategoryRepository {
         }
 
         if (category.getParent() == null && category.getParentId() != null) {
-            category.setParent(categoryService.getCategoryByIdRestored(category.getParentId()));
+            category.setParent(helper.getCategoryByIdRestored(category.getParentId()));
         }
 
         if (category.getParent() == null) {
-            category.setParent(categoryService.getGeneralCategory());
-        } else if (category.getParent().getCategoryId() == null || !categoryService.categoryExists(category.getParent().getCategoryId())) {
+            category.setParent(helper.getGeneralCategory());
+        } else if (category.getParent().getCategoryId() == null || !helper.categoryExists(category.getParent().getCategoryId())) {
             insert(category.getParent());
         }
 
@@ -165,9 +162,5 @@ public class CategoryRepository {
         if (!category.getChildren(false).isEmpty()) {
             categoryDao.updateAll(category.getChildren(false));
         }
-    }
-
-    private boolean categoryNameExists(String name) {
-        return categoryService.categoryNameExists(name);
     }
 }
