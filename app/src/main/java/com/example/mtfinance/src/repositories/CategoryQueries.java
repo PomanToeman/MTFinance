@@ -16,7 +16,7 @@ import java.util.Set;
  * root category verification, type resolution, category restoration, existence checks,
  * and recursive tree validation across services and repositories.
  */
-class CategoryRepositoryHelper {
+class CategoryQueries {
     public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
     public final Category incomeCategory = new Category("Income", "Tracks income transactions", BigDecimal.valueOf(1000), TrackingType.INCOME);
     public final Category accountTransferCategory = new Category("Account Transfer", "Account Transfers", BigDecimal.valueOf(1000), TrackingType.ACCOUNT_TRANSFERS);
@@ -29,10 +29,10 @@ class CategoryRepositoryHelper {
     private final CategoryDao categoryDao;
 
     /**
-     * Constructs a CategoryRepositoryHelper with the given CategoryDao.
+     * Constructs a CategoryQueries with the given CategoryDao.
      * @param categoryDao the Room DAO for categories
      */
-    public CategoryRepositoryHelper(CategoryDao categoryDao) {
+    public CategoryQueries(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
     }
 

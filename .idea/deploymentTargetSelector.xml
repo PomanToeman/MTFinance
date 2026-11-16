@@ -6,15 +6,11 @@
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="Tests in 'com.example.mtfinance.src.stress'">
+      <SelectionState runConfigName="insert_DuplicateCategory_ThrowsCategoryViolationException()">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="stressTestTransactions_LargeVolumeOfInserts_CalculatesTotalAndSizeAccurately()">
-        <option name="selectionMode" value="DROPDOWN" />
-        <DialogSelection />
-      </SelectionState>
-      <SelectionState runConfigName="constructor_WithDefaultPopulation_PopulatesDefaultCategories()">
+      <SelectionState runConfigName="Tests in 'com.example.mtfinance.src.repositories'">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>

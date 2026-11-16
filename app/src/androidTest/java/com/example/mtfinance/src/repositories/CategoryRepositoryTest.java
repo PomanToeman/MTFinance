@@ -14,6 +14,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryViolationException;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
@@ -45,11 +46,12 @@ public class CategoryRepositoryTest {
 
     @Before
     public void setUp() {
+
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         categoryDao = database.categoryDao();
-        categoryService = new CategoryServiceImpl(categoryDao, true);
-        repository = new CategoryRepository(categoryDao, categoryService);
+        repository = new CategoryRepository(categoryDao);
+        categoryService = new CategoryService(categoryDao);
     }
 
     @After
@@ -85,8 +87,8 @@ public class CategoryRepositoryTest {
         assertEquals(7, allCategories.size());
     }
 
-    @Test(expected = android.database.sqlite.SQLiteConstraintException.class)
-    public void insert_DuplicateCategoryName_ThrowsConstraintException() {
+    @Test(expected = CategoryViolationException.class)
+    public void insert_DuplicateCategory_ThrowsCategoryViolationException() {
         // Arrange
         Category duplicate = new Category(GROCERIES_NAME, "Duplicate", BUDGET_HUNDRED, TrackingType.EXPENSE);
 
@@ -140,7 +142,7 @@ public class CategoryRepositoryTest {
     }
 
     @Test
-    public void deleteCategory_ParentCategoryWithChildren_ReassignsChildrenToParent() {
+    public void deleteCategory_ParentCategoryWithChildren_ReassignsChildrenToGeneral() {
         // Arrange
         Category parent = new Category(PARENT_NAME, "", BUDGET_TWO_HUNDRED, TrackingType.EXPENSE);
         repository.insert(parent);
@@ -167,7 +169,8 @@ public class CategoryRepositoryTest {
         Category updatedChild = categoryService.getCategoryById(childInDb.getCategoryId());
 
         // Assert
-        assertEquals(7L, (long) updatedChild.getParentId());
+        assertEquals((long) categoryService.getGeneralCategory().getCategoryId(), (long) updatedChild.getParentId());
+
     }
 
     @Test

@@ -19,7 +19,7 @@ import javax.inject.Inject;
  */
 public class CategoryRepository {
     private final CategoryDao categoryDao;
-    private final CategoryRepositoryHelper helper;
+    private final CategoryQueries helper;
 
     /**
      * Constructs a CategoryRepository with required DAO and helper.
@@ -28,7 +28,7 @@ public class CategoryRepository {
     @Inject
     public CategoryRepository(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
-        this.helper = new CategoryRepositoryHelper(categoryDao);
+        this.helper = new CategoryQueries(categoryDao);
     }
 
     /**
@@ -82,30 +82,30 @@ public class CategoryRepository {
             throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
 
-        if (categoryToDelete.getChildren(false).isEmpty()) {
-            categoryDao.delete(categoryToDelete);
-            return;
-        }
-
-        Category categoryInDb = categoryDao.getById(categoryToDelete.getCategoryId());
-        if (categoryInDb == null) {
+        Category categoryRestored = helper.getCategoryByIdRestored(categoryToDelete.getCategoryId());
+        if (categoryRestored == null) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
 
-        Category parentOfDeleted = categoryToDelete.getParent();
-        if (parentOfDeleted == null && categoryToDelete.getParentId() != null) {
-            parentOfDeleted = helper.getCategoryByIdRestored(categoryToDelete.getParentId());
+        if (categoryRestored.getChildren(false).isEmpty()) {
+            categoryDao.delete(categoryRestored);
+            return;
+        }
+
+        Category parentOfDeleted = categoryRestored.getParent();
+        if (parentOfDeleted == null && categoryRestored.getParentId() != null) {
+            parentOfDeleted = helper.getCategoryByIdRestored(categoryRestored.getParentId());
         }
         if (parentOfDeleted == null) {
             parentOfDeleted = helper.getGeneralCategory();
         }
 
-        for (Category child : categoryInDb.getChildren(false)) {
+        for (Category child : categoryRestored.getChildren(false)) {
             child.setParent(parentOfDeleted);
             updateCategory(child);
         }
 
-        categoryDao.delete(categoryToDelete);
+        categoryDao.delete(categoryRestored);
     }
 
     /**

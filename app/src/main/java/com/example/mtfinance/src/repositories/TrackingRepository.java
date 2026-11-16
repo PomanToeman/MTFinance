@@ -26,7 +26,7 @@ public class TrackingRepository {
     private final CategoryTransactionDao categoryWithTransactionsDao;
     private final CategoryDao categoryDao;
     private final TransactionDao transactionDao;
-    private final CategoryRepositoryHelper helper;
+    private final CategoryQueries helper;
 
     /**
      * Constructs a TrackingRepository with required repositories, DAOs, and helper.
@@ -47,7 +47,7 @@ public class TrackingRepository {
         this.categoryWithTransactionsDao = categoryWithTransactionsDao;
         this.categoryDao = categoryDao;
         this.transactionDao = transactionDao;
-        this.helper = new CategoryRepositoryHelper(categoryDao);
+        this.helper = new CategoryQueries(categoryDao);
     }
 
     /**

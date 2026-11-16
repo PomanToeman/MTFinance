@@ -16,13 +16,13 @@ import javax.inject.Singleton;
 
 /**
  * Concrete service class managing read-only category query responsibilities via Room DAOs
- * and leveraging CategoryRepositoryHelper for centralized initialization and validation.
+ * and leveraging CategoryQueries for centralized initialization and validation.
  */
 @Singleton
 public class CategoryService {
 
     private final CategoryDao categoryDao;
-    private final CategoryRepositoryHelper helper;
+    private final CategoryQueries helper;
 
     /**
      * Constructs a CategoryService with the specified CategoryDao.
@@ -31,7 +31,7 @@ public class CategoryService {
     @Inject
     public CategoryService(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
-        this.helper = new CategoryRepositoryHelper(categoryDao);
+        this.helper = new CategoryQueries(categoryDao);
         helper.populateDefaultCategories();
     }
 
@@ -43,7 +43,7 @@ public class CategoryService {
     @VisibleForTesting
     public CategoryService(CategoryDao categoryDao, boolean populateDefaultCategories) {
         this.categoryDao = categoryDao;
-        this.helper = new CategoryRepositoryHelper(categoryDao);
+        this.helper = new CategoryQueries(categoryDao);
         if (populateDefaultCategories) helper.populateDefaultCategories();
     }
 

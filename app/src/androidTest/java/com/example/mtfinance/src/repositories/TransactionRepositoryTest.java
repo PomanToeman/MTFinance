@@ -48,7 +48,7 @@ public class TransactionRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         transactionDao = database.transactionDao();
         repository = new TransactionRepository(transactionDao);
-        transactionService = new TransactionServiceImpl(transactionDao);
+        transactionService = new TransactionService(transactionDao);
     }
 
     @After
