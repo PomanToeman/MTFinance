@@ -1,25 +1,25 @@
 package com.example.mtfinance.src.viewmodels;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
-
+import com.example.mtfinance.InstantExecutorExtension;
+import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TrackingWriteRepository;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -27,10 +27,11 @@ import org.mockito.MockitoAnnotations;
 import java.math.BigDecimal;
 import java.util.concurrent.Executor;
 
+@ExtendWith(InstantExecutorExtension.class)
 public class CategoryFormViewModelTest {
 
-    @Rule
-    public TestRule rule = new InstantTaskExecutorRule();
+    @Mock
+    private CategoryService categoryService;
 
     @Mock
     private TrackingService trackingService;
@@ -41,10 +42,10 @@ public class CategoryFormViewModelTest {
     private CategoryFormViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        viewModel = new CategoryFormViewModel(trackingService, trackingWriteRepository, synchronousExecutor);
+        viewModel = new CategoryFormViewModel(categoryService, trackingService, trackingWriteRepository, synchronousExecutor);
 
         viewModel.getName().observeForever(s -> {});
         viewModel.getDescription().observeForever(s -> {});
@@ -68,11 +69,13 @@ public class CategoryFormViewModelTest {
         verify(trackingWriteRepository).insertCategory(categoryCaptor.capture());
 
         Category capturedCategory = categoryCaptor.getValue();
-        assertEquals("Utilities", capturedCategory.getName());
-        assertEquals("Water and Electricity", capturedCategory.getDescription());
-        assertEquals(0, BigDecimal.valueOf(150.00).compareTo(capturedCategory.getMonthlyBudget()));
-        assertEquals(TrackingType.EXPENSE, capturedCategory.getType());
-        assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue());
+        assertAll(
+            () -> assertEquals("Utilities", capturedCategory.getName()),
+            () -> assertEquals("Water and Electricity", capturedCategory.getDescription()),
+            () -> assertEquals(0, BigDecimal.valueOf(150.00).compareTo(capturedCategory.getMonthlyBudget())),
+            () -> assertEquals(TrackingType.EXPENSE, capturedCategory.getType()),
+            () -> assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue())
+        );
     }
 
     @Test
@@ -81,9 +84,9 @@ public class CategoryFormViewModelTest {
         Category existingCategory = new Category("Old Name", "Old Desc", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         existingCategory.setCategoryId(categoryId);
 
-        when(trackingService.categoryExists(categoryId)).thenReturn(true);
-        when(trackingService.getCategoryByIdRestored(categoryId)).thenReturn(existingCategory);
-        when(trackingService.isRoot(existingCategory)).thenReturn(false);
+        when(categoryService.categoryExists(categoryId)).thenReturn(true);
+        when(categoryService.getCategoryByIdRestored(categoryId)).thenReturn(existingCategory);
+        when(categoryService.isRoot(existingCategory)).thenReturn(false);
 
         viewModel.setEditCategory(categoryId);
 
@@ -92,12 +95,14 @@ public class CategoryFormViewModelTest {
 
         viewModel.saveCategory();
 
-        verify(trackingService, atLeastOnce()).getCategoryByIdRestored(categoryId);
+        verify(categoryService, atLeastOnce()).getCategoryByIdRestored(categoryId);
         verify(trackingWriteRepository).updateCategoryTree(existingCategory);
 
-        assertEquals("New Name", existingCategory.getName());
-        assertEquals(0, BigDecimal.valueOf(200).compareTo(existingCategory.getMonthlyBudget()));
-        assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue());
+        assertAll(
+            () -> assertEquals("New Name", existingCategory.getName()),
+            () -> assertEquals(0, BigDecimal.valueOf(200).compareTo(existingCategory.getMonthlyBudget())),
+            () -> assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue())
+        );
     }
 
     @Test
@@ -120,8 +125,10 @@ public class CategoryFormViewModelTest {
         viewModel.setName("");
         viewModel.saveCategory();
 
-        assertTrue(viewModel.getErrorMessage().getValue().contains("Name cannot be empty"));
-        assertEquals("", viewModel.getSuccessMessage().getValue());
+        assertAll(
+            () -> assertTrue(viewModel.getErrorMessage().getValue().contains("Name cannot be empty")),
+            () -> assertEquals("", viewModel.getSuccessMessage().getValue())
+        );
     }
 
     @Test
@@ -131,15 +138,17 @@ public class CategoryFormViewModelTest {
         child.setParent(parent);
         parent.setCategoryId(10L);
 
-        when(trackingService.categoryExists(10L)).thenReturn(true);
-        when(trackingService.getCategoryByIdRestored(10L)).thenReturn(parent);
+        when(categoryService.categoryExists(10L)).thenReturn(true);
+        when(categoryService.getCategoryByIdRestored(10L)).thenReturn(parent);
 
         viewModel.setEditCategory(10L);
 
         viewModel.setMonthlyBudget(BigDecimal.valueOf(50));
 
-        assertEquals(0, BigDecimal.valueOf(50).compareTo(viewModel.getMonthlyBudget().getValue()));
-        assertEquals("", viewModel.getErrorMessage().getValue());
+        assertAll(
+            () -> assertEquals(0, BigDecimal.valueOf(50).compareTo(viewModel.getMonthlyBudget().getValue())),
+            () -> assertEquals("", viewModel.getErrorMessage().getValue())
+        );
     }
 
     @Test
@@ -153,11 +162,11 @@ public class CategoryFormViewModelTest {
         child.setCategoryId(childId);
         child.setParent(parent);
 
-        when(trackingService.categoryExists(parentId)).thenReturn(true);
-        when(trackingService.categoryExists(childId)).thenReturn(true);
-        when(trackingService.getCategoryByIdRestored(parentId)).thenReturn(parent);
-        when(trackingService.getCategoryByIdRestored(childId)).thenReturn(child);
-        when(trackingService.isRoot(child)).thenReturn(false);
+        when(categoryService.categoryExists(parentId)).thenReturn(true);
+        when(categoryService.categoryExists(childId)).thenReturn(true);
+        when(categoryService.getCategoryByIdRestored(parentId)).thenReturn(parent);
+        when(categoryService.getCategoryByIdRestored(childId)).thenReturn(child);
+        when(categoryService.isRoot(child)).thenReturn(false);
 
         viewModel.setEditCategory(childId);
 
@@ -168,8 +177,10 @@ public class CategoryFormViewModelTest {
         verify(trackingWriteRepository).updateCategoryTree(captor.capture());
 
         Category savedChild = captor.getValue();
-        assertEquals(0, BigDecimal.valueOf(150).compareTo(savedChild.getMonthlyBudget()));
-        assertEquals(0, BigDecimal.valueOf(150).compareTo(savedChild.getParent().getMonthlyBudget()));
+        assertAll(
+            () -> assertEquals(0, BigDecimal.valueOf(150).compareTo(savedChild.getMonthlyBudget())),
+            () -> assertEquals(0, BigDecimal.valueOf(150).compareTo(savedChild.getParent().getMonthlyBudget()))
+        );
     }
 
     @Test
@@ -178,8 +189,8 @@ public class CategoryFormViewModelTest {
         Category parent = new Category("Parent", "", BigDecimal.valueOf(500), TrackingType.EXPENSE);
         parent.setCategoryId(parentId);
 
-        when(trackingService.categoryExists(parentId)).thenReturn(true);
-        when(trackingService.getCategoryByIdRestored(parentId)).thenReturn(parent);
+        when(categoryService.categoryExists(parentId)).thenReturn(true);
+        when(categoryService.getCategoryByIdRestored(parentId)).thenReturn(parent);
 
         viewModel.setName("Child");
         viewModel.setParentId(parentId);
@@ -199,11 +210,11 @@ public class CategoryFormViewModelTest {
         Category catB = new Category("B", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         catB.setCategoryId(2L);
 
-        when(trackingService.categoryExists(1L)).thenReturn(true);
-        when(trackingService.categoryExists(2L)).thenReturn(true);
-        when(trackingService.getCategoryByIdRestored(1L)).thenReturn(catA);
-        when(trackingService.getCategoryByIdRestored(2L)).thenReturn(catB);
-        when(trackingService.isRoot(catB)).thenReturn(false);
+        when(categoryService.categoryExists(1L)).thenReturn(true);
+        when(categoryService.categoryExists(2L)).thenReturn(true);
+        when(categoryService.getCategoryByIdRestored(1L)).thenReturn(catA);
+        when(categoryService.getCategoryByIdRestored(2L)).thenReturn(catB);
+        when(categoryService.isRoot(catB)).thenReturn(false);
 
         viewModel.setEditCategory(2L);
         viewModel.setParentId(1L);
@@ -218,23 +229,25 @@ public class CategoryFormViewModelTest {
         long rootId = 0L;
         Category root = new Category("Root", "", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
         root.setCategoryId(rootId);
-        when(trackingService.categoryExists(rootId)).thenReturn(true);
-        when(trackingService.getCategoryByIdRestored(rootId)).thenReturn(root);
-        when(trackingService.isRoot(root)).thenReturn(true);
+        when(categoryService.categoryExists(rootId)).thenReturn(true);
+        when(categoryService.getCategoryByIdRestored(rootId)).thenReturn(root);
+        when(categoryService.isRoot(root)).thenReturn(true);
 
         viewModel.setEditCategory(rootId);
         viewModel.setMonthlyBudget(BigDecimal.valueOf(1200));
         viewModel.saveCategory();
 
         verify(trackingWriteRepository).updateCategory(root);
-        assertEquals(0, BigDecimal.valueOf(1200).compareTo(root.getMonthlyBudget()));
-        assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue());
+        assertAll(
+            () -> assertEquals(0, BigDecimal.valueOf(1200).compareTo(root.getMonthlyBudget())),
+            () -> assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue())
+        );
     }
 
     @Test
     public void saveCategory_duplicateName_failsValidation() {
         String duplicateName = "Groceries";
-        when(trackingService.categoryNameExists(duplicateName)).thenReturn(true);
+        when(categoryService.categoryNameExists(duplicateName)).thenReturn(true);
 
         viewModel.setName(duplicateName);
         viewModel.setMonthlyBudget(BigDecimal.valueOf(100));
@@ -250,16 +263,18 @@ public class CategoryFormViewModelTest {
         Category category = new Category("To Delete", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
         category.setCategoryId(categoryId);
 
-        when(trackingService.categoryExists(categoryId)).thenReturn(true);
-        when(trackingService.getCategoryByIdRestored(categoryId)).thenReturn(category);
+        when(categoryService.categoryExists(categoryId)).thenReturn(true);
+        when(categoryService.getCategoryByIdRestored(categoryId)).thenReturn(category);
 
         viewModel.setEditCategory(categoryId);
 
         viewModel.deleteCategory(true);
 
         verify(trackingWriteRepository).deleteCategory(categoryId, true);
-        assertEquals("Category deleted successfully", viewModel.getSuccessMessage().getValue());
-        assertNull(viewModel.getEditCategoryId());
+        assertAll(
+            () -> assertEquals("Category deleted successfully", viewModel.getSuccessMessage().getValue()),
+            () -> assertNull(viewModel.getEditCategoryId())
+        );
     }
 
     @Test

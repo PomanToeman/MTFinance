@@ -1,42 +1,38 @@
 package com.example.mtfinance.src.viewmodels;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import android.app.Application;
 import android.content.ContentResolver;
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
-
+import com.example.mtfinance.InstantExecutorExtension;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TransactionService;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.io.IOException;
 import java.util.concurrent.Executor;
 
+@ExtendWith(InstantExecutorExtension.class)
 public class TransactionImportFormViewModelTest {
-
-    @Rule
-    public TestRule rule = new InstantTaskExecutorRule();
-
-    @Rule
-    public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Mock
     private CategoryService categoryService;
 
     @Mock
     private TrackingService trackingService;
+
+    @Mock
+    private TransactionService transactionService;
 
     @Mock
     private TrackingWriteRepository trackingWriteRepository;
@@ -50,11 +46,11 @@ public class TransactionImportFormViewModelTest {
     private TransactionImportFormViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         when(application.getContentResolver()).thenReturn(contentResolver);
-        viewModel = new TransactionImportFormViewModel(categoryService, trackingService, trackingWriteRepository, synchronousExecutor, application);
+        viewModel = new TransactionImportFormViewModel(categoryService, trackingService, transactionService, trackingWriteRepository, synchronousExecutor, application);
     }
 
     @Test
@@ -64,8 +60,10 @@ public class TransactionImportFormViewModelTest {
 
         viewModel.clear();
 
-        assertEquals("", viewModel.getFilePath().getValue());
-        assertEquals("", viewModel.getNameHeader().getValue());
-        assertTrue(viewModel.getCsvHeaders().getValue().isEmpty());
+        assertAll(
+            () -> assertEquals("", viewModel.getFilePath().getValue()),
+            () -> assertEquals("", viewModel.getNameHeader().getValue()),
+            () -> assertTrue(viewModel.getCsvHeaders().getValue().isEmpty())
+        );
     }
 }

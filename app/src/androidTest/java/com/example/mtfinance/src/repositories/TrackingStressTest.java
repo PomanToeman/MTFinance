@@ -35,14 +35,21 @@ public class TrackingStressTest {
     private CategoryRepository categoryRepository;
     private TransactionRepository transactionRepository;
     private TrackingRepository trackingRepository;
+    private CategoryService categoryService;
+    private TransactionService transactionService;
+    private TrackingService trackingService;
 
     @Before
     public void setUp() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
-        categoryRepository = new CategoryRepository(database.categoryDao(), true);
+        categoryService = new CategoryServiceImpl(database.categoryDao(), true);
+        transactionService = new TransactionServiceImpl(database.transactionDao());
+        trackingService = new TrackingServiceImpl(database.categoryDao(), database.transactionDao(), database.categoryTransactionDao(), categoryService);
+
+        categoryRepository = new CategoryRepository(database.categoryDao(), categoryService);
         transactionRepository = new TransactionRepository(database.transactionDao());
-        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao());
+        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao(), categoryService, transactionService);
     }
 
     @After
@@ -65,8 +72,8 @@ public class TrackingStressTest {
             expectedTotal = expectedTotal.add(AMOUNT_PER_TRANS);
         }
 
-        BigDecimal calculatedTotal = trackingRepository.getTotalInCategory(stressCat, false);
-        List<Long> transactionIds = trackingRepository.getTransactionIdsForCategory(stressCat.getCategoryId());
+        BigDecimal calculatedTotal = trackingService.getTotalInCategory(stressCat, false);
+        List<Long> transactionIds = trackingService.getTransactionIdsForCategory(stressCat.getCategoryId());
 
         assertEquals(0, expectedTotal.compareTo(calculatedTotal));
         assertEquals(TRANSACTION_COUNT, transactionIds.size());

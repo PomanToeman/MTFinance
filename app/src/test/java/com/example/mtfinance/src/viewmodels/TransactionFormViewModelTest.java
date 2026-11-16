@@ -1,25 +1,24 @@
 package com.example.mtfinance.src.viewmodels;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
-
+import com.example.mtfinance.InstantExecutorExtension;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -29,10 +28,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
+@ExtendWith(InstantExecutorExtension.class)
 public class TransactionFormViewModelTest {
-
-    @Rule
-    public TestRule rule = new InstantTaskExecutorRule();
 
     @Mock
     private TrackingService trackingService;
@@ -41,15 +38,18 @@ public class TransactionFormViewModelTest {
     private CategoryService categoryService;
 
     @Mock
+    private TransactionService transactionService;
+
+    @Mock
     private TrackingWriteRepository trackingWriteRepository;
 
     private TransactionFormViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        viewModel = new TransactionFormViewModel(trackingService, categoryService, trackingWriteRepository, synchronousExecutor);
+        viewModel = new TransactionFormViewModel(trackingService, categoryService, transactionService, trackingWriteRepository, synchronousExecutor);
     }
 
     @Test
@@ -76,13 +76,15 @@ public class TransactionFormViewModelTest {
         Transaction t = new Transaction.Builder("Dinner", BigDecimal.TEN).build();
         t.setTransactionId(transId);
 
-        when(trackingService.transactionExists(transId)).thenReturn(true);
-        when(trackingService.getTransactionById(transId)).thenReturn(t);
+        when(transactionService.transactionExists(transId)).thenReturn(true);
+        when(transactionService.getById(transId)).thenReturn(t);
 
         viewModel.setTransactionId(transId);
         viewModel.deleteTransaction();
 
-        verify(trackingWriteRepository).deleteTransaction(transId);
-        assertEquals("Transaction deleted successfully", viewModel.getSuccessMessage().getValue());
+        assertAll(
+            () -> verify(trackingWriteRepository).deleteTransaction(transId),
+            () -> assertEquals("Transaction deleted successfully", viewModel.getSuccessMessage().getValue())
+        );
     }
 }

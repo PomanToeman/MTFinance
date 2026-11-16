@@ -1,22 +1,22 @@
 package com.example.mtfinance.src.viewmodels;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 import androidx.lifecycle.MutableLiveData;
 
-import com.example.mtfinance.src.repositories.TrackingService;
-import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.InstantExecutorExtension;
+import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -24,30 +24,28 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+@ExtendWith(InstantExecutorExtension.class)
 public class TransactionViewModelTest {
 
-    @Rule
-    public TestRule rule = new InstantTaskExecutorRule();
-
     @Mock
-    private TrackingService trackingService;
+    private TransactionService transactionService;
 
     private TransactionViewModel viewModel;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
 
         MutableLiveData<List<Transaction>> transactionsLiveData = new MutableLiveData<>();
         transactionsLiveData.setValue(new ArrayList<>());
-        when(trackingService.getAllTransactions()).thenReturn(transactionsLiveData);
+        when(transactionService.getAllLive()).thenReturn(transactionsLiveData);
 
-        viewModel = new TransactionViewModel(trackingService);
+        viewModel = new TransactionViewModel(transactionService);
     }
 
     @Test
     public void constructor_loadsAllTransactions() {
-        verify(trackingService).getAllTransactions();
+        verify(transactionService).getAllLive();
         assertNotNull(viewModel.getAllTransactions().getValue());
     }
 
@@ -60,18 +58,14 @@ public class TransactionViewModelTest {
                 .build();
         transaction.setTransactionId(transactionId);
 
-        List<Category> categories = new ArrayList<>();
-        categories.add(new Category("Food", "Eating out", BigDecimal.valueOf(100), TrackingType.EXPENSE));
-
-        when(trackingService.getTransactionById(transactionId)).thenReturn(transaction);
-        when(trackingService.getCategoriesByTransactionId(transactionId)).thenReturn(categories);
+        when(transactionService.getById(transactionId)).thenReturn(transaction);
 
         viewModel.setSelectedTransaction(transactionId);
 
-        verify(trackingService).getTransactionById(transactionId);
-        verify(trackingService).getCategoriesByTransactionId(transactionId);
-        assertEquals(transaction, viewModel.getSelectedTransaction().getValue());
-        assertEquals(categories, viewModel.getCategoriesUnderSelectedTransaction().getValue());
+        assertAll(
+            () -> verify(transactionService).getById(transactionId),
+            () -> assertEquals(transaction, viewModel.getSelectedTransaction().getValue())
+        );
     }
 
     @Test
@@ -85,9 +79,9 @@ public class TransactionViewModelTest {
         MutableLiveData<List<Transaction>> transactionsLiveData = new MutableLiveData<>();
         transactionsLiveData.setValue(transactionsList);
 
-        when(trackingService.getAllTransactions()).thenReturn(transactionsLiveData);
+        when(transactionService.getAllLive()).thenReturn(transactionsLiveData);
 
-        TransactionViewModel newViewModel = new TransactionViewModel(trackingService);
+        TransactionViewModel newViewModel = new TransactionViewModel(transactionService);
 
         assertEquals(transactionsList, newViewModel.getAllTransactions().getValue());
     }
@@ -107,13 +101,15 @@ public class TransactionViewModelTest {
         MutableLiveData<List<Transaction>> repoLiveData = new MutableLiveData<>();
         repoLiveData.setValue(searchResults);
 
-        when(trackingService.searchTransactionsWithType(query, null)).thenReturn(repoLiveData);
+        when(transactionService.searchTransactionsWithType(query, null)).thenReturn(repoLiveData);
 
         viewModel.getFilteredTransactions().observeForever(res -> {});
         viewModel.setSearchQuery(query);
 
-        verify(trackingService).searchTransactionsWithType(query, null);
-        assertEquals(searchResults, viewModel.getFilteredTransactions().getValue());
+        assertAll(
+            () -> verify(transactionService).searchTransactionsWithType(query, null),
+            () -> assertEquals(searchResults, viewModel.getFilteredTransactions().getValue())
+        );
     }
 
     @Test
@@ -126,14 +122,16 @@ public class TransactionViewModelTest {
         MutableLiveData<List<Transaction>> repoLiveData = new MutableLiveData<>();
         repoLiveData.setValue(searchResults);
 
-        when(trackingService.searchTransactionsWithType(query, type)).thenReturn(repoLiveData);
+        when(transactionService.searchTransactionsWithType(query, type)).thenReturn(repoLiveData);
 
         viewModel.getFilteredTransactions().observeForever(res -> {});
         viewModel.setTypeFilter(type);
         viewModel.setSearchQuery(query);
 
-        verify(trackingService).searchTransactionsWithType(query, type);
-        assertEquals(searchResults, viewModel.getFilteredTransactions().getValue());
+        assertAll(
+            () -> verify(transactionService).searchTransactionsWithType(query, type),
+            () -> assertEquals(searchResults, viewModel.getFilteredTransactions().getValue())
+        );
     }
 
     @Test
@@ -150,9 +148,9 @@ public class TransactionViewModelTest {
         MutableLiveData<List<Transaction>> allTransactionsLiveData = new MutableLiveData<>();
         allTransactionsLiveData.setValue(allTransactions);
 
-        when(trackingService.getAllTransactions()).thenReturn(allTransactionsLiveData);
+        when(transactionService.getAllLive()).thenReturn(allTransactionsLiveData);
 
-        viewModel = new TransactionViewModel(trackingService);
+        viewModel = new TransactionViewModel(transactionService);
         viewModel.getFilteredTransactions().observeForever(res -> {});
         viewModel.setSearchQuery("");
 

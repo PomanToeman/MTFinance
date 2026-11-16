@@ -40,6 +40,7 @@ public class TransactionRepositoryTest {
     private AppDatabase database;
     private TransactionDao transactionDao;
     private TransactionRepository repository;
+    private TransactionService transactionService;
 
     @Before
     public void setUp() {
@@ -47,6 +48,7 @@ public class TransactionRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         transactionDao = database.transactionDao();
         repository = new TransactionRepository(transactionDao);
+        transactionService = new TransactionServiceImpl(transactionDao);
     }
 
     @After
@@ -77,7 +79,7 @@ public class TransactionRepositoryTest {
         // Act
         repository.insert(t1);
         repository.insert(t2);
-        List<Transaction> allTransactions = repository.getAll();
+        List<Transaction> allTransactions = transactionService.getAll();
 
         // Assert
         assertEquals(2, allTransactions.size());
@@ -86,7 +88,7 @@ public class TransactionRepositoryTest {
     @Test
     public void getAll_EmptyDatabase_ReturnsEmptyList() {
         // Arrange / Act
-        List<Transaction> allTransactions = repository.getAll();
+        List<Transaction> allTransactions = transactionService.getAll();
 
         // Assert
         assertTrue(allTransactions.isEmpty());
@@ -101,7 +103,7 @@ public class TransactionRepositoryTest {
         repository.insert(t2);
 
         // Act
-        List<Transaction> allTransactions = repository.getAll();
+        List<Transaction> allTransactions = transactionService.getAll();
 
         // Assert
         assertEquals(2, allTransactions.size());
@@ -114,7 +116,7 @@ public class TransactionRepositoryTest {
         Long id = repository.insert(transaction);
 
         // Act
-        Transaction retrievedTransaction = repository.getById(id);
+        Transaction retrievedTransaction = transactionService.getById(id);
 
         // Assert
         assertNotNull(retrievedTransaction);
@@ -124,7 +126,7 @@ public class TransactionRepositoryTest {
     @Test
     public void getById_NonExistentTransactionId_ReturnsNull() {
         // Arrange / Act
-        Transaction retrievedTransaction = repository.getById(NON_EXISTENT_ID);
+        Transaction retrievedTransaction = transactionService.getById(NON_EXISTENT_ID);
 
         // Assert
         assertNull(retrievedTransaction);

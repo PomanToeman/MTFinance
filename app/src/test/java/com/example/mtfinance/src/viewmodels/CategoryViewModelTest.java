@@ -1,26 +1,27 @@
 package com.example.mtfinance.src.viewmodels;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.mtfinance.InstantExecutorExtension;
+import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -33,10 +34,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
+@ExtendWith(InstantExecutorExtension.class)
 public class CategoryViewModelTest {
 
-    @Rule
-    public TestRule rule = new InstantTaskExecutorRule();
+    @Mock
+    private CategoryService categoryService;
 
     @Mock
     private TrackingService trackingService;
@@ -44,7 +46,7 @@ public class CategoryViewModelTest {
     private CategoryViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
 
@@ -52,7 +54,7 @@ public class CategoryViewModelTest {
         allCategoriesLiveData.setValue(new ArrayList<>());
         when(trackingService.getAllCategoriesWithTransactions()).thenReturn(allCategoriesLiveData);
 
-        viewModel = new CategoryViewModel(trackingService, synchronousExecutor);
+        viewModel = new CategoryViewModel(categoryService, trackingService, synchronousExecutor);
 
         viewModel.getFilteredCategories().observeForever(res -> {});
         viewModel.getSelectedCategory().observeForever(res -> {});
@@ -120,7 +122,7 @@ public class CategoryViewModelTest {
         cwt.category = category;
 
         when(trackingService.getCategoryWithTransactionsByCategoryId(categoryId)).thenReturn(cwt);
-        when(trackingService.getCategoryByIdRestored(categoryId)).thenReturn(category);
+        when(categoryService.getCategoryByIdRestored(categoryId)).thenReturn(category);
 
         BigDecimal totalInc = BigDecimal.valueOf(40);
         when(trackingService.getTotalInCategory(any(), anyBoolean(), any(), any())).thenReturn(totalInc);
@@ -136,18 +138,22 @@ public class CategoryViewModelTest {
         viewModel.setSelectedCategory(categoryId);
 
         assertTrue(latch.await(2, TimeUnit.SECONDS));
-        assertEquals(totalInc, viewModel.getTotalIncludingSub().getValue());
-        assertEquals(0, BigDecimal.valueOf(60).compareTo(viewModel.getRemaining().getValue()));
-        assertEquals(childTotals, viewModel.getChildrenTotals().getValue());
+        assertAll(
+            () -> assertEquals(totalInc, viewModel.getTotalIncludingSub().getValue()),
+            () -> assertEquals(0, BigDecimal.valueOf(60).compareTo(viewModel.getRemaining().getValue())),
+            () -> assertEquals(childTotals, viewModel.getChildrenTotals().getValue())
+        );
     }
 
     @Test
     public void resetSelectedCategory_clearsDashboardData() {
         viewModel.resetSelectedCategory();
 
-        assertNull(viewModel.getSelectedCategory().getValue());
-        assertEquals(BigDecimal.ZERO, viewModel.getTotalIncludingSub().getValue());
-        assertEquals(BigDecimal.ZERO, viewModel.getRemaining().getValue());
-        assertNull(viewModel.getChildrenTotals().getValue());
+        assertAll(
+            () -> assertNull(viewModel.getSelectedCategory().getValue()),
+            () -> assertEquals(BigDecimal.ZERO, viewModel.getTotalIncludingSub().getValue()),
+            () -> assertEquals(BigDecimal.ZERO, viewModel.getRemaining().getValue()),
+            () -> assertNull(viewModel.getChildrenTotals().getValue())
+        );
     }
 }
