@@ -46,8 +46,8 @@ public abstract class DatabaseModule {
 
     @Provides
     @Singleton
-    static CategoryRepository provideCategoryRepository(CategoryDao categoryDao) {
-        return new CategoryRepository(categoryDao);
+    static CategoryRepository provideCategoryRepository(AppDatabase appDatabase, CategoryDao categoryDao) {
+        return new CategoryRepository(appDatabase, categoryDao);
     }
 
     @Provides

@@ -174,7 +174,7 @@ class CategoryQueries {
         Long parentId = category.getParentId();
         while (parentId != null) {
             if (parentId.equals(category.getCategoryId())) {
-                throw new IllegalArgumentException("Cannot set a category as a child of its own descendant.");
+                throw new com.example.mtfinance.src.trackingengine.CategoryViolationException("Cannot set a category as a child of its own descendant.");
             }
             Category p = categoryDao.getById(parentId);
             parentId = p != null ? p.getParentId() : null;
