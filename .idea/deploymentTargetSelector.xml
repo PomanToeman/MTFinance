@@ -6,10 +6,6 @@
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="Tests in 'com.example.mtfinance'">
-        <option name="selectionMode" value="DROPDOWN" />
-        <DialogSelection />
-      </SelectionState>
       <SelectionState runConfigName="Tests in 'com.example.mtfinance.src.stress'">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />

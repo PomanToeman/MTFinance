@@ -111,7 +111,7 @@ class CategoryRepositoryHelper {
      */
     public boolean isRoot(@NonNull Category category) {
         Category root = getRootCategoryByType(category.getType());
-        return category.getName().equals(root.getName()) || (category.getCategoryId() != null && isRoot(category.getCategoryId()));
+        return category.getName().equals(root.getName());
     }
 
     /**
