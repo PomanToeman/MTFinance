@@ -46,11 +46,11 @@ public class CategoryRepository {
     /**
      * Inserts a category into the database atomically.
      * Enforces business rules: cannot insert root category duplicates or invalid tracking types.
-     * Throws CategoryViolationException if constraints are violated.
      * @param category - the category to be inserted
      * @return the generated category ID
+     * @throws CategoryViolationException if constraints are violated
      */
-    public Long insert(@NonNull Category category) {
+    public Long insert(@NonNull Category category) throws CategoryViolationException {
         if (appDatabase != null) {
             return appDatabase.runInTransaction(() -> insertInternal(category));
         } else {
@@ -90,10 +90,10 @@ public class CategoryRepository {
     /**
      * Deletes a category from the database atomically.
      * Cannot delete root categories or non-existent categories. Re-parents children if necessary.
-     * Throws CategoryViolationException if attempting to delete a root category or non-existent category.
      * @param categoryToDelete - the category to delete
+     * @throws CategoryViolationException if attempting to delete a root category or non-existent category
      */
-    public void deleteCategory(@NonNull Category categoryToDelete) {
+    public void deleteCategory(@NonNull Category categoryToDelete) throws CategoryViolationException {
         if (appDatabase != null) {
             appDatabase.runInTransaction(() -> deleteCategoryInternal(categoryToDelete));
         } else {
@@ -138,16 +138,19 @@ public class CategoryRepository {
 
     /**
      * Updates an existing category in the database.
-     * Prevents modifying system root categories via standard update.
-     * Throws CategoryViolationException if trying to update a root category.
+     * Prevents modifying system root categories or non-existent categories.
      * @param category - the category to update
+     * @throws CategoryViolationException if trying to update a root category or non-existent category
      */
-    public void updateCategory(@NonNull Category category) {
+    public void updateCategory(@NonNull Category category) throws CategoryViolationException {
         updateCategoryInternal(category);
     }
 
     private void updateCategoryInternal(@NonNull Category category) {
-        if (category.getCategoryId() != null && helper.isRoot(category.getCategoryId())) {
+        if (category.getCategoryId() == null || !helper.categoryExists(category.getCategoryId())) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+        }
+        if (helper.isRoot(category.getCategoryId())) {
             throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
         categoryDao.update(category);
@@ -157,8 +160,9 @@ public class CategoryRepository {
      * Explicitly updates the monthly budget of a system root category identified by TrackingType.
      * @param type the tracking type of the root category
      * @param newBudget the new monthly budget amount
+     * @throws CategoryViolationException if root category not found
      */
-    public void updateRootCategoryBudget(@NonNull TrackingType type, @NonNull BigDecimal newBudget) {
+    public void updateRootCategoryBudget(@NonNull TrackingType type, @NonNull BigDecimal newBudget) throws CategoryViolationException {
         TrackingUtlis.checkAmount(newBudget);
         Category root = helper.getRootCategoryByType(type);
         if (root == null || !helper.isRoot(root)) {
@@ -172,8 +176,9 @@ public class CategoryRepository {
      * Explicitly updates the monthly budget of a system root category identified by ID.
      * @param categoryId the category ID
      * @param newBudget the new monthly budget amount
+     * @throws CategoryViolationException if category not found or not a root category
      */
-    public void updateRootCategoryBudget(@NonNull Long categoryId, @NonNull BigDecimal newBudget) {
+    public void updateRootCategoryBudget(@NonNull Long categoryId, @NonNull BigDecimal newBudget) throws CategoryViolationException {
         TrackingUtlis.checkAmount(newBudget);
         Category category = categoryDao.getById(categoryId);
         if (category == null || !helper.isRoot(category)) {
@@ -185,10 +190,10 @@ public class CategoryRepository {
 
     /**
      * Updates multiple categories in bulk atomically.
-     * Throws CategoryViolationException if any category is a root category.
      * @param categories - collection of categories to update
+     * @throws CategoryViolationException if any category is a root category
      */
-    public void updateAllCategories(Collection<Category> categories) {
+    public void updateAllCategories(Collection<Category> categories) throws CategoryViolationException {
         if (appDatabase != null) {
             appDatabase.runInTransaction(() -> updateAllCategoriesInternal(categories));
         } else {
@@ -207,10 +212,10 @@ public class CategoryRepository {
 
     /**
      * Updates the category tree structure and validates parent hierarchy atomically.
-     * Throws CategoryViolationException if root category is modified or hierarchy rules fail.
      * @param category - the category inside the tree with cache restored
+     * @throws CategoryViolationException if root category is modified or hierarchy rules fail
      */
-    public void updateCategoryTree(@NonNull Category category) {
+    public void updateCategoryTree(@NonNull Category category) throws CategoryViolationException {
         if (appDatabase != null) {
             appDatabase.runInTransaction(() -> updateCategoryTreeInternal(category));
         } else {

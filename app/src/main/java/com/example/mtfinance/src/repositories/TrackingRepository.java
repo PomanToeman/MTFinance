@@ -52,27 +52,27 @@ public class TrackingRepository {
 
     /**
      * Insert a category into the database.
-     * Throws CategoryViolationException if insertion violates category policies.
      * @param category - the category to be inserted
+     * @throws CategoryViolationException if insertion violates category policies
      */
-    public void insertCategory(@NonNull Category category) {
+    public void insertCategory(@NonNull Category category) throws CategoryViolationException {
         categoryRepository.insert(category);
     }
 
     /**
      * Inserts a transaction with a specific category ID.
-     * Throws CategoryViolationException or TransactionViolationException if inputs are invalid.
      * @param transaction - The transaction to be inserted.
      * @param categoryId - The ID of a category already within the database.
+     * @throws CategoryViolationException if category does not exist
+     * @throws TransactionViolationException if transaction insertion fails or type mismatches category type
      */
-    public void insertTransaction(@NonNull Transaction transaction, @NonNull Long categoryId) {
+    public void insertTransaction(@NonNull Transaction transaction, @NonNull Long categoryId) throws CategoryViolationException, TransactionViolationException {
         Category category = categoryDao.getById(categoryId);
         if (category == null) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
         if (!category.isSameType(transaction.getType())) {
-            insertTransaction(transaction, helper.getRootCategoryByType(transaction.getType()).getCategoryId());
-            return;
+            throw new TransactionViolationException(MessageCli.TRANSACTION_TYPE_MISMATCH.getMessage());
         }
 
         transactionRepository.insert(transaction);
@@ -84,19 +84,21 @@ public class TrackingRepository {
     /**
      * Inserts a transaction under the default root category for its type.
      * @param transaction - The transaction to be inserted.
+     * @throws TransactionViolationException if transaction insertion fails
      */
-    public void insertTransactionDefault(@NonNull Transaction transaction) {
+    public void insertTransactionDefault(@NonNull Transaction transaction) throws TransactionViolationException {
         Category generalCategory = helper.getRootCategoryByType(transaction.getType());
         insertTransaction(transaction, generalCategory.getCategoryId());
     }
 
     /**
      * Establishes a relationship between a transaction and a category.
-     * Throws TransactionViolationException or CategoryViolationException if types mismatch or entities do not exist.
      * @param transactionId - The transaction ID
      * @param categoryId - The category ID
+     * @throws TransactionViolationException if transaction does not exist or types mismatch
+     * @throws CategoryViolationException if category does not exist
      */
-    public void insertRelationship(@NonNull Long transactionId, @NonNull Long categoryId) {
+    public void insertRelationship(@NonNull Long transactionId, @NonNull Long categoryId) throws TransactionViolationException, CategoryViolationException {
         if (!transactionDao.exists(transactionId)) {
             throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
         }
@@ -116,11 +118,18 @@ public class TrackingRepository {
 
     /**
      * Deletes the relationship between a transaction and a category.
-     * Throws TransactionViolationException if a transaction would be left with zero categories.
      * @param transactionId - The transaction ID
      * @param categoryId - The category ID
+     * @throws TransactionViolationException if transaction does not exist or transaction would be left with zero categories
+     * @throws CategoryViolationException if category does not exist
      */
-    public void deleteRelationship(@NonNull Long transactionId, @NonNull Long categoryId) {
+    public void deleteRelationship(@NonNull Long transactionId, @NonNull Long categoryId) throws TransactionViolationException, CategoryViolationException {
+        if (!transactionDao.exists(transactionId)) {
+            throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
+        }
+        if (!helper.categoryExists(categoryId)) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+        }
         if (categoryWithTransactionsDao.getCategoryIdsForTransaction(transactionId).size() <= 1) {
             throw new TransactionViolationException(MessageCli.TRANSACTION_MIN_CATEGORY.getMessage());
         }
@@ -130,19 +139,23 @@ public class TrackingRepository {
     /**
      * Deletes a transaction and all its category relationships.
      * @param transactionId - The transaction ID
+     * @throws TransactionViolationException if transaction does not exist in database
      */
-    public void deleteTransaction(@NonNull Long transactionId) {
+    public void deleteTransaction(@NonNull Long transactionId) throws TransactionViolationException {
+        if (transactionId == null || !transactionDao.exists(transactionId)) {
+            throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
+        }
         categoryWithTransactionsDao.deleteCrossRefsForTransaction(transactionId);
         transactionRepository.delete(transactionId);
     }
 
     /**
      * Deletes a category and handles its transactions and sub-categories.
-     * Throws CategoryViolationException if trying to delete root categories.
      * @param categoryId - The category ID
      * @param deleteTransactions - If true, delete all associated transactions
+     * @throws CategoryViolationException if category does not exist or is a system root category
      */
-    public void deleteCategory(@NonNull Long categoryId, boolean deleteTransactions) {
+    public void deleteCategory(@NonNull Long categoryId, boolean deleteTransactions) throws CategoryViolationException {
         if (!helper.categoryExists(categoryId)) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
@@ -175,24 +188,27 @@ public class TrackingRepository {
     /**
      * Updates a category.
      * @param category - the category to update
+     * @throws CategoryViolationException if category is a system root category or does not exist
      */
-    public void updateCategory(@NonNull Category category) {
+    public void updateCategory(@NonNull Category category) throws CategoryViolationException {
         categoryRepository.updateCategory(category);
     }
 
     /**
      * Updates a transaction.
      * @param transaction - the transaction to update
+     * @throws TransactionViolationException if transaction does not exist
      */
-    public void updateTransaction(@NonNull Transaction transaction) {
+    public void updateTransaction(@NonNull Transaction transaction) throws TransactionViolationException {
         transactionRepository.update(transaction);
     }
 
     /**
      * Updates a category tree.
      * @param category - the category tree root
+     * @throws CategoryViolationException if root category is modified or circular reference detected
      */
-    public void updateCategoryTree(@NonNull Category category) {
+    public void updateCategoryTree(@NonNull Category category) throws CategoryViolationException {
         categoryRepository.updateCategoryTree(category);
     }
 
@@ -200,8 +216,9 @@ public class TrackingRepository {
      * Explicitly updates the monthly budget of a system root category identified by TrackingType.
      * @param type the tracking type of the root category
      * @param newBudget the new monthly budget amount
+     * @throws CategoryViolationException if category is not found or not a root category
      */
-    public void updateRootCategoryBudget(@NonNull com.example.mtfinance.src.trackingengine.TrackingType type, @NonNull java.math.BigDecimal newBudget) {
+    public void updateRootCategoryBudget(@NonNull com.example.mtfinance.src.trackingengine.TrackingType type, @NonNull java.math.BigDecimal newBudget) throws CategoryViolationException {
         categoryRepository.updateRootCategoryBudget(type, newBudget);
     }
 
@@ -209,8 +226,9 @@ public class TrackingRepository {
      * Explicitly updates the monthly budget of a system root category identified by ID.
      * @param categoryId the category ID
      * @param newBudget the new monthly budget amount
+     * @throws CategoryViolationException if category is not found or not a root category
      */
-    public void updateRootCategoryBudget(@NonNull Long categoryId, @NonNull java.math.BigDecimal newBudget) {
+    public void updateRootCategoryBudget(@NonNull Long categoryId, @NonNull java.math.BigDecimal newBudget) throws CategoryViolationException {
         categoryRepository.updateRootCategoryBudget(categoryId, newBudget);
     }
 }
