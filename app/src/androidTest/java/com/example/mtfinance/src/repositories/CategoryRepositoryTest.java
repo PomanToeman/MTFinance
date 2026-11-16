@@ -3,6 +3,7 @@ package com.example.mtfinance.src.repositories;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -50,7 +51,7 @@ public class CategoryRepositoryTest {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         categoryDao = database.categoryDao();
-        repository = new CategoryRepository(categoryDao);
+        repository = new CategoryRepository(database, categoryDao);
         categoryService = new CategoryService(categoryDao);
     }
 
@@ -217,7 +218,7 @@ public class CategoryRepositoryTest {
         assertNotNull(transfer);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = com.example.mtfinance.src.trackingengine.CategoryViolationException.class)
     public void updateCategoryTree_CircularReference_ThrowsException() {
         // Arrange
         Category parent = new Category("P", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
@@ -300,5 +301,97 @@ public class CategoryRepositoryTest {
         Category category = new Category(ENTERTAINMENT_NAME, "Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
         long id = repository.insert(category);
         repository.updateRootCategoryBudget(id, BigDecimal.valueOf(300));
+    }
+
+    @Test
+    public void insert_FailureDuringChildInsert_RollsBackParentInsertion() {
+        // Arrange
+        Category parent = new Category("UnsavedParent", "Desc", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
+        // child has the same name as an existing category ("Groceries") to trigger CategoryViolationException during insert
+        Category child = new Category(GROCERIES_NAME, "Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        child.setParent(parent);
+
+        // Act
+        boolean exceptionThrown = false;
+        try {
+            repository.insert(child);
+        } catch (CategoryViolationException e) {
+            exceptionThrown = true;
+        }
+
+        // Assert
+        assertTrue(exceptionThrown);
+        Category parentInDb = categoryService.getAllCategories().stream()
+                .filter(c -> c.getName().equals("UnsavedParent"))
+                .findFirst()
+                .orElse(null);
+        // Parent should not exist in DB because child insertion failed and the operation should be atomic
+        assertNull(parentInDb);
+    }
+
+    @Test
+    public void updateCategoryTree_CircularReference_RollsBackDatabaseState() {
+        // Arrange
+        Category parent = new Category("ParentTreeAtomicity", "Desc", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
+        repository.insert(parent);
+        Category pInDb = categoryService.getAllCategories().stream()
+                .filter(c -> c.getName().equals("ParentTreeAtomicity"))
+                .findFirst().orElse(null);
+        assertNotNull(pInDb);
+
+        Category child = new Category("ChildTreeAtomicity", "Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        child.setParent(pInDb);
+        repository.insert(child);
+        Category cInDb = categoryService.getAllCategories().stream()
+                .filter(c -> c.getName().equals("ChildTreeAtomicity"))
+                .findFirst().orElse(null);
+        assertNotNull(cInDb);
+
+        Category restoredP = categoryService.getCategoryByIdRestored(pInDb.getCategoryId());
+        Category restoredC = categoryService.getCategoryByIdRestored(cInDb.getCategoryId());
+        restoredP.setName("ParentTreeModified");
+        restoredP.setParentId(restoredC.getCategoryId()); // Circular reference
+
+        // Act
+        boolean exceptionThrown = false;
+        try {
+            repository.updateCategoryTree(restoredP);
+        } catch (CategoryViolationException e) {
+            exceptionThrown = true;
+        }
+
+        // Assert
+        assertTrue(exceptionThrown);
+        Category pAfterFail = categoryService.getCategoryById(pInDb.getCategoryId());
+        // Name should still be original, proving the update was rolled back
+        assertEquals("ParentTreeAtomicity", pAfterFail.getName());
+    }
+
+    @Test
+    public void deleteCategory_NonExistentCategory_RollsBackWithoutModifyingDatabase() {
+        // Arrange
+        Category parent = new Category("ParentDeleteAtomicity", "Desc", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
+        repository.insert(parent);
+        Category pInDb = categoryService.getAllCategories().stream()
+                .filter(c -> c.getName().equals("ParentDeleteAtomicity"))
+                .findFirst().orElse(null);
+        assertNotNull(pInDb);
+
+        Category invalidDeleteTarget = new Category("NonExistent", "Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        invalidDeleteTarget.setCategoryId(99999L);
+
+        // Act
+        boolean exceptionThrown = false;
+        try {
+            repository.deleteCategory(invalidDeleteTarget);
+        } catch (CategoryViolationException e) {
+            exceptionThrown = true;
+        }
+
+        // Assert
+        assertTrue(exceptionThrown);
+        Category pAfterFail = categoryService.getCategoryById(pInDb.getCategoryId());
+        assertNotNull(pAfterFail);
+        assertEquals("ParentDeleteAtomicity", pAfterFail.getName());
     }
 }

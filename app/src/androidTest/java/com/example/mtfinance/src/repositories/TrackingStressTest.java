@@ -47,7 +47,7 @@ public class TrackingStressTest {
         transactionService = new TransactionService(database.transactionDao());
         trackingService = new TrackingService(database.categoryDao(), database.transactionDao(), database.categoryTransactionDao(), categoryService);
 
-        categoryRepository = new CategoryRepository(database.categoryDao());
+        categoryRepository = new CategoryRepository(database, database.categoryDao());
         transactionRepository = new TransactionRepository(database.transactionDao());
         trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao(), database.categoryDao(), database.transactionDao());
     }
