@@ -106,11 +106,19 @@ public class TransactionImportFormViewModel extends ViewModel {
     }
 
     /**
-     * Checks if any field error exists in the error map.
+     * Checks if any field error exists in the current LiveData error map.
      * @return true if at least one import field has a non-empty error message
      */
     public boolean hasFieldErrors() {
-        Map<TransactionImportErrorFields, String> errors = fieldErrors.getValue();
+        return hasFieldErrors(fieldErrors.getValue());
+    }
+
+    /**
+     * Checks if any field error exists in the given error map.
+     * @param errors the error map to check
+     * @return true if at least one import field has a non-empty error message
+     */
+    public boolean hasFieldErrors(Map<TransactionImportErrorFields, String> errors) {
         if (errors == null || errors.isEmpty()) return false;
         for (String error : errors.values()) {
             if (error != null && !error.trim().isEmpty()) {
@@ -280,9 +288,9 @@ public class TransactionImportFormViewModel extends ViewModel {
     public void importTransactionSync() {
         try {
             setIsLoading(Boolean.TRUE);
-            validateImport();
+            Map<TransactionImportErrorFields, String> errors = validateImport();
 
-            if (hasFieldErrors()) {
+            if (hasFieldErrors(errors)) {
                 setErrorMessage(MessageCli.FORM_INCOMPLETE.getMessage("Please configure required import headers and CSV file"));
                 setSuccessMessage("");
                 return;
@@ -357,7 +365,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         return TrackingUtlis.determineTypeByAmount(amount);
     }
 
-    private void validateImport() {
+    private Map<TransactionImportErrorFields, String> validateImport() {
         Map<TransactionImportErrorFields, String> errors = new EnumMap<>(TransactionImportErrorFields.class);
         for (TransactionImportErrorFields field : TransactionImportErrorFields.values()) {
             errors.put(field, "");
@@ -377,6 +385,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         }
 
         updateLiveData(this.fieldErrors, errors);
+        return errors;
     }
 
     private Long findCategoryIdForTransaction(TrackingType type, String query) {

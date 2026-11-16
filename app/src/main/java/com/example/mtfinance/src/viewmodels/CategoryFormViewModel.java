@@ -90,11 +90,19 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
     /**
-     * Checks if any field error exists in the error map.
+     * Checks if any field error exists in the current LiveData error map.
      * @return true if at least one field has a non-empty error message
      */
     public boolean hasFieldErrors() {
-        Map<CategoryErrorFields, String> errors = fieldErrors.getValue();
+        return hasFieldErrors(fieldErrors.getValue());
+    }
+
+    /**
+     * Checks if any field error exists in the given error map.
+     * @param errors the error map to check
+     * @return true if at least one field has a non-empty error message
+     */
+    public boolean hasFieldErrors(Map<CategoryErrorFields, String> errors) {
         if (errors == null || errors.isEmpty()) return false;
         for (String error : errors.values()) {
             if (error != null && !error.trim().isEmpty()) {
@@ -298,9 +306,9 @@ public class CategoryFormViewModel extends ViewModel {
         CategoryFormFields fields = getFields();
 
         try {
-            validateFormSync(fields);
+            Map<CategoryErrorFields, String> errors = validateFormSync(fields);
 
-            if (hasFieldErrors()) {
+            if (hasFieldErrors(errors)) {
                 setErrorMessage(MessageCli.FORM_INCOMPLETE.getMessage("Please fix form field errors"));
                 setSuccessMessage("");
                 return;
@@ -349,7 +357,7 @@ public class CategoryFormViewModel extends ViewModel {
         }
     }
 
-    private void validateFormSync(CategoryFormFields fields) {
+    private Map<CategoryErrorFields, String> validateFormSync(CategoryFormFields fields) {
         Map<CategoryErrorFields, String> errors = new EnumMap<>(CategoryErrorFields.class);
         for (CategoryErrorFields field : CategoryErrorFields.values()) {
             errors.put(field, "");
@@ -385,6 +393,7 @@ public class CategoryFormViewModel extends ViewModel {
         }
 
         updateLiveData(this.fieldErrors, errors);
+        return errors;
     }
 
     /**

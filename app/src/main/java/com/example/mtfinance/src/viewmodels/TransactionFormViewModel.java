@@ -103,11 +103,19 @@ public class TransactionFormViewModel extends ViewModel {
     }
 
     /**
-     * Checks if any field error exists in the error map.
+     * Checks if any field error exists in the current LiveData error map.
      * @return true if at least one field has a non-empty error message
      */
     public boolean hasFieldErrors() {
-        Map<TransactionErrorFields, String> errors = fieldErrors.getValue();
+        return hasFieldErrors(fieldErrors.getValue());
+    }
+
+    /**
+     * Checks if any field error exists in the given error map.
+     * @param errors the error map to check
+     * @return true if at least one field has a non-empty error message
+     */
+    public boolean hasFieldErrors(Map<TransactionErrorFields, String> errors) {
         if (errors == null || errors.isEmpty()) return false;
         for (String error : errors.values()) {
             if (error != null && !error.trim().isEmpty()) {
@@ -329,9 +337,9 @@ public class TransactionFormViewModel extends ViewModel {
         if (fields == null) return;
 
         try {
-            validateFormSync(fields);
+            Map<TransactionErrorFields, String> errors = validateFormSync(fields);
 
-            if (hasFieldErrors()) {
+            if (hasFieldErrors(errors)) {
                 setErrorMessage(MessageCli.FORM_INCOMPLETE.getMessage("Please fix transaction form field errors"));
                 setSuccessMessage("");
                 return;
@@ -419,7 +427,7 @@ public class TransactionFormViewModel extends ViewModel {
         }
     }
 
-    private void validateFormSync(TransactionFormFields fields) {
+    private Map<TransactionErrorFields, String> validateFormSync(TransactionFormFields fields) {
         Map<TransactionErrorFields, String> errors = new EnumMap<>(TransactionErrorFields.class);
         for (TransactionErrorFields field : TransactionErrorFields.values()) {
             errors.put(field, "");
@@ -440,6 +448,7 @@ public class TransactionFormViewModel extends ViewModel {
         }
 
         updateLiveData(this.fieldErrors, errors);
+        return errors;
     }
 
     private static class TransactionFormFields {
