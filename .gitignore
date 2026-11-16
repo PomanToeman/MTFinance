@@ -1,15 +1,30 @@
 *.iml
 .gradle
 /local.properties
+local.properties
+
+# Android Studio / IntelliJ IDE files
+.idea/
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/androidTestResultsUserPreferences.xml
+/shelf/
+
+# OS generated files
 .DS_Store
+Thumbs.db
+
+# Build outputs
 /build
 /captures
 .externalNativeBuild
 .cxx
-local.properties
+
+# AI Agent artifacts
+.artifacts/
+*.artifact.md
