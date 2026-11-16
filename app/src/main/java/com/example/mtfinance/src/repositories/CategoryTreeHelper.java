@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryViolationException;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 
 import java.math.BigDecimal;
@@ -12,11 +13,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Package-private helper class responsible for centralized default/root category initialization,
- * root category verification, type resolution, category restoration, existence checks,
- * and recursive tree validation across services and repositories.
+ * Package-private helper class specifically dedicated to complex category tree and hierarchy operations:
+ * default/root category seeding, root category getters via direct SQLite name lookups, recursive entity tree restoration,
+ * and category tree cycle validation. Simple database existence queries interact with CategoryDao directly.
  */
-class CategoryQueries {
+class CategoryTreeHelper {
     public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
     public final Category incomeCategory = new Category("Income", "Tracks income transactions", BigDecimal.valueOf(1000), TrackingType.INCOME);
     public final Category accountTransferCategory = new Category("Account Transfer", "Account Transfers", BigDecimal.valueOf(1000), TrackingType.ACCOUNT_TRANSFERS);
@@ -29,10 +30,10 @@ class CategoryQueries {
     private final CategoryDao categoryDao;
 
     /**
-     * Constructs a CategoryQueries with the given CategoryDao.
+     * Constructs a CategoryTreeHelper with the given CategoryDao.
      * @param categoryDao the Room DAO for categories
      */
-    public CategoryQueries(CategoryDao categoryDao) {
+    public CategoryTreeHelper(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
     }
 
@@ -53,36 +54,35 @@ class CategoryQueries {
         }
     }
 
+    /**
+     * Queries a category by its exact name using direct SQLite lookup and restores its tree hierarchy.
+     * @param name the category name to look up
+     * @return the restored Category, or null if not found
+     */
+    public Category getCategoryByName(String name) {
+        if (name == null || name.trim().isEmpty()) return null;
+        Category dbCategory = categoryDao.getByName(name.trim());
+        return dbCategory != null ? getCategoryByIdRestored(dbCategory.getCategoryId()) : null;
+    }
+
     public Category getGeneralCategory() {
-        Category dbGeneral = categoryDao.getAll().stream()
-                .filter(c -> generalCategory.getName().equals(c.getName()))
-                .findFirst()
-                .orElse(null);
-        return dbGeneral != null ? getCategoryByIdRestored(dbGeneral.getCategoryId()) : getCategoryRestored(generalCategory);
+        Category dbGeneral = getCategoryByName(generalCategory.getName());
+        return dbGeneral != null ? dbGeneral : getCategoryRestored(generalCategory);
     }
 
     public Category getIncomeCategory() {
-        Category dbIncome = categoryDao.getAll().stream()
-                .filter(c -> incomeCategory.getName().equals(c.getName()))
-                .findFirst()
-                .orElse(null);
-        return dbIncome != null ? getCategoryByIdRestored(dbIncome.getCategoryId()) : incomeCategory;
+        Category dbIncome = getCategoryByName(incomeCategory.getName());
+        return dbIncome != null ? dbIncome : incomeCategory;
     }
 
     public Category getAccountTransferCategory() {
-        Category dbTransfer = categoryDao.getAll().stream()
-                .filter(c -> accountTransferCategory.getName().equals(c.getName()))
-                .findFirst()
-                .orElse(null);
-        return dbTransfer != null ? getCategoryByIdRestored(dbTransfer.getCategoryId()) : accountTransferCategory;
+        Category dbTransfer = getCategoryByName(accountTransferCategory.getName());
+        return dbTransfer != null ? dbTransfer : accountTransferCategory;
     }
 
     public Category getOtherCategory() {
-        Category dbOther = categoryDao.getAll().stream()
-                .filter(c -> otherCategory.getName().equals(c.getName()))
-                .findFirst()
-                .orElse(null);
-        return dbOther != null ? getCategoryByIdRestored(dbOther.getCategoryId()) : otherCategory;
+        Category dbOther = getCategoryByName(otherCategory.getName());
+        return dbOther != null ? dbOther : otherCategory;
     }
 
     /**
@@ -156,25 +156,16 @@ class CategoryQueries {
         return category.getCategoryId() != null ? getCategoryByIdRestored(category.getCategoryId()) : category;
     }
 
-    public boolean categoryExists(Long id) {
-        if (id == null) return false;
-        return categoryDao.exists(id);
-    }
-
-    public boolean categoryNameExists(String name) {
-        if (name == null || name.isEmpty()) return false;
-        return categoryDao.nameExists(name.trim());
-    }
-
     /**
      * Validates category tree hierarchy and checks for circular dependencies.
      * @param category the category tree node
+     * @throws CategoryViolationException if circular hierarchy is detected
      */
-    public void validateCategoryTree(@NonNull Category category) {
+    public void validateCategoryTree(@NonNull Category category) throws CategoryViolationException {
         Long parentId = category.getParentId();
         while (parentId != null) {
             if (parentId.equals(category.getCategoryId())) {
-                throw new com.example.mtfinance.src.trackingengine.CategoryViolationException("Cannot set a category as a child of its own descendant.");
+                throw new CategoryViolationException("Cannot set a category as a child of its own descendant.");
             }
             Category p = categoryDao.getById(parentId);
             parentId = p != null ? p.getParentId() : null;

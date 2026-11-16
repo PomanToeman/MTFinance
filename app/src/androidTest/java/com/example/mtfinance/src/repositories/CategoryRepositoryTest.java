@@ -98,6 +98,20 @@ public class CategoryRepositoryTest {
     }
 
     @Test
+    public void getCategoryByName_ExistingCategory_ReturnsCorrectCategory() {
+        // Arrange
+        Category category = new Category("DirectNameSearch", "Desc", BUDGET_FIFTY, TrackingType.EXPENSE);
+        repository.insert(category);
+
+        // Act
+        Category found = categoryService.getCategoryByName("DirectNameSearch");
+
+        // Assert
+        assertNotNull(found);
+        assertEquals("DirectNameSearch", found.getName());
+    }
+
+    @Test
     public void insert_CategoryWithNonExistentParent_AutomaticallyInsertsParentUnderGeneral() {
         // Arrange
         Category parent = new Category(PARENT_NAME, "Parent desc", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
@@ -112,10 +126,7 @@ public class CategoryRepositoryTest {
         assertTrue(childId > 0);
         assertEquals(8, allCategories.size()); // 6 default + parent + child
 
-        Category foundChild = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals(CHILD_NAME))
-                .findFirst()
-                .orElse(null);
+        Category foundChild = categoryService.getCategoryByName(CHILD_NAME);
 
         assertNotNull(foundChild);
         assertEquals(parent.getCategoryId(), foundChild.getParentId());
@@ -127,16 +138,12 @@ public class CategoryRepositoryTest {
         Category category = new Category(ENTERTAINMENT_NAME, "Desc", BUDGET_FIFTY, TrackingType.EXPENSE);
         repository.insert(category);
 
-        Category found = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals(ENTERTAINMENT_NAME))
-                .findFirst()
-                .orElse(null);
+        Category found = categoryService.getCategoryByName(ENTERTAINMENT_NAME);
         assertNotNull(found);
 
         // Act
         repository.deleteCategory(found);
-        boolean stillExists = categoryService.getAllCategories().stream()
-                .anyMatch(c -> c.getName().equals(ENTERTAINMENT_NAME));
+        boolean stillExists = categoryService.getCategoryByName(ENTERTAINMENT_NAME) != null;
 
         // Assert
         assertFalse(stillExists);
@@ -148,10 +155,7 @@ public class CategoryRepositoryTest {
         Category parent = new Category(PARENT_NAME, "", BUDGET_TWO_HUNDRED, TrackingType.EXPENSE);
         repository.insert(parent);
 
-        Category parentInDb = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals(PARENT_NAME))
-                .findFirst()
-                .orElse(null);
+        Category parentInDb = categoryService.getCategoryByName(PARENT_NAME);
         assertNotNull(parentInDb);
         Category parentRestored = categoryService.getCategoryByIdRestored(parentInDb.getCategoryId());
 
@@ -159,10 +163,7 @@ public class CategoryRepositoryTest {
         child.setParent(parentRestored);
         repository.insert(child);
 
-        Category childInDb = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals(CHILD_NAME))
-                .findFirst()
-                .orElse(null);
+        Category childInDb = categoryService.getCategoryByName(CHILD_NAME);
         assertNotNull(childInDb);
 
         // Act
@@ -180,10 +181,7 @@ public class CategoryRepositoryTest {
         Category category = new Category("Initial", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         repository.insert(category);
 
-        Category found = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals("Initial"))
-                .findFirst()
-                .orElse(null);
+        Category found = categoryService.getCategoryByName("Initial");
         assertNotNull(found);
 
         Category restoredChild = categoryService.getCategoryByIdRestored(found.getCategoryId());
@@ -206,12 +204,8 @@ public class CategoryRepositoryTest {
     public void updateCategoryTree_ValidHierarchyUpdate_UpdatesSuccessfully() {
         // Arrange
         Category general = categoryService.getGeneralCategory();
-        Category income = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals("Income"))
-                .findFirst().orElse(null);
-        Category transfer = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals("Account Transfer"))
-                .findFirst().orElse(null);
+        Category income = categoryService.getCategoryByName("Income");
+        Category transfer = categoryService.getCategoryByName("Account Transfer");
 
         assertNotNull(general);
         assertNotNull(income);
@@ -223,17 +217,13 @@ public class CategoryRepositoryTest {
         // Arrange
         Category parent = new Category("P", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
         repository.insert(parent);
-        Category pInDb = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals("P"))
-                .findFirst().orElse(null);
+        Category pInDb = categoryService.getCategoryByName("P");
         assertNotNull(pInDb);
 
         Category child = new Category("C", "", BUDGET_FIFTY, TrackingType.EXPENSE);
         child.setParent(pInDb);
         repository.insert(child);
-        Category cInDb = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals("C"))
-                .findFirst().orElse(null);
+        Category cInDb = categoryService.getCategoryByName("C");
         assertNotNull(cInDb);
 
         Category restoredP = categoryService.getCategoryByIdRestored(pInDb.getCategoryId());
@@ -334,17 +324,13 @@ public class CategoryRepositoryTest {
         // Arrange
         Category parent = new Category("ParentTreeAtomicity", "Desc", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
         repository.insert(parent);
-        Category pInDb = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals("ParentTreeAtomicity"))
-                .findFirst().orElse(null);
+        Category pInDb = categoryService.getCategoryByName("ParentTreeAtomicity");
         assertNotNull(pInDb);
 
         Category child = new Category("ChildTreeAtomicity", "Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
         child.setParent(pInDb);
         repository.insert(child);
-        Category cInDb = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals("ChildTreeAtomicity"))
-                .findFirst().orElse(null);
+        Category cInDb = categoryService.getCategoryByName("ChildTreeAtomicity");
         assertNotNull(cInDb);
 
         Category restoredP = categoryService.getCategoryByIdRestored(pInDb.getCategoryId());
@@ -372,9 +358,7 @@ public class CategoryRepositoryTest {
         // Arrange
         Category parent = new Category("ParentDeleteAtomicity", "Desc", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
         repository.insert(parent);
-        Category pInDb = categoryService.getAllCategories().stream()
-                .filter(c -> c.getName().equals("ParentDeleteAtomicity"))
-                .findFirst().orElse(null);
+        Category pInDb = categoryService.getCategoryByName("ParentDeleteAtomicity");
         assertNotNull(pInDb);
 
         Category invalidDeleteTarget = new Category("NonExistent", "Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);

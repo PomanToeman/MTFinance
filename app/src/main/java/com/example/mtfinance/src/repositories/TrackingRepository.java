@@ -26,7 +26,7 @@ public class TrackingRepository {
     private final CategoryTransactionDao categoryWithTransactionsDao;
     private final CategoryDao categoryDao;
     private final TransactionDao transactionDao;
-    private final CategoryQueries helper;
+    private final CategoryTreeHelper helper;
 
     /**
      * Constructs a TrackingRepository with required repositories, DAOs, and helper.
@@ -47,7 +47,7 @@ public class TrackingRepository {
         this.categoryWithTransactionsDao = categoryWithTransactionsDao;
         this.categoryDao = categoryDao;
         this.transactionDao = transactionDao;
-        this.helper = new CategoryQueries(categoryDao);
+        this.helper = new CategoryTreeHelper(categoryDao);
     }
 
     /**
@@ -102,7 +102,7 @@ public class TrackingRepository {
         if (!transactionDao.exists(transactionId)) {
             throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
         }
-        if (!helper.categoryExists(categoryId)) {
+        if (categoryId == null || !categoryDao.exists(categoryId)) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
 
@@ -127,7 +127,7 @@ public class TrackingRepository {
         if (!transactionDao.exists(transactionId)) {
             throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
         }
-        if (!helper.categoryExists(categoryId)) {
+        if (categoryId == null || !categoryDao.exists(categoryId)) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
         if (categoryWithTransactionsDao.getCategoryIdsForTransaction(transactionId).size() <= 1) {
@@ -156,7 +156,7 @@ public class TrackingRepository {
      * @throws CategoryViolationException if category does not exist or is a system root category
      */
     public void deleteCategory(@NonNull Long categoryId, boolean deleteTransactions) throws CategoryViolationException {
-        if (!helper.categoryExists(categoryId)) {
+        if (categoryId == null || !categoryDao.exists(categoryId)) {
             throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
         }
         if (helper.isRoot(categoryId)) {

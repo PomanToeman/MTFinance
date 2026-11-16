@@ -49,4 +49,19 @@ public class CategoryServiceTest {
         when(categoryDao.exists(1L)).thenReturn(true);
         assertTrue(categoryService.categoryExists(1L));
     }
+
+    @Test
+    public void getCategoryByName_validName_returnsCategory() {
+        Category category = new Category("Groceries", "Desc", BigDecimal.TEN, TrackingType.EXPENSE);
+        category.setCategoryId(2L);
+        when(categoryDao.getByName("Groceries")).thenReturn(category);
+        when(categoryDao.getById(2L)).thenReturn(category);
+
+        Category result = categoryService.getCategoryByName("Groceries");
+
+        assertAll(
+            () -> assertNotNull(result),
+            () -> assertEquals("Groceries", result.getName())
+        );
+    }
 }

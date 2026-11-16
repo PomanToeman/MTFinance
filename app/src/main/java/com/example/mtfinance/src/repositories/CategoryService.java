@@ -16,13 +16,13 @@ import javax.inject.Singleton;
 
 /**
  * Concrete service class managing read-only category query responsibilities via Room DAOs
- * and leveraging CategoryQueries for centralized initialization and validation.
+ * and leveraging CategoryTreeHelper for centralized initialization and validation.
  */
 @Singleton
 public class CategoryService {
 
     private final CategoryDao categoryDao;
-    private final CategoryQueries helper;
+    private final CategoryTreeHelper helper;
 
     /**
      * Constructs a CategoryService with the specified CategoryDao.
@@ -31,7 +31,7 @@ public class CategoryService {
     @Inject
     public CategoryService(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
-        this.helper = new CategoryQueries(categoryDao);
+        this.helper = new CategoryTreeHelper(categoryDao);
         helper.populateDefaultCategories();
     }
 
@@ -43,7 +43,7 @@ public class CategoryService {
     @VisibleForTesting
     public CategoryService(CategoryDao categoryDao, boolean populateDefaultCategories) {
         this.categoryDao = categoryDao;
-        this.helper = new CategoryQueries(categoryDao);
+        this.helper = new CategoryTreeHelper(categoryDao);
         if (populateDefaultCategories) helper.populateDefaultCategories();
     }
 
@@ -71,6 +71,15 @@ public class CategoryService {
         return categoryDao.getById(id);
     }
 
+    /**
+     * Queries a category by exact name using direct SQLite lookup and restores its tree hierarchy.
+     * @param name the category name
+     * @return the restored Category, or null if not found
+     */
+    public Category getCategoryByName(String name) {
+        return helper.getCategoryByName(name);
+    }
+
     public Category getCategoryByIdRestored(@NonNull Long id) {
         return helper.getCategoryByIdRestored(id);
     }
@@ -88,11 +97,13 @@ public class CategoryService {
     }
 
     public boolean categoryExists(Long id) {
-        return helper.categoryExists(id);
+        if (id == null) return false;
+        return categoryDao.exists(id);
     }
 
     public boolean categoryNameExists(String name) {
-        return helper.categoryNameExists(name);
+        if (name == null || name.trim().isEmpty()) return false;
+        return categoryDao.nameExists(name.trim());
     }
 
     public boolean verifyExistingIds(Collection<Long> ids) {
