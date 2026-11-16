@@ -87,7 +87,7 @@ public class Category implements Details {
      */
     public void setParent(@NonNull Category parent) throws IllegalStateException {
         if (parent.getAncestors().size() >= MAX_DEPTH) {
-            throw new IllegalStateException(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(MAX_DEPTH));
+            throw new CategoryViolationException(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(MAX_DEPTH));
         }
 
         if (this.equals(parent) || !isSameType(parent.getType())) {

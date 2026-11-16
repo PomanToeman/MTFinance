@@ -262,4 +262,17 @@ public class CategoryRepositoryTest {
         List<Long> wrongType = categoryService.autoSearchCategoryIds(ENTERTAINMENT_NAME, TrackingType.INCOME);
         assertTrue(wrongType.isEmpty());
     }
+
+    @Test(expected = com.example.mtfinance.src.trackingengine.CategoryViolationException.class)
+    public void updateCategory_RootCategory_ThrowsCategoryViolationException() {
+        Category general = categoryService.getGeneralCategory();
+        general.setDescription("Updated desc");
+        repository.updateCategory(general);
+    }
+
+    @Test(expected = com.example.mtfinance.src.trackingengine.CategoryViolationException.class)
+    public void deleteCategory_RootCategory_ThrowsCategoryViolationException() {
+        Category general = categoryService.getGeneralCategory();
+        repository.deleteCategory(general);
+    }
 }

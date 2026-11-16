@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * Package-private helper class responsible for centralized default/root category initialization,
- * root category verification, and recursive tree validation across services and repositories.
+ * root category verification, type resolution, and recursive tree validation across services and repositories.
  */
 class CategoryRepositoryHelper {
     public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
@@ -48,6 +48,40 @@ class CategoryRepositoryHelper {
                 categoryDao.insert(category);
             }
         }
+    }
+
+    /**
+     * Resolves the root category for the given TrackingType from database or defaults.
+     * @param type the tracking type
+     * @return the root Category
+     */
+    public Category getRootCategoryByType(@NonNull TrackingType type) {
+        String rootName;
+        Category fallback;
+        switch (type) {
+            case EXPENSE:
+                rootName = "General Category";
+                fallback = generalCategory;
+                break;
+            case INCOME:
+                rootName = "Income";
+                fallback = incomeCategory;
+                break;
+            case ACCOUNT_TRANSFERS:
+                rootName = "Account Transfer";
+                fallback = accountTransferCategory;
+                break;
+            default:
+                rootName = "Other Category (only for errors)";
+                fallback = otherCategory;
+                break;
+        }
+
+        Category dbRoot = categoryDao.getAll().stream()
+                .filter(c -> rootName.equals(c.getName()))
+                .findFirst()
+                .orElse(null);
+        return dbRoot != null ? dbRoot : fallback;
     }
 
     /**
