@@ -15,6 +15,7 @@ import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
+import com.example.mtfinance.src.trackingengine.TransactionViolationException;
 
 import org.junit.After;
 import org.junit.Before;
@@ -162,5 +163,20 @@ public class TransactionRepositoryTest {
 
         // Act & Assert
         repository.insert(t2);
+    }
+
+    @Test(expected = TransactionViolationException.class)
+    public void update_NonExistentTransaction_ThrowsTransactionViolationException() {
+        Transaction nonExistent = new Transaction.Builder("Ghost", AMOUNT_TEN_DYNAMIC()).build();
+        repository.update(nonExistent);
+    }
+
+    @Test(expected = TransactionViolationException.class)
+    public void delete_NonExistentTransaction_ThrowsTransactionViolationException() {
+        repository.delete(NON_EXISTENT_ID);
+    }
+
+    private static BigDecimal AMOUNT_TEN_DYNAMIC() {
+        return BigDecimal.valueOf(10.0);
     }
 }

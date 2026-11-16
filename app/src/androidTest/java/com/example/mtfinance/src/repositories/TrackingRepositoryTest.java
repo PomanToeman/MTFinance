@@ -15,10 +15,12 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCrossRef;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryViolationException;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
+import com.example.mtfinance.src.trackingengine.TransactionViolationException;
 
 import org.junit.After;
 import org.junit.Before;
@@ -472,8 +474,8 @@ public class TrackingRepositoryTest {
         assertEquals(GENERAL_CATEGORY_NAME, restored.getParent().getName());
     }
 
-    @Test
-    public void insertTransaction_IncomeType_RedirectsToIncomeCategory() {
+    @Test(expected = TransactionViolationException.class)
+    public void insertTransaction_IncomeTypeWithExpenseCategory_ThrowsTransactionViolationException() {
         // Arrange
         Transaction incomeTrans = new Transaction.Builder("Salary", BigDecimal.valueOf(3000))
                 .type(TrackingType.INCOME)
@@ -483,16 +485,10 @@ public class TrackingRepositoryTest {
 
         // Act
         trackingRepository.insertTransaction(incomeTrans, expenseCat.getCategoryId());
-        List<Category> associatedCategories = trackingService.getCategoriesByTransactionId(incomeTrans.getTransactionId());
-
-        // Assert
-        assertEquals(1, associatedCategories.size());
-        assertEquals(INCOME_CATEGORY_NAME, associatedCategories.get(0).getName());
-        assertEquals(TrackingType.INCOME, associatedCategories.get(0).getType());
     }
 
-    @Test
-    public void insertTransaction_TransferType_RedirectsToTransferCategory() {
+    @Test(expected = TransactionViolationException.class)
+    public void insertTransaction_TransferTypeWithExpenseCategory_ThrowsTransactionViolationException() {
         // Arrange
         Transaction transferTrans = new Transaction.Builder("Bank Transfer", BigDecimal.valueOf(500))
                 .type(TrackingType.ACCOUNT_TRANSFERS)
@@ -502,12 +498,6 @@ public class TrackingRepositoryTest {
 
         // Act
         trackingRepository.insertTransaction(transferTrans, expenseCat.getCategoryId());
-        List<Category> associatedCategories = trackingService.getCategoriesByTransactionId(transferTrans.getTransactionId());
-
-        // Assert
-        assertEquals(1, associatedCategories.size());
-        assertEquals(TRANSFER_CATEGORY_NAME, associatedCategories.get(0).getName());
-        assertEquals(TrackingType.ACCOUNT_TRANSFERS, associatedCategories.get(0).getType());
     }
 
     @Test
@@ -658,6 +648,27 @@ public class TrackingRepositoryTest {
 
         // Assert (t1 + t4 + t5 = 3 + 6 + 7 = 16)
         assertEquals(0, BigDecimal.valueOf(16.0).compareTo(total));
+    }
+
+    @Test(expected = TransactionViolationException.class)
+    public void deleteTransaction_NonExistentTransaction_ThrowsTransactionViolationException() {
+        trackingRepository.deleteTransaction(99999L);
+    }
+
+    @Test(expected = TransactionViolationException.class)
+    public void deleteRelationship_NonExistentTransaction_ThrowsTransactionViolationException() {
+        Category cat = new Category("NonExitingRelCat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        categoryRepository.insert(cat);
+        trackingRepository.deleteRelationship(99999L, cat.getCategoryId());
+    }
+
+    @Test(expected = CategoryViolationException.class)
+    public void deleteRelationship_NonExistentCategory_ThrowsCategoryViolationException() {
+        Category cat = new Category("ValidRelCat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        categoryRepository.insert(cat);
+        Transaction trans = new Transaction.Builder("ValidTrans", BigDecimal.TEN).build();
+        trackingRepository.insertTransaction(trans, cat.getCategoryId());
+        trackingRepository.deleteRelationship(trans.getTransactionId(), 99999L);
     }
 
     private <T> T getValue(LiveData<T> liveData) throws InterruptedException {

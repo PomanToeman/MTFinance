@@ -394,4 +394,11 @@ public class CategoryRepositoryTest {
         assertNotNull(pAfterFail);
         assertEquals("ParentDeleteAtomicity", pAfterFail.getName());
     }
+
+    @Test(expected = com.example.mtfinance.src.trackingengine.CategoryViolationException.class)
+    public void updateCategory_NonExistentCategory_ThrowsCategoryViolationException() {
+        Category nonExistent = new Category("NonExistentUpdateCat", "Desc", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        nonExistent.setCategoryId(99999L);
+        repository.updateCategory(nonExistent);
+    }
 }
