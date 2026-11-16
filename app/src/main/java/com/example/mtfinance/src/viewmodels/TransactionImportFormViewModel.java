@@ -11,7 +11,7 @@ import com.example.mtfinance.src.DateFormat;
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
-import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
@@ -46,7 +46,7 @@ public class TransactionImportFormViewModel extends ViewModel {
     private final CategoryService categoryService;
     private final TrackingService trackingService;
     private final TransactionService transactionService;
-    private final TrackingWriteRepository trackingWriteRepository;
+    private final TrackingRepository trackingWriteRepository;
     private final Executor executor;
     private final Application application;
 
@@ -73,7 +73,7 @@ public class TransactionImportFormViewModel extends ViewModel {
     public TransactionImportFormViewModel(CategoryService categoryService,
                                           TrackingService trackingService,
                                           TransactionService transactionService,
-                                          TrackingWriteRepository trackingWriteRepository,
+                                          TrackingRepository trackingWriteRepository,
                                           Executor executor,
                                           Application application) {
         this.categoryService = categoryService;

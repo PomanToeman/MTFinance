@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 import com.example.mtfinance.InstantExecutorExtension;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
-import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 
@@ -37,7 +37,7 @@ public class CategoryFormViewModelTest {
     private TrackingService trackingService;
 
     @Mock
-    private TrackingWriteRepository trackingWriteRepository;
+    private TrackingRepository trackingWriteRepository;
 
     private CategoryFormViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
@@ -237,9 +237,8 @@ public class CategoryFormViewModelTest {
         viewModel.setMonthlyBudget(BigDecimal.valueOf(1200));
         viewModel.saveCategory();
 
-        verify(trackingWriteRepository).updateCategory(root);
+        verify(trackingWriteRepository).updateRootCategoryBudget(rootId, BigDecimal.valueOf(1200));
         assertAll(
-            () -> assertEquals(0, BigDecimal.valueOf(1200).compareTo(root.getMonthlyBudget())),
             () -> assertEquals("Category saved successfully", viewModel.getSuccessMessage().getValue())
         );
     }

@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModel;
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
-import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
@@ -35,7 +35,7 @@ public class TransactionFormViewModel extends ViewModel {
     private final TrackingService trackingService;
     private final CategoryService categoryService;
     private final TransactionService transactionService;
-    private final TrackingWriteRepository trackingWriteRepository;
+    private final TrackingRepository trackingWriteRepository;
     private final Executor executor;
 
     private final MutableLiveData<TransactionFormFields> formFields = new MutableLiveData<>(new TransactionFormFields());
@@ -60,7 +60,7 @@ public class TransactionFormViewModel extends ViewModel {
     public TransactionFormViewModel(TrackingService trackingService,
                                     CategoryService categoryService,
                                     TransactionService transactionService,
-                                    TrackingWriteRepository trackingWriteRepository,
+                                    TrackingRepository trackingWriteRepository,
                                     Executor executor) {
         this.trackingService = trackingService;
         this.categoryService = categoryService;

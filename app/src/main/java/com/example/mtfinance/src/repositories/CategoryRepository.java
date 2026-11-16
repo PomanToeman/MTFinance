@@ -2,38 +2,79 @@ package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
 
+import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryViolationException;
 import com.example.mtfinance.src.trackingengine.TrackingType;
+import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 
 import javax.inject.Inject;
 
-class CategoryRepository implements CategoryWriteRepository {
+/**
+ * Concrete repository class managing category write operations and business policy validations.
+ */
+public class CategoryRepository {
+    private final AppDatabase appDatabase;
     private final CategoryDao categoryDao;
-    private final CategoryService categoryService;
+    private final CategoryQueries helper;
 
+    /**
+     * Constructs a CategoryRepository with required AppDatabase, DAO, and helper.
+     * @param appDatabase the Room AppDatabase instance for atomic transaction management
+     * @param categoryDao the category Room DAO
+     */
     @Inject
-    public CategoryRepository(CategoryDao categoryDao, CategoryService categoryService) {
+    public CategoryRepository(AppDatabase appDatabase, CategoryDao categoryDao) {
+        this.appDatabase = appDatabase;
         this.categoryDao = categoryDao;
-        this.categoryService = categoryService;
+        this.helper = new CategoryQueries(categoryDao);
     }
 
-    @Override
-    public Long insert(@NonNull Category category) {
-        if (category.equals(categoryService.getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
-            return -1L;
+    /**
+     * Convenience constructor when AppDatabase is not directly provided.
+     * @param categoryDao the category Room DAO
+     */
+    public CategoryRepository(CategoryDao categoryDao) {
+        this(null, categoryDao);
+    }
+
+    /**
+     * Inserts a category into the database atomically.
+     * Enforces business rules: cannot insert root category duplicates or invalid tracking types.
+     * @param category - the category to be inserted
+     * @return the generated category ID
+     * @throws CategoryViolationException if constraints are violated
+     */
+    public Long insert(@NonNull Category category) throws CategoryViolationException {
+        if (appDatabase != null) {
+            return appDatabase.runInTransaction(() -> insertInternal(category));
+        } else {
+            return insertInternal(category);
+        }
+    }
+
+    private Long insertInternal(@NonNull Category category) {
+        if (category.equals(helper.getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_SAVE_FAILED.getMessage("Invalid category type or root duplication"));
+        }
+
+        if (helper.categoryNameExists(category.getName())) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
         }
 
         if (category.getParent() == null && category.getParentId() != null) {
-            category.setParent(categoryService.getCategoryByIdRestored(category.getParentId()));
+            category.setParent(helper.getCategoryByIdRestored(category.getParentId()));
         }
 
         if (category.getParent() == null) {
-            category.setParent(categoryService.getGeneralCategory()); // ensures the greatest parent is the general category
-        } else if (category.getParent().getCategoryId() == null || !categoryService.categoryExists(category.getParent().getCategoryId())) {
-            insert(category.getParent()); // automatically inserts parent if not already in database.
+            category.setParent(helper.getGeneralCategory());
+        } else if (category.getParent().getCategoryId() == null || !helper.categoryExists(category.getParent().getCategoryId())) {
+            insertInternal(category.getParent());
         }
 
         Long result = categoryDao.insert(category);
@@ -41,86 +82,163 @@ class CategoryRepository implements CategoryWriteRepository {
             category.setCategoryId(result);
         }
         if (category.getParent() != null && category.getParent().getCategoryId() != null) {
-            updateCategoryTree(category);
+            updateCategoryTreeInternal(category);
         }
         return result;
     }
 
-    @Override
-    public void deleteCategory(@NonNull Category categoryToDelete) {
-        if (categoryToDelete.equals(categoryService.getGeneralCategory())) {
-            return; // cannot delete general/root category
+    /**
+     * Deletes a category from the database atomically.
+     * Cannot delete root categories or non-existent categories. Re-parents children if necessary.
+     * @param categoryToDelete - the category to delete
+     * @throws CategoryViolationException if attempting to delete a root category or non-existent category
+     */
+    public void deleteCategory(@NonNull Category categoryToDelete) throws CategoryViolationException {
+        if (appDatabase != null) {
+            appDatabase.runInTransaction(() -> deleteCategoryInternal(categoryToDelete));
+        } else {
+            deleteCategoryInternal(categoryToDelete);
         }
-        if (categoryToDelete.getChildren(false).isEmpty()) {
-            categoryDao.delete(categoryToDelete);
+    }
+
+    private void deleteCategoryInternal(@NonNull Category categoryToDelete) {
+        if (categoryToDelete.getCategoryId() == null || !helper.categoryExists(categoryToDelete.getCategoryId())) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+        }
+
+        if (helper.isRoot(categoryToDelete)) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+        }
+
+        Category categoryRestored = helper.getCategoryByIdRestored(categoryToDelete.getCategoryId());
+        if (categoryRestored == null) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+        }
+
+        if (categoryRestored.getChildren(false).isEmpty()) {
+            categoryDao.delete(categoryRestored);
             return;
         }
 
-        Category categoryInDb = categoryService.getCategoryById(categoryToDelete.getCategoryId());
-        if (categoryInDb == null) {
-            return; // not found
-        }
-
-        Category parentOfDeleted = categoryToDelete.getParent();
-        if (parentOfDeleted == null && categoryToDelete.getParentId() != null) {
-            parentOfDeleted = categoryService.getCategoryByIdRestored(categoryToDelete.getParentId());
+        Category parentOfDeleted = categoryRestored.getParent();
+        if (parentOfDeleted == null && categoryRestored.getParentId() != null) {
+            parentOfDeleted = helper.getCategoryByIdRestored(categoryRestored.getParentId());
         }
         if (parentOfDeleted == null) {
-            parentOfDeleted = categoryService.getGeneralCategory();
+            parentOfDeleted = helper.getGeneralCategory();
         }
 
-        for (Category child : categoryInDb.getChildren(false)) {
+        for (Category child : categoryRestored.getChildren(false)) {
             child.setParent(parentOfDeleted);
-            updateCategory(child);
+            updateCategoryInternal(child);
         }
 
-        categoryDao.delete(categoryToDelete);
+        categoryDao.delete(categoryRestored);
     }
 
     /**
-     * Updates the category in database, will automatically pass root categories to updateRootCategory.
-     *
-     * @param category - the category to update.
+     * Updates an existing category in the database.
+     * Prevents modifying system root categories or non-existent categories.
+     * @param category - the category to update
+     * @throws CategoryViolationException if trying to update a root category or non-existent category
      */
-    @Override
-    public void updateCategory(@NonNull Category category) {
+    public void updateCategory(@NonNull Category category) throws CategoryViolationException {
+        updateCategoryInternal(category);
+    }
+
+    private void updateCategoryInternal(@NonNull Category category) {
+        if (category.getCategoryId() == null || !helper.categoryExists(category.getCategoryId())) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+        }
+        if (helper.isRoot(category.getCategoryId())) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+        }
         categoryDao.update(category);
     }
 
-    @Override
-    public void updateAllCategories(Collection<Category> categories) {
+    /**
+     * Explicitly updates the monthly budget of a system root category identified by TrackingType.
+     * @param type the tracking type of the root category
+     * @param newBudget the new monthly budget amount
+     * @throws CategoryViolationException if root category not found
+     */
+    public void updateRootCategoryBudget(@NonNull TrackingType type, @NonNull BigDecimal newBudget) throws CategoryViolationException {
+        TrackingUtlis.checkAmount(newBudget);
+        Category root = helper.getRootCategoryByType(type);
+        if (root == null || !helper.isRoot(root)) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+        }
+        root.setMonthlyBudget(newBudget);
+        categoryDao.update(root);
+    }
+
+    /**
+     * Explicitly updates the monthly budget of a system root category identified by ID.
+     * @param categoryId the category ID
+     * @param newBudget the new monthly budget amount
+     * @throws CategoryViolationException if category not found or not a root category
+     */
+    public void updateRootCategoryBudget(@NonNull Long categoryId, @NonNull BigDecimal newBudget) throws CategoryViolationException {
+        TrackingUtlis.checkAmount(newBudget);
+        Category category = categoryDao.getById(categoryId);
+        if (category == null || !helper.isRoot(category)) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+        }
+        category.setMonthlyBudget(newBudget);
+        categoryDao.update(category);
+    }
+
+    /**
+     * Updates multiple categories in bulk atomically.
+     * @param categories - collection of categories to update
+     * @throws CategoryViolationException if any category is a root category
+     */
+    public void updateAllCategories(Collection<Category> categories) throws CategoryViolationException {
+        if (appDatabase != null) {
+            appDatabase.runInTransaction(() -> updateAllCategoriesInternal(categories));
+        } else {
+            updateAllCategoriesInternal(categories);
+        }
+    }
+
+    private void updateAllCategoriesInternal(Collection<Category> categories) {
+        for (Category c : categories) {
+            if (c.getCategoryId() != null && helper.isRoot(c.getCategoryId())) {
+                throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+            }
+        }
         categoryDao.updateAll(categories);
     }
 
     /**
-     * This assumes the category Tree has been modified.
-     * Only works when Category has its cache restored.
-     * @param category - the category inside the tree (must have cache restored).
+     * Updates the category tree structure and validates parent hierarchy atomically.
+     * @param category - the category inside the tree with cache restored
+     * @throws CategoryViolationException if root category is modified or hierarchy rules fail
      */
-    @Override
-    public void updateCategoryTree(@NonNull Category category) {
-        if (category.equals(categoryService.getGeneralCategory())) {
-            return;
+    public void updateCategoryTree(@NonNull Category category) throws CategoryViolationException {
+        if (appDatabase != null) {
+            appDatabase.runInTransaction(() -> updateCategoryTreeInternal(category));
+        } else {
+            updateCategoryTreeInternal(category);
+        }
+    }
+
+    private void updateCategoryTreeInternal(@NonNull Category category) {
+        if (helper.isRoot(category)) {
+            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
 
         if (category.getParent() == null && category.getParentId() != null) {
-            category.setParent(categoryService.getCategoryByIdRestored(category.getParentId()));
+            category.setParent(helper.getCategoryByIdRestored(category.getParentId()));
         }
 
         if (category.getParent() == null) {
-            category.setParent(categoryService.getGeneralCategory());
-        } else if (category.getParent().getCategoryId() == null || !categoryService.categoryExists(category.getParent().getCategoryId())) {
-            insert(category.getParent());
+            category.setParent(helper.getGeneralCategory());
+        } else if (category.getParent().getCategoryId() == null || !helper.categoryExists(category.getParent().getCategoryId())) {
+            insertInternal(category.getParent());
         }
 
-        Long parentId = category.getParentId();
-        while (parentId != null) {
-            if (parentId.equals(category.getCategoryId())) {
-                throw new IllegalArgumentException("Cannot set a category as a child of its own descendant.");
-            }
-            Category p = categoryService.getCategoryById(parentId);
-            parentId = p != null ? p.getParentId() : null;
-        }
+        helper.validateCategoryTree(category);
 
         categoryDao.update(category);
         if (category.getParent() != null) {

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.mtfinance.src.trackingengine.Category;
+import com.example.mtfinance.src.trackingengine.CategoryViolationException;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
@@ -100,5 +101,24 @@ public class TrackingEngineUnitTests {
             () -> assertTrue(level2.isDescendantOf(root)),
             () -> assertFalse(root.isDescendantOf(level3))
         );
+    }
+
+    @Test
+    public void categoryHierarchy_MaxDepthExceeded_ThrowsCategoryViolationException() {
+        Category c0 = new Category("C0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c1 = new Category("C1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c2 = new Category("C2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c3 = new Category("C3", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c4 = new Category("C4", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c5 = new Category("C5", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+
+        c1.setParent(c0);
+        c2.setParent(c1);
+        c3.setParent(c2);
+        c4.setParent(c3);
+        c5.setParent(c4);
+
+        Category c6 = new Category("C6", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        assertThrows(CategoryViolationException.class, () -> c6.setParent(c5));
     }
 }

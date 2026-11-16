@@ -17,17 +17,17 @@ import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
 
-public class TransactionServiceImplTest {
+public class TransactionServiceTest {
 
     @Mock
     private TransactionDao transactionDao;
 
-    private TransactionServiceImpl transactionService;
+    private TransactionService transactionService;
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        transactionService = new TransactionServiceImpl(transactionDao);
+        transactionService = new TransactionService(transactionDao);
     }
 
     @Test

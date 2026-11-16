@@ -11,7 +11,7 @@ import android.content.ContentResolver;
 import com.example.mtfinance.InstantExecutorExtension;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
-import com.example.mtfinance.src.repositories.TrackingWriteRepository;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.repositories.TransactionService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +35,7 @@ public class TransactionImportFormViewModelTest {
     private TransactionService transactionService;
 
     @Mock
-    private TrackingWriteRepository trackingWriteRepository;
+    private TrackingRepository trackingWriteRepository;
 
     @Mock
     private Application application;

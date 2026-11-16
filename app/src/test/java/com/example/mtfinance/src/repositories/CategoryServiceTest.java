@@ -17,17 +17,17 @@ import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
 
-public class CategoryServiceImplTest {
+public class CategoryServiceTest {
 
     @Mock
     private CategoryDao categoryDao;
 
-    private CategoryServiceImpl categoryService;
+    private CategoryService categoryService;
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        categoryService = new CategoryServiceImpl(categoryDao, false);
+        categoryService = new CategoryService(categoryDao, false);
     }
 
     @Test

@@ -13,7 +13,6 @@ import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import dagger.Binds;
 import dagger.Module;
 import dagger.Provides;
 import dagger.hilt.InstallIn;
@@ -47,8 +46,8 @@ public abstract class DatabaseModule {
 
     @Provides
     @Singleton
-    static CategoryRepository provideCategoryRepository(CategoryDao categoryDao, CategoryService categoryService) {
-        return new CategoryRepository(categoryDao, categoryService);
+    static CategoryRepository provideCategoryRepository(AppDatabase appDatabase, CategoryDao categoryDao) {
+        return new CategoryRepository(appDatabase, categoryDao);
     }
 
     @Provides
@@ -62,26 +61,10 @@ public abstract class DatabaseModule {
     static TrackingRepository provideTrackingRepository(CategoryRepository categoryRepository,
                                                        TransactionRepository transactionRepository,
                                                        CategoryTransactionDao categoryWithTransactionsDao,
-                                                       CategoryService categoryService,
-                                                       TransactionService transactionService) {
-        return new TrackingRepository(categoryRepository, transactionRepository, categoryWithTransactionsDao, categoryService, transactionService);
+                                                       CategoryDao categoryDao,
+                                                       TransactionDao transactionDao) {
+        return new TrackingRepository(categoryRepository, transactionRepository, categoryWithTransactionsDao, categoryDao, transactionDao);
     }
-
-    @Binds
-    @Singleton
-    public abstract TrackingWriteRepository bindTrackingWriteRepository(TrackingRepository trackingRepository);
-
-    @Binds
-    @Singleton
-    public abstract CategoryService bindCategoryService(CategoryServiceImpl categoryServiceImpl);
-
-    @Binds
-    @Singleton
-    public abstract TransactionService bindTransactionService(TransactionServiceImpl transactionServiceImpl);
-
-    @Binds
-    @Singleton
-    public abstract TrackingService bindTrackingService(TrackingServiceImpl trackingServiceImpl);
 
     @Provides
     @Singleton

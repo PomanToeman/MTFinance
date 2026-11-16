@@ -2,68 +2,58 @@ package com.example.mtfinance.src.repositories;
 
 import androidx.lifecycle.LiveData;
 
+import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.util.Collection;
 import java.util.List;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
 /**
- * Service interface for transaction read operations.
+ * Concrete service class for transaction read operations.
  */
-public interface TransactionService {
-    /**
-     * Gets all transactions in the database.
-     * @return list of all transactions
-     */
-    List<Transaction> getAll();
+@Singleton
+public class TransactionService {
+    private final TransactionDao transactionDao;
 
-    /**
-     * LiveData stream of all transactions in the database.
-     * @return LiveData list of all transactions
-     */
-    LiveData<List<Transaction>> getAllLive();
+    @Inject
+    public TransactionService(TransactionDao transactionDao) {
+        this.transactionDao = transactionDao;
+    }
 
-    /**
-     * Searches transactions matching the given query string.
-     * @param query - search text
-     * @return LiveData list of matching transactions
-     */
-    LiveData<List<Transaction>> searchTransactions(String query);
+    public List<Transaction> getAll() {
+        return transactionDao.getAll();
+    }
 
-    /**
-     * Searches transactions matching the given query string and type filter.
-     * @param query - search text
-     * @param type - tracking type filter
-     * @return LiveData list of matching transactions
-     */
-    LiveData<List<Transaction>> searchTransactionsWithType(String query, TrackingType type);
+    public LiveData<List<Transaction>> getAllLive() {
+        return transactionDao.getAllLive();
+    }
 
-    /**
-     * Gets a transaction by its ID.
-     * @param id - transaction ID
-     * @return transaction or null if not found
-     */
-    Transaction getById(Long id);
+    public LiveData<List<Transaction>> searchTransactions(String query) {
+        return transactionDao.searchTransactions(query, com.example.mtfinance.src.trackingengine.TrackingUtlis.EMPTY_DESCRIPTION);
+    }
 
-    /**
-     * Gets transactions matching a collection of IDs.
-     * @param ids - collection of transaction IDs
-     * @return list of matching transactions
-     */
-    List<Transaction> getByIds(Collection<Long> ids);
+    public LiveData<List<Transaction>> searchTransactionsWithType(String query, TrackingType type) {
+        return transactionDao.searchTransactionsWithType(query, com.example.mtfinance.src.trackingengine.TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
+    }
 
-    /**
-     * Checks if a transaction exists with the given ID.
-     * @param id - transaction ID
-     * @return true if transaction exists
-     */
-    Boolean transactionExists(Long id);
+    public Transaction getById(Long id) {
+        return transactionDao.getById(id);
+    }
 
-    /**
-     * Checks if a transaction exists with the given generated hash.
-     * @param hash - generated transaction hash string
-     * @return true if hash exists
-     */
-    boolean hashExists(String hash);
+    public List<Transaction> getByIds(Collection<Long> ids) {
+        return transactionDao.getByIds(ids);
+    }
+
+    public Boolean transactionExists(Long id) {
+        return transactionDao.exists(id);
+    }
+
+    public boolean hashExists(String hash) {
+        if (hash == null || hash.isEmpty()) return false;
+        return transactionDao.hashExists(hash);
+    }
 }

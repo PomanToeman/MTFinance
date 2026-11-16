@@ -1,23 +1,22 @@
 package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.VisibleForTesting;
 
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
-import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Inject;
-
-public class CategoryServiceImpl implements CategoryService {
-
+/**
+ * Package-private helper class responsible for centralized default/root category initialization,
+ * root category verification, type resolution, category restoration, existence checks,
+ * and recursive tree validation across services and repositories.
+ */
+class CategoryQueries {
     public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
     public final Category incomeCategory = new Category("Income", "Tracks income transactions", BigDecimal.valueOf(1000), TrackingType.INCOME);
     public final Category accountTransferCategory = new Category("Account Transfer", "Account Transfers", BigDecimal.valueOf(1000), TrackingType.ACCOUNT_TRANSFERS);
@@ -29,19 +28,18 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryDao categoryDao;
 
-    @Inject
-    public CategoryServiceImpl(CategoryDao categoryDao) {
+    /**
+     * Constructs a CategoryQueries with the given CategoryDao.
+     * @param categoryDao the Room DAO for categories
+     */
+    public CategoryQueries(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
-        populateDefaultCategories();
     }
 
-    @VisibleForTesting
-    public CategoryServiceImpl(CategoryDao categoryDao, boolean populateDefaultCategories) {
-        this.categoryDao = categoryDao;
-        if (populateDefaultCategories) populateDefaultCategories();
-    }
-
-    private synchronized void populateDefaultCategories() {
+    /**
+     * Populates default and root categories in the database if none exist.
+     */
+    public synchronized void populateDefaultCategories() {
         if (categoryDao.getAll().isEmpty()) {
             categoryDao.insert(generalCategory);
             categoryDao.insert(incomeCategory);
@@ -55,44 +53,44 @@ public class CategoryServiceImpl implements CategoryService {
         }
     }
 
-    @Override
     public Category getGeneralCategory() {
         Category dbGeneral = categoryDao.getAll().stream()
-                .filter(c -> "General Category".equals(c.getName()))
+                .filter(c -> generalCategory.getName().equals(c.getName()))
                 .findFirst()
                 .orElse(null);
         return dbGeneral != null ? getCategoryByIdRestored(dbGeneral.getCategoryId()) : getCategoryRestored(generalCategory);
     }
 
-    @Override
     public Category getIncomeCategory() {
         Category dbIncome = categoryDao.getAll().stream()
-                .filter(c -> "Income".equals(c.getName()))
+                .filter(c -> incomeCategory.getName().equals(c.getName()))
                 .findFirst()
                 .orElse(null);
         return dbIncome != null ? getCategoryByIdRestored(dbIncome.getCategoryId()) : incomeCategory;
     }
 
-    @Override
     public Category getAccountTransferCategory() {
         Category dbTransfer = categoryDao.getAll().stream()
-                .filter(c -> "Account Transfer".equals(c.getName()))
+                .filter(c -> accountTransferCategory.getName().equals(c.getName()))
                 .findFirst()
                 .orElse(null);
         return dbTransfer != null ? getCategoryByIdRestored(dbTransfer.getCategoryId()) : accountTransferCategory;
     }
 
-    @Override
     public Category getOtherCategory() {
         Category dbOther = categoryDao.getAll().stream()
-                .filter(c -> "Other Category (only for errors)".equals(c.getName()))
+                .filter(c -> otherCategory.getName().equals(c.getName()))
                 .findFirst()
                 .orElse(null);
         return dbOther != null ? getCategoryByIdRestored(dbOther.getCategoryId()) : otherCategory;
     }
 
-    @Override
-    public Category getRootCategoryByType(TrackingType type) {
+    /**
+     * Resolves the root category for the given TrackingType from database or defaults.
+     * @param type the tracking type
+     * @return the root Category
+     */
+    public Category getRootCategoryByType(@NonNull TrackingType type) {
         switch (type) {
             case EXPENSE:
                 return getGeneralCategory();
@@ -105,12 +103,28 @@ public class CategoryServiceImpl implements CategoryService {
         }
     }
 
-    @Override
-    public Category getCategoryById(Long id) {
-        return categoryDao.getById(id);
+    /**
+     * Checks if the given category is a system root category.
+     * Uses dynamic comparison against root category name for its type without hardcoded string literals.
+     * @param category the category to check
+     * @return true if it is a root category
+     */
+    public boolean isRoot(@NonNull Category category) {
+        Category root = getRootCategoryByType(category.getType());
+        return category.getName().equals(root.getName());
     }
 
-    @Override
+    /**
+     * Checks if the category ID corresponds to a system root category.
+     * @param categoryId the non-null category ID
+     * @return true if it is a root category
+     */
+    public boolean isRoot(@NonNull Long categoryId) {
+        Category c = categoryDao.getById(categoryId);
+        if (c == null) return false;
+        return isRoot(c);
+    }
+
     public Category getCategoryByIdRestored(@NonNull Long id) {
         return getCategoryByIdRestoredInternal(id, new HashSet<>());
     }
@@ -138,60 +152,32 @@ public class CategoryServiceImpl implements CategoryService {
         return category;
     }
 
-    @Override
     public Category getCategoryRestored(@NonNull Category category) {
         return category.getCategoryId() != null ? getCategoryByIdRestored(category.getCategoryId()) : category;
     }
 
-    @Override
-    public List<Category> getAllCategories() {
-        return categoryDao.getAll();
-    }
-
-    @Override
-    public List<Category> getCategoriesByIds(Collection<Long> ids) {
-        return categoryDao.getByIds(ids);
-    }
-
-    @Override
     public boolean categoryExists(Long id) {
         if (id == null) return false;
         return categoryDao.exists(id);
     }
 
-    @Override
     public boolean categoryNameExists(String name) {
         if (name == null || name.isEmpty()) return false;
         return categoryDao.nameExists(name.trim());
     }
 
-    @Override
-    public boolean verifyExistingIds(Collection<Long> ids) {
-        if (ids == null) {
-            return false;
+    /**
+     * Validates category tree hierarchy and checks for circular dependencies.
+     * @param category the category tree node
+     */
+    public void validateCategoryTree(@NonNull Category category) {
+        Long parentId = category.getParentId();
+        while (parentId != null) {
+            if (parentId.equals(category.getCategoryId())) {
+                throw new com.example.mtfinance.src.trackingengine.CategoryViolationException("Cannot set a category as a child of its own descendant.");
+            }
+            Category p = categoryDao.getById(parentId);
+            parentId = p != null ? p.getParentId() : null;
         }
-        List<Long> existingIds = categoryDao.veifyExitsingIds(ids);
-        return existingIds.size() == ids.size();
-    }
-
-    @Override
-    public boolean isRoot(Category category) {
-        if (category == null) {
-            return false;
-        }
-        return category.equals(getRootCategoryByType(category.getType()));
-    }
-
-    @Override
-    public boolean isRoot(Long categoryId) {
-        if (categoryExists(categoryId)) {
-            return isRoot(getCategoryById(categoryId));
-        }
-        return false;
-    }
-
-    @Override
-    public List<Long> autoSearchCategoryIds(String query, TrackingType type) {
-        return categoryDao.autoSearchBestFittingCategories(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
     }
 }
