@@ -358,20 +358,25 @@ public class TransactionImportFormViewModel extends ViewModel {
     }
 
     private void validateImport() {
-        resetFieldErrors();
+        Map<TransactionImportErrorFields, String> errors = new EnumMap<>(TransactionImportErrorFields.class);
+        for (TransactionImportErrorFields field : TransactionImportErrorFields.values()) {
+            errors.put(field, "");
+        }
 
         if (csvParser.getValue() == null) {
-            setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_PARSER_MISSING.getMessage());
+            errors.put(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_PARSER_MISSING.getMessage());
         }
         if (nameHeader.getValue() == null || nameHeader.getValue().trim().isEmpty()) {
-            setFieldError(TransactionImportErrorFields.NAME_HEADER, MessageCli.IMPORT_NAME_HEADER_MISSING.getMessage());
+            errors.put(TransactionImportErrorFields.NAME_HEADER, MessageCli.IMPORT_NAME_HEADER_MISSING.getMessage());
         }
         if (amountHeader.getValue() == null || amountHeader.getValue().trim().isEmpty()) {
-            setFieldError(TransactionImportErrorFields.AMOUNT_HEADER, MessageCli.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
+            errors.put(TransactionImportErrorFields.AMOUNT_HEADER, MessageCli.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
         }
         if (dateHeader.getValue() == null || dateHeader.getValue().trim().isEmpty()) {
-            setFieldError(TransactionImportErrorFields.DATE_HEADER, MessageCli.IMPORT_DATE_HEADER_MISSING.getMessage());
+            errors.put(TransactionImportErrorFields.DATE_HEADER, MessageCli.IMPORT_DATE_HEADER_MISSING.getMessage());
         }
+
+        updateLiveData(this.fieldErrors, errors);
     }
 
     private Long findCategoryIdForTransaction(TrackingType type, String query) {

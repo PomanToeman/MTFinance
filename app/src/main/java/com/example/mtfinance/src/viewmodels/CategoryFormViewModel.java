@@ -337,48 +337,54 @@ public class CategoryFormViewModel extends ViewModel {
 
             setSuccessMessage(MessageCli.CATEGORY_SAVED.getMessage());
             setErrorMessage("");
+            if (fields.editCategoryId != null) {
+                loadCategoryForEditingSync();
+            }
         } catch (Exception e) {
             setErrorMessage(MessageCli.CATEGORY_SAVE_FAILED.getMessage(e.getMessage()));
             setSuccessMessage("");
         } finally {
             setIsLoading(false);
-            if (fields.editCategoryId != null) {
-                loadCategoryForEditingSync();
-            }
+
         }
     }
 
     private void validateFormSync(CategoryFormFields fields) {
-        resetFieldErrors();
+        Map<CategoryErrorFields, String> errors = new EnumMap<>(CategoryErrorFields.class);
+        for (CategoryErrorFields field : CategoryErrorFields.values()) {
+            errors.put(field, "");
+        }
 
         if (fields.name == null || fields.name.trim().isEmpty()) {
-            setFieldError(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EMPTY.getMessage());
+            errors.put(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EMPTY.getMessage());
         } else if (categoryService.categoryNameExists(fields.name)) {
             if (fields.editCategoryId == null) {
-                setFieldError(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EXISTS.getMessage());
+                errors.put(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EXISTS.getMessage());
             } else {
                 Category current = categoryService.getCategoryByIdRestored(fields.editCategoryId);
                 if (current != null && !current.getName().equalsIgnoreCase(fields.name.trim())) {
-                    setFieldError(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EXISTS.getMessage());
+                    errors.put(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EXISTS.getMessage());
                 }
             }
         }
 
         if (fields.monthlyBudget == null) {
-            setFieldError(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.INVALID_AMOUNT.getMessage("null"));
+            errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.INVALID_AMOUNT.getMessage("null"));
         } else if (fields.monthlyBudget.compareTo(BigDecimal.ZERO) < 0) {
-            setFieldError(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.INVALID_AMOUNT.getMessage(fields.monthlyBudget.toString()));
+            errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.INVALID_AMOUNT.getMessage(fields.monthlyBudget.toString()));
         } else if (fields.minimumBudget != null && fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
-            setFieldError(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
+            errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
         }
 
         if (fields.parentId != null) {
             if (fields.parentId.equals(fields.editCategoryId)) {
-                setFieldError(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_PARENT_SELF.getMessage());
+                errors.put(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_PARENT_SELF.getMessage());
             } else if (!categoryService.categoryExists(fields.parentId)) {
-                setFieldError(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
+                errors.put(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
             }
         }
+
+        updateLiveData(this.fieldErrors, errors);
     }
 
     /**

@@ -12,7 +12,6 @@ import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
-import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
 import java.math.BigDecimal;
@@ -421,21 +420,26 @@ public class TransactionFormViewModel extends ViewModel {
     }
 
     private void validateFormSync(TransactionFormFields fields) {
-        resetFieldErrors();
+        Map<TransactionErrorFields, String> errors = new EnumMap<>(TransactionErrorFields.class);
+        for (TransactionErrorFields field : TransactionErrorFields.values()) {
+            errors.put(field, "");
+        }
 
         if (fields.name == null || fields.name.trim().isEmpty()) {
-            setFieldError(TransactionErrorFields.NAME, MessageCli.TRANSACTION_NAME_EMPTY.getMessage());
+            errors.put(TransactionErrorFields.NAME, MessageCli.TRANSACTION_NAME_EMPTY.getMessage());
         }
 
         if (fields.amount == null || fields.amount.compareTo(BigDecimal.ZERO) <= 0) {
-            setFieldError(TransactionErrorFields.AMOUNT, MessageCli.INVALID_AMOUNT.getMessage(fields.amount));
+            errors.put(TransactionErrorFields.AMOUNT, MessageCli.INVALID_AMOUNT.getMessage(fields.amount));
         }
 
         if (fields.categoryIds == null || fields.categoryIds.isEmpty()) {
-            setFieldError(TransactionErrorFields.CATEGORY_IDS, MessageCli.TRANSACTION_CATEGORY_EMPTY.getMessage());
+            errors.put(TransactionErrorFields.CATEGORY_IDS, MessageCli.TRANSACTION_CATEGORY_EMPTY.getMessage());
         } else if (!categoryService.verifyExistingIds(fields.categoryIds)) {
-            setFieldError(TransactionErrorFields.CATEGORY_IDS, MessageCli.TRANSACTION_CATEGORIES_NOT_EXIST.getMessage());
+            errors.put(TransactionErrorFields.CATEGORY_IDS, MessageCli.TRANSACTION_CATEGORIES_NOT_EXIST.getMessage());
         }
+
+        updateLiveData(this.fieldErrors, errors);
     }
 
     private static class TransactionFormFields {
