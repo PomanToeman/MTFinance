@@ -43,7 +43,7 @@ public class SettingsViewModel extends ViewModel {
     private final MutableLiveData<String> provisionalThemeMode = new MutableLiveData<>("SYSTEM");
     private final MutableLiveData<DateFormat> provisionalDateFormat = new MutableLiveData<>(DateFormat.DD_MM_YYYY);
     private final MutableLiveData<CurrencyFormat> provisionalCurrencyFormat = new MutableLiveData<>(CurrencyFormat.NZD);
-    private final MutableLiveData<Integer> provisionalStartDayOfMonth = new MutableLiveData<>(1);
+    private final MutableLiveData<String> provisionalStartDayOfMonthInput = new MutableLiveData<>("1");
     private final MutableLiveData<Boolean> provisionalIncludeProvisional = new MutableLiveData<>(true);
 
     @Inject
@@ -63,11 +63,11 @@ public class SettingsViewModel extends ViewModel {
         if (systemService != null) {
             SystemPreferences prefs = systemService.getPreferencesSync();
             if (prefs != null) {
-                provisionalThemeMode.setValue(prefs.getThemeMode());
-                provisionalDateFormat.setValue(DateFormat.valueOf(prefs.getDateFormat()));
-                provisionalCurrencyFormat.setValue(CurrencyFormat.fromString(prefs.getCurrencyFormat()));
-                provisionalStartDayOfMonth.setValue(prefs.getStartDayOfMonth());
-                provisionalIncludeProvisional.setValue(prefs.isIncludeProvisional());
+                updateLiveData(provisionalThemeMode, prefs.getThemeMode());
+                updateLiveData(provisionalDateFormat, DateFormat.valueOf(prefs.getDateFormat()));
+                updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
+                updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
+                updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
             }
         }
         updateLiveData(changesMade, false);
@@ -128,16 +128,22 @@ public class SettingsViewModel extends ViewModel {
     }
 
     public void setProvisionalStartDayOfMonth(String dayString) {
-        try {
-            int day = Integer.parseInt(dayString.trim());
-            if (day < 1 || day > 31) {
-                setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be between 1 and 31");
-            } else {
-                updateLiveData(provisionalStartDayOfMonth, day);
-                setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "");
+        String val = dayString != null ? dayString.trim() : "";
+        updateLiveData(provisionalStartDayOfMonthInput, val);
+
+        if (val.isEmpty()) {
+            setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day of month cannot be empty");
+        } else {
+            try {
+                int day = Integer.parseInt(val);
+                if (day < 1 || day > 31) {
+                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be between 1 and 31");
+                } else {
+                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "");
+                }
+            } catch (Exception e) {
+                setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be a valid number between 1 and 31");
             }
-        } catch (Exception e) {
-            setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be a valid number between 1 and 31");
         }
         reevaluateState();
     }
@@ -155,11 +161,18 @@ public class SettingsViewModel extends ViewModel {
             return;
         }
 
+        String currentDayStr = provisionalStartDayOfMonthInput.getValue() != null ? provisionalStartDayOfMonthInput.getValue() : "1";
+        int parsedDay = 1;
+        try {
+            parsedDay = Integer.parseInt(currentDayStr.trim());
+        } catch (Exception e) {
+        }
+
         boolean changed = !persisted.getThemeMode().equalsIgnoreCase(provisionalThemeMode.getValue())
                 || !persisted.getDateFormat().equalsIgnoreCase(provisionalDateFormat.getValue() != null ? provisionalDateFormat.getValue().name() : "")
                 || !persisted.getCurrencyFormat().equalsIgnoreCase(provisionalCurrencyFormat.getValue() != null ? provisionalCurrencyFormat.getValue().name() : "")
-                || persisted.getStartDayOfMonth() != (provisionalStartDayOfMonth.getValue() != null ? provisionalStartDayOfMonth.getValue() : 1)
-                || persisted.isIncludeProvisional() != (provisionalIncludeProvisional.getValue() != null ? provisionalIncludeProvisional.getValue() : true);
+                || persisted.getStartDayOfMonth() != parsedDay
+                || persisted.isIncludeProvisional() != (provisionalIncludeProvisional.getValue() == null || provisionalIncludeProvisional.getValue());
 
         updateLiveData(changesMade, changed);
 
@@ -182,14 +195,21 @@ public class SettingsViewModel extends ViewModel {
                     return;
                 }
 
+                int parsedStartDay = 1;
+                try {
+                    parsedStartDay = Integer.parseInt(provisionalStartDayOfMonthInput.getValue());
+                } catch (Exception e) {
+                    throw new SettingsPreferenceViolationException("Invalid start day of month value: " + provisionalStartDayOfMonthInput.getValue());
+                }
+
                 SystemPreferences prefs = new SystemPreferences();
                 prefs.setThemeMode(provisionalThemeMode.getValue());
                 prefs.setDateFormat(provisionalDateFormat.getValue() != null ? provisionalDateFormat.getValue().name() : DateFormat.DD_MM_YYYY.name());
                 CurrencyFormat cur = provisionalCurrencyFormat.getValue() != null ? provisionalCurrencyFormat.getValue() : CurrencyFormat.NZD;
                 prefs.setCurrencyFormat(cur.name());
                 prefs.setCurrencySymbol(cur.getSymbol());
-                prefs.setStartDayOfMonth(provisionalStartDayOfMonth.getValue() != null ? provisionalStartDayOfMonth.getValue() : 1);
-                prefs.setIncludeProvisional(provisionalIncludeProvisional.getValue() != null ? provisionalIncludeProvisional.getValue() : true);
+                prefs.setStartDayOfMonth(parsedStartDay);
+                prefs.setIncludeProvisional(provisionalIncludeProvisional.getValue() == null || provisionalIncludeProvisional.getValue());
 
                 if (systemRepository != null) {
                     systemRepository.updatePreferences(prefs);
@@ -221,7 +241,7 @@ public class SettingsViewModel extends ViewModel {
         updateLiveData(provisionalThemeMode, "SYSTEM");
         updateLiveData(provisionalDateFormat, DateFormat.DD_MM_YYYY);
         updateLiveData(provisionalCurrencyFormat, CurrencyFormat.NZD);
-        updateLiveData(provisionalStartDayOfMonth, 1);
+        updateLiveData(provisionalStartDayOfMonthInput, "1");
         updateLiveData(provisionalIncludeProvisional, true);
         resetFieldErrors();
         reevaluateState();
@@ -283,8 +303,8 @@ public class SettingsViewModel extends ViewModel {
         return provisionalCurrencyFormat;
     }
 
-    public LiveData<Integer> getProvisionalStartDayOfMonth() {
-        return provisionalStartDayOfMonth;
+    public LiveData<String> getProvisionalStartDayOfMonthInput() {
+        return provisionalStartDayOfMonthInput;
     }
 
     public LiveData<Boolean> getProvisionalIncludeProvisional() {

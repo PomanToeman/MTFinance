@@ -3,7 +3,6 @@ package com.example.mtfinance.src.viewmodels;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -49,6 +48,17 @@ public class SettingsViewModelValidationTest {
         viewModel.getChangesMade().observeForever(c -> {});
         viewModel.getSaveStatusColor().observeForever(s -> {});
         viewModel.getGenericErrorMessage().observeForever(g -> {});
+    }
+
+    @Test
+    public void setProvisionalStartDay_emptyString_populatesEmptyFieldError() {
+        viewModel.setProvisionalStartDayOfMonth("");
+
+        assertAll(
+            () -> assertTrue(viewModel.hasFieldErrors()),
+            () -> assertEquals("RED", viewModel.getSaveStatusColor().getValue()),
+            () -> assertTrue(viewModel.getFieldErrors().getValue().get(SettingsViewModel.SystemPreferenceErrorFields.START_DAY_OF_MONTH).contains("cannot be empty"))
+        );
     }
 
     @Test
