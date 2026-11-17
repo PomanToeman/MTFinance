@@ -73,10 +73,11 @@ fun FabRightBottomCorner(actionOne: () -> Unit, actionTwo: (() -> Unit)? = null,
 }
 
 /**
- * Displays an amount with a dollar sign and two decimal places for the user.
+ * Displays an amount with a currency sign and two decimal places for the user.
  */
-fun displayAmount(amount: BigDecimal): String {
-    return "$" + amount.abs().setScale(2).toString()
+fun displayAmount(amount: BigDecimal, currencySymbol: String = "$"): String {
+    val symbol = if (currencySymbol.isNotBlank()) currencySymbol else "$"
+    return symbol + amount.abs().setScale(2, java.math.RoundingMode.HALF_UP).toString()
 }
 
 /**

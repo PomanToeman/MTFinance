@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -155,5 +156,13 @@ public class CategoryViewModelTest {
             () -> assertEquals(BigDecimal.ZERO, viewModel.getRemaining().getValue()),
             () -> assertNull(viewModel.getChildrenTotals().getValue())
         );
+    }
+
+    @Test
+    public void calculatePayPeriodDates_withCustomStartDay_computesCorrectRange() {
+        LocalDate today = LocalDate.of(2026, 11, 18);
+        LocalDate[] dates = CategoryViewModel.calculatePayPeriodDates(14, 0, true, today);
+        assertEquals(LocalDate.of(2026, 11, 14), dates[0]);
+        assertEquals(LocalDate.of(2026, 12, 13), dates[1]);
     }
 }

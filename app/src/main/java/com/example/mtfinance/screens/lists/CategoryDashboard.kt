@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +66,26 @@ fun FullCategoryDashBoard(
 
         if (selectedCategory != null) {
             MiniHeader(text = selectedCategory!!.category.name + " - " + selectedCategory!!.category.type.toString())
+
+            // Month Navigation Controls
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(onClick = { categoryViewModel.navigatePreviousMonth() }) {
+                    Text("< Prev")
+                }
+                Button(onClick = { categoryViewModel.resetToCurrentMonth() }) {
+                    Text("Current Month")
+                }
+                OutlinedButton(onClick = { categoryViewModel.navigateNextMonth() }) {
+                    Text("Next >")
+                }
+            }
+
             CategoryStackedBar(categoryViewModel = categoryViewModel)
             CategoryDetails(selectedCategory!!)
             if (selectedCategory?.category?.parent != null) {
