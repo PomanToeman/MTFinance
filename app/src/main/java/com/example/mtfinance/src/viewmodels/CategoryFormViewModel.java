@@ -363,6 +363,19 @@ public class CategoryFormViewModel extends ViewModel {
             errors.put(field, "");
         }
 
+        if (fields.editCategoryId != null && categoryService.isRoot(fields.editCategoryId)) {
+            try {
+                TrackingUtlis.checkAmount(fields.monthlyBudget);
+            } catch (Exception e) {
+                errors.put(CategoryErrorFields.MONTHLY_BUDGET, e.getMessage());
+            }
+            if (fields.minimumBudget != null && fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
+                errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
+            }
+            updateLiveData(this.fieldErrors, errors);
+            return errors;
+        }
+
         if (fields.name == null || fields.name.trim().isEmpty()) {
             errors.put(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EMPTY.getMessage());
         } else if (categoryService.categoryNameExists(fields.name)) {
@@ -376,11 +389,12 @@ public class CategoryFormViewModel extends ViewModel {
             }
         }
 
-        if (fields.monthlyBudget == null) {
-            errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.INVALID_AMOUNT.getMessage("null"));
-        } else if (fields.monthlyBudget.compareTo(BigDecimal.ZERO) < 0) {
-            errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.INVALID_AMOUNT.getMessage(fields.monthlyBudget.toString()));
-        } else if (fields.minimumBudget != null && fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
+        try {
+            TrackingUtlis.checkAmount(fields.monthlyBudget);
+        } catch (Exception e) {
+            errors.put(CategoryErrorFields.MONTHLY_BUDGET, e.getMessage());
+        }
+        if (fields.minimumBudget != null && fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
             errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
         }
 
