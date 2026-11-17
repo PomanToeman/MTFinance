@@ -363,15 +363,16 @@ public class CategoryFormViewModel extends ViewModel {
             errors.put(field, "");
         }
 
+        try {
+            TrackingUtlis.checkAmount(fields.monthlyBudget);
+        } catch (Exception e) {
+            errors.put(CategoryErrorFields.MONTHLY_BUDGET, e.getMessage());
+        }
+        if (fields.minimumBudget != null && fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
+            errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
+        }
+
         if (fields.editCategoryId != null && categoryService.isRoot(fields.editCategoryId)) {
-            try {
-                TrackingUtlis.checkAmount(fields.monthlyBudget);
-            } catch (Exception e) {
-                errors.put(CategoryErrorFields.MONTHLY_BUDGET, e.getMessage());
-            }
-            if (fields.minimumBudget != null && fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
-                errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
-            }
             updateLiveData(this.fieldErrors, errors);
             return errors;
         }
@@ -387,15 +388,6 @@ public class CategoryFormViewModel extends ViewModel {
                     errors.put(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EXISTS.getMessage());
                 }
             }
-        }
-
-        try {
-            TrackingUtlis.checkAmount(fields.monthlyBudget);
-        } catch (Exception e) {
-            errors.put(CategoryErrorFields.MONTHLY_BUDGET, e.getMessage());
-        }
-        if (fields.minimumBudget != null && fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
-            errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
         }
 
         if (fields.parentId != null) {
