@@ -2,10 +2,12 @@ package com.example.mtfinance.src.viewmodels;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,6 +23,8 @@ import com.example.mtfinance.src.trackingengine.Transaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -78,6 +82,26 @@ public class TransactionFormViewModelTest {
         assertEquals("Transaction saved successfully", viewModel.getSuccessMessage().getValue());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"-0.01", "0", "0.00"})
+    public void saveTransaction_bvaInvalidAmount_failsValidation(String invalidAmount) {
+        Set<Long> categoryIds = new HashSet<>(Arrays.asList(1L));
+        when(categoryService.verifyExistingIds(categoryIds)).thenReturn(true);
+
+        viewModel.setName("Valid Name");
+        viewModel.setAmount(new BigDecimal(invalidAmount));
+        viewModel.addCategoryId(1L);
+
+        viewModel.saveTransaction();
+
+        verify(trackingWriteRepository, never()).insertTransaction(any(), anyLong());
+        Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertFalse(errors.get(TransactionFormViewModel.TransactionErrorFields.AMOUNT).isEmpty())
+        );
+    }
+
     @Test
     public void saveTransaction_emptyName_populatesFieldErrorAndFailsValidation() {
         Set<Long> categoryIds = new HashSet<>(Arrays.asList(1L));
@@ -89,6 +113,7 @@ public class TransactionFormViewModelTest {
 
         viewModel.saveTransaction();
 
+        verify(trackingWriteRepository, never()).insertTransaction(any(), anyLong());
         Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
         assertAll(
             () -> assertNotNull(errors),
@@ -104,6 +129,7 @@ public class TransactionFormViewModelTest {
 
         viewModel.saveTransaction();
 
+        verify(trackingWriteRepository, never()).insertTransaction(any(), anyLong());
         Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
         assertAll(
             () -> assertNotNull(errors),
