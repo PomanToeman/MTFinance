@@ -148,6 +148,12 @@ public class CategoryViewModel extends ViewModel {
         updatePayPeriodDates(prefs, 0);
     }
 
+    public void jumpToMonthOffset(int targetOffset) {
+        monthOffset.setValue(targetOffset);
+        SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+        updatePayPeriodDates(prefs, targetOffset);
+    }
+
     public LiveData<List<CategoryWithTransactions>> getAllCategories() {
         return allCategories;
     }

@@ -1,10 +1,11 @@
 /**
  * @file SettingsScreen.kt
  * @scope Settings UI screen for persistent app configurations and app-wide commands.
- * @purpose Renders active theme controls, currency, date format, and pay period configurations.
+ * @purpose Renders active theme controls, currency, date format, and pay period configurations with provisional state management.
  */
 package com.example.mtfinance.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -30,6 +31,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -38,13 +40,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.screens.theme.SaveStatusColor
 import com.example.mtfinance.screens.theme.ThemeMode
 import com.example.mtfinance.screens.theme.ThemeState
+import com.example.mtfinance.screens.theme.getSaveStatusThemeColor
 import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.viewmodels.SettingsViewModel
@@ -58,8 +63,20 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
-    var deleteConfirmDialog by remember { mutableStateOf(false) }
+    val changesMade by settingsViewModel.changesMade.observeAsState(false)
+    val isLoading by settingsViewModel.isLoading.observeAsState(false)
+    val saveStatusColorStr by settingsViewModel.saveStatusColor.observeAsState("GRAY")
+    val genericErrorMessage by settingsViewModel.genericErrorMessage.observeAsState("")
+    val successMessage by settingsViewModel.successMessage.observeAsState("")
+    val fieldErrors by settingsViewModel.fieldErrors.observeAsState()
 
+    val provThemeMode by settingsViewModel.provisionalThemeMode.observeAsState("SYSTEM")
+    val provDateFormat by settingsViewModel.provisionalDateFormat.observeAsState(DateFormat.DD_MM_YYYY)
+    val provCurrencyFormat by settingsViewModel.provisionalCurrencyFormat.observeAsState(CurrencyFormat.NZD)
+    val provStartDay by settingsViewModel.provisionalStartDayOfMonth.observeAsState(1)
+    val provIncludeProvisional by settingsViewModel.provisionalIncludeProvisional.observeAsState(true)
+
+    var deleteConfirmDialog by remember { mutableStateOf(false) }
     var currencyMenu by remember { mutableStateOf(false) }
     var dateFormatMenu by remember { mutableStateOf(false) }
 
@@ -73,6 +90,20 @@ fun SettingsScreen(
         }
     }
 
+    // Discard unsaved provisional changes on exit
+    DisposableEffect(Unit) {
+        onDispose {
+            settingsViewModel.discardProvisionalChanges()
+        }
+    }
+
+    val statusColorEnum = try {
+        SaveStatusColor.valueOf(saveStatusColorStr)
+    } catch (_: Exception) {
+        SaveStatusColor.GRAY
+    }
+    val cardHeaderColor = getSaveStatusThemeColor(statusColorEnum)
+
     DefaultColumn(
         modifier = Modifier
             .padding(12.dp)
@@ -80,11 +111,35 @@ fun SettingsScreen(
     ) {
         Header("Settings & Configurations")
 
+        // Top Provisional Warning Banner
+        if (changesMade) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(2.dp, Color(0xFFFF9800), RectangleShape),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+            ) {
+                Text(
+                    text = "Provisional changes active — please save changes before exiting.",
+                    color = Color(0xFFE65100),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
+        if (genericErrorMessage.isNotBlank()) {
+            Text(text = genericErrorMessage, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+        }
+        if (successMessage.isNotBlank()) {
+            Text(text = successMessage, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+        }
+
         // 1. Theme Configuration Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(2.dp, MaterialTheme.colorScheme.outline, RectangleShape),
+                .border(2.dp, cardHeaderColor, RectangleShape),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -95,23 +150,21 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Choose your preferred theme mode. Saved directly to database.",
+                    text = "Choose your preferred theme mode.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                val currentMode = systemPreferences?.themeMode ?: "SYSTEM"
-
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { settingsViewModel.setThemeMode("SYSTEM") }
+                        .clickable { settingsViewModel.setProvisionalThemeMode("SYSTEM") }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
-                        selected = currentMode == "SYSTEM",
-                        onClick = { settingsViewModel.setThemeMode("SYSTEM") }
+                        selected = provThemeMode.equals("SYSTEM", ignoreCase = true),
+                        onClick = { settingsViewModel.setProvisionalThemeMode("SYSTEM") }
                     )
                     Text("System Default", modifier = Modifier.padding(start = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -119,13 +172,13 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { settingsViewModel.setThemeMode("LIGHT") }
+                        .clickable { settingsViewModel.setProvisionalThemeMode("LIGHT") }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
-                        selected = currentMode == "LIGHT",
-                        onClick = { settingsViewModel.setThemeMode("LIGHT") }
+                        selected = provThemeMode.equals("LIGHT", ignoreCase = true),
+                        onClick = { settingsViewModel.setProvisionalThemeMode("LIGHT") }
                     )
                     Text("Light Mode", modifier = Modifier.padding(start = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -133,13 +186,13 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { settingsViewModel.setThemeMode("DARK") }
+                        .clickable { settingsViewModel.setProvisionalThemeMode("DARK") }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
-                        selected = currentMode == "DARK",
-                        onClick = { settingsViewModel.setThemeMode("DARK") }
+                        selected = provThemeMode.equals("DARK", ignoreCase = true),
+                        onClick = { settingsViewModel.setProvisionalThemeMode("DARK") }
                     )
                     Text("Dark Mode", modifier = Modifier.padding(start = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -150,7 +203,7 @@ fun SettingsScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(2.dp, MaterialTheme.colorScheme.outline, RectangleShape),
+                .border(2.dp, cardHeaderColor, RectangleShape),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -162,51 +215,49 @@ fun SettingsScreen(
                 )
 
                 // Currency Selector
-                val currentCurrency = CurrencyFormat.fromString(systemPreferences?.currencyFormat ?: "NZD")
                 TextField(
                     label = { Text("Currency Format") },
-                    value = currentCurrency.getDisplayName(),
+                    value = provCurrencyFormat.getDisplayName(),
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = {
                         IconButton(onClick = { currencyMenu = !currencyMenu }) {
-                            Icon(imageVector = Icons.Default.List, contentDescription = "Currency List")
+                            Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "Currency List")
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (currencyMenu) {
-                    CurrencyFormat.values().forEach { cur ->
+                    CurrencyFormat.entries.forEach { cur ->
                         DropdownMenuItem(
                             text = { Text(cur.getDisplayName()) },
                             onClick = {
-                                settingsViewModel.setCurrencyFormat(cur)
+                                settingsViewModel.setProvisionalCurrencyFormat(cur)
                                 currencyMenu = false
                             }
                         )
                     }
                 }
 
-                // Date Format Selector
-                val currentDateFmt = systemPreferences?.dateFormat ?: "DD_MM_YYYY"
+                // Date Format Selector (Displays pattern string instead of enum name)
                 TextField(
                     label = { Text("Date Display Format") },
-                    value = currentDateFmt,
+                    value = provDateFormat.getString(),
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = {
                         IconButton(onClick = { dateFormatMenu = !dateFormatMenu }) {
-                            Icon(imageVector = Icons.Default.List, contentDescription = "Date Format List")
+                            Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "Date Format List")
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (dateFormatMenu) {
-                    DateFormat.values().forEach { fmt ->
+                    DateFormat.entries.forEach { fmt ->
                         DropdownMenuItem(
-                            text = { Text(fmt.toString()) },
+                            text = { Text(fmt.getString()) },
                             onClick = {
-                                settingsViewModel.setDateFormat(fmt)
+                                settingsViewModel.setProvisionalDateFormat(fmt)
                                 dateFormatMenu = false
                             }
                         )
@@ -215,11 +266,11 @@ fun SettingsScreen(
             }
         }
 
-        // 3. Pay Period & Time Window Settings
+        // 3. Pay Period & Month Start Settings
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(2.dp, MaterialTheme.colorScheme.outline, RectangleShape),
+                .border(2.dp, cardHeaderColor, RectangleShape),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -229,39 +280,33 @@ fun SettingsScreen(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(
-                    text = "Configure start day of month (1-31).",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
 
-                val startDay = systemPreferences?.startDayOfMonth ?: 1
+                val dayError = fieldErrors?.get(SettingsViewModel.SystemPreferenceErrorFields.START_DAY_OF_MONTH)
+                val isDayError = !dayError.isNullOrBlank()
+
                 TextField(
                     label = { Text("Start Day of Month (1-31)") },
-                    value = startDay.toString(),
-                    onValueChange = { input ->
-                        try {
-                            val day = input.toInt()
-                            if (day in 1..31) {
-                                settingsViewModel.setStartDayOfMonth(day)
-                            }
-                        } catch (_: Exception) {
+                    value = provStartDay.toString(),
+                    onValueChange = { input -> settingsViewModel.setProvisionalStartDayOfMonth(input) },
+                    isError = isDayError,
+                    supportingText = {
+                        if (isDayError) {
+                            Text(text = dayError!!, color = MaterialTheme.colorScheme.error)
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                val includeProv = systemPreferences?.includeProvisional ?: true
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { settingsViewModel.setIncludeProvisional(!includeProv) }
+                        .clickable { settingsViewModel.setProvisionalIncludeProvisional(!provIncludeProvisional) }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
-                        checked = includeProv,
-                        onCheckedChange = { settingsViewModel.setIncludeProvisional(it) }
+                        checked = provIncludeProvisional,
+                        onCheckedChange = { settingsViewModel.setProvisionalIncludeProvisional(it) }
                     )
                     Text(
                         text = "Include Provisional / Future Days in Period",
@@ -272,24 +317,28 @@ fun SettingsScreen(
             }
         }
 
-        // 4. Data Export & Import (Roadmap Placeholder)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RectangleShape),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+        // Action Buttons: Save Changes & Reset to Defaults
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Data Import & Export (Coming Soon)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("Export transactions and category hierarchies to CSV backups.", style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { }, enabled = false) { Text("Export Transactions") }
-                    OutlinedButton(onClick = { }, enabled = false) { Text("Export Categories") }
-                }
+            Button(
+                onClick = { settingsViewModel.saveChanges() },
+                enabled = changesMade && !settingsViewModel.hasFieldErrors(),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Save Changes")
+            }
+
+            OutlinedButton(
+                onClick = { settingsViewModel.resetToDefaults() },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Restore Defaults")
             }
         }
 
-        // 5. Danger Zone
+        // 4. Danger Zone
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -319,6 +368,10 @@ fun SettingsScreen(
 
         Button(onClick = { navHostController.navigate(Routes.HOME.route) }) {
             Text("Back to Home")
+        }
+
+        if (isLoading) {
+            LoadingDialog("Saving settings...")
         }
     }
 }
