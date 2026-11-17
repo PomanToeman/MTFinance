@@ -8,6 +8,7 @@ import androidx.room.Room;
 import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionDao;
+import com.example.mtfinance.src.repositories.roomdatabase.SystemPreferencesDao;
 import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 
 import java.util.concurrent.Executor;
@@ -26,7 +27,10 @@ public abstract class DatabaseModule {
     @Provides
     @Singleton
     public static AppDatabase provideAppDatabase(Application application) {
-        return Room.databaseBuilder(application, AppDatabase.class, "app_database").allowMainThreadQueries().build();
+        return Room.databaseBuilder(application, AppDatabase.class, "app_database")
+                .fallbackToDestructiveMigration()
+                .allowMainThreadQueries()
+                .build();
     }
 
     @Provides
@@ -42,6 +46,11 @@ public abstract class DatabaseModule {
     @Provides
     public static CategoryTransactionDao provideCategoryTransactionDao(AppDatabase appDatabase) {
         return appDatabase.categoryTransactionDao();
+    }
+
+    @Provides
+    public static SystemPreferencesDao provideSystemPreferencesDao(AppDatabase appDatabase) {
+        return appDatabase.systemPreferencesDao();
     }
 
     @Provides
@@ -64,6 +73,18 @@ public abstract class DatabaseModule {
                                                        CategoryDao categoryDao,
                                                        TransactionDao transactionDao) {
         return new TrackingRepository(categoryRepository, transactionRepository, categoryWithTransactionsDao, categoryDao, transactionDao);
+    }
+
+    @Provides
+    @Singleton
+    static SystemService provideSystemService(SystemPreferencesDao systemPreferencesDao, Executor executor) {
+        return new SystemService(systemPreferencesDao, executor);
+    }
+
+    @Provides
+    @Singleton
+    static SystemRepository provideSystemRepository(SystemPreferencesDao systemPreferencesDao, Executor executor) {
+        return new SystemRepository(systemPreferencesDao, executor);
     }
 
     @Provides
