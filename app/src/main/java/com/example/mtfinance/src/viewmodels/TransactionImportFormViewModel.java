@@ -31,7 +31,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
@@ -43,10 +45,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
  */
 @HiltViewModel
 public class TransactionImportFormViewModel extends ViewModel {
+
+    public enum TransactionImportErrorFields {
+        FILE_SOURCE, NAME_HEADER, AMOUNT_HEADER, DATE_HEADER, TYPE_HEADER, DATE_FORMATTER
+    }
+
     private final CategoryService categoryService;
     private final TrackingService trackingService;
     private final TransactionService transactionService;
-    private final TrackingRepository trackingWriteRepository;
+    private final TrackingRepository trackingRepository;
     private final Executor executor;
     private final Application application;
 
@@ -59,6 +66,8 @@ public class TransactionImportFormViewModel extends ViewModel {
     private final MutableLiveData<String> dateHeader = new MutableLiveData<>();
     private final MutableLiveData<String> typeHeader = new MutableLiveData<>();
     private final MutableLiveData<DateFormat> dateFormatter = new MutableLiveData<>();
+
+    private final MutableLiveData<Map<TransactionImportErrorFields, String>> fieldErrors = new MutableLiveData<>(new EnumMap<>(TransactionImportErrorFields.class));
 
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
     private final MutableLiveData<String> successMessage = new MutableLiveData<>();
@@ -73,26 +82,69 @@ public class TransactionImportFormViewModel extends ViewModel {
     public TransactionImportFormViewModel(CategoryService categoryService,
                                           TrackingService trackingService,
                                           TransactionService transactionService,
-                                          TrackingRepository trackingWriteRepository,
+                                          TrackingRepository trackingRepository,
                                           Executor executor,
                                           Application application) {
         this.categoryService = categoryService;
         this.trackingService = trackingService;
         this.transactionService = transactionService;
-        this.trackingWriteRepository = trackingWriteRepository;
+        this.trackingRepository = trackingRepository;
         this.executor = executor;
         this.application = application;
         clear();
     }
 
+    /**
+     * Resets all field-specific import error messages in the map.
+     */
+    public void resetFieldErrors() {
+        Map<TransactionImportErrorFields, String> errors = new EnumMap<>(TransactionImportErrorFields.class);
+        for (TransactionImportErrorFields field : TransactionImportErrorFields.values()) {
+            errors.put(field, "");
+        }
+        updateLiveData(this.fieldErrors, errors);
+    }
+
+    /**
+     * Checks if any field error exists in the current LiveData error map.
+     * @return true if at least one import field has a non-empty error message
+     */
+    public boolean hasFieldErrors() {
+        return hasFieldErrors(fieldErrors.getValue());
+    }
+
+    /**
+     * Checks if any field error exists in the given error map.
+     * @param errors the error map to check
+     * @return true if at least one import field has a non-empty error message
+     */
+    public boolean hasFieldErrors(Map<TransactionImportErrorFields, String> errors) {
+        if (errors == null || errors.isEmpty()) return false;
+        for (String error : errors.values()) {
+            if (error != null && !error.trim().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void setFieldError(TransactionImportErrorFields field, String message) {
+        Map<TransactionImportErrorFields, String> currentMap = fieldErrors.getValue();
+        Map<TransactionImportErrorFields, String> newMap = currentMap != null ? new EnumMap<>(currentMap) : new EnumMap<>(TransactionImportErrorFields.class);
+        newMap.put(field, message != null ? message : "");
+        updateLiveData(this.fieldErrors, newMap);
+    }
+
     public void setFilePath(String filePath) {
         this.filePath.setValue(filePath);
         this.fileUri.setValue(null);
+        setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
     }
 
     public void setFileUri(Uri uri) {
         this.fileUri.setValue(uri);
         this.filePath.setValue("");
+        setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
     }
 
     private void setCsvHeaders(List<String> headers) {
@@ -113,22 +165,39 @@ public class TransactionImportFormViewModel extends ViewModel {
 
     public void setNameHeader(String nameHeader) {
         updateLiveData(this.nameHeader, nameHeader);
+        if (nameHeader == null || nameHeader.trim().isEmpty()) {
+            setFieldError(TransactionImportErrorFields.NAME_HEADER, MessageCli.IMPORT_NAME_HEADER_MISSING.getMessage());
+        } else {
+            setFieldError(TransactionImportErrorFields.NAME_HEADER, "");
+        }
     }
 
     public void setAmountHeader(String amountHeader) {
         updateLiveData(this.amountHeader, amountHeader);
+        if (amountHeader == null || amountHeader.trim().isEmpty()) {
+            setFieldError(TransactionImportErrorFields.AMOUNT_HEADER, MessageCli.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
+        } else {
+            setFieldError(TransactionImportErrorFields.AMOUNT_HEADER, "");
+        }
     }
 
     public void setDateHeader(String dateHeader) {
         updateLiveData(this.dateHeader, dateHeader);
+        if (dateHeader == null || dateHeader.trim().isEmpty()) {
+            setFieldError(TransactionImportErrorFields.DATE_HEADER, MessageCli.IMPORT_DATE_HEADER_MISSING.getMessage());
+        } else {
+            setFieldError(TransactionImportErrorFields.DATE_HEADER, "");
+        }
     }
 
     public void setTypeHeader(String typeHeader) {
         updateLiveData(this.typeHeader, typeHeader);
+        setFieldError(TransactionImportErrorFields.TYPE_HEADER, "");
     }
 
     public void setDateFormatter(DateFormat format) {
         updateLiveData(this.dateFormatter, format);
+        setFieldError(TransactionImportErrorFields.DATE_FORMATTER, "");
     }
 
     public void setDateFormatter(String format) {
@@ -158,6 +227,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         this.successfulImports.setValue(new ArrayList<>());
         this.alwaysSendToRoot.setValue(Boolean.TRUE);
         this.dateFormatter.setValue(DateFormat.DD_MM_YYYY);
+        resetFieldErrors();
     }
 
     public void readTransactionFile() {
@@ -169,6 +239,7 @@ public class TransactionImportFormViewModel extends ViewModel {
         String path = filePath.getValue();
 
         if ((uri == null) && (path == null || path.isEmpty())) {
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.NO_FILE_FOUND.getMessage());
             setErrorMessage(MessageCli.NO_FILE_FOUND.getMessage());
             return;
         }
@@ -178,6 +249,7 @@ public class TransactionImportFormViewModel extends ViewModel {
             if (uri != null) {
                 InputStream inputStream = application.getContentResolver().openInputStream(uri);
                 if (inputStream == null) {
+                    setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_FILE_INVALID.getMessage("Could not open stream from Uri"));
                     setErrorMessage(MessageCli.IMPORT_FILE_INVALID.getMessage("Could not open stream from Uri"));
                     return;
                 }
@@ -199,9 +271,12 @@ public class TransactionImportFormViewModel extends ViewModel {
             updateLiveData(this.nameHeader, "");
             updateLiveData(this.amountHeader, "");
             setCsvHeaders(csvParser.getHeaderNames());
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
         } catch (IOException e) {
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_FILE_INVALID.getMessage(e.getMessage()));
             setErrorMessage(MessageCli.IMPORT_FILE_INVALID.getMessage(e.getMessage()));
         } catch (Exception e) {
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_FILE_READ_FAILED.getMessage(e.getMessage()));
             setErrorMessage(MessageCli.IMPORT_FILE_READ_FAILED.getMessage(e.getMessage()));
         }
     }
@@ -213,8 +288,15 @@ public class TransactionImportFormViewModel extends ViewModel {
     public void importTransactionSync() {
         try {
             setIsLoading(Boolean.TRUE);
-            validateImport();
-            TransactionFormViewModel transactionForm = new TransactionFormViewModel(this.trackingService, this.categoryService, this.transactionService, this.trackingWriteRepository, Runnable::run);
+            Map<TransactionImportErrorFields, String> errors = validateImport();
+
+            if (hasFieldErrors(errors)) {
+                setErrorMessage(MessageCli.FORM_INCOMPLETE.getMessage("Please configure required import headers and CSV file"));
+                setSuccessMessage("");
+                return;
+            }
+
+            TransactionFormViewModel transactionForm = new TransactionFormViewModel(this.trackingService, this.categoryService, this.transactionService, this.trackingRepository, Runnable::run);
             CSVParser csvParser = this.csvParser.getValue();
             String nameHeader = this.nameHeader.getValue();
             String dateHeader = this.dateHeader.getValue();
@@ -266,8 +348,6 @@ public class TransactionImportFormViewModel extends ViewModel {
             if (!failedImports.isEmpty()) {
                 setErrorMessage(MessageCli.IMPORT_FAILED.getMessage(failedImports.size()));
             }
-        } catch (IllegalArgumentException e) {
-            setErrorMessage(MessageCli.FORM_INCOMPLETE.getMessage(e.getMessage()));
         } catch (Exception e) {
             setErrorMessage(MessageCli.IMPORT_STOPPED.getMessage());
         } finally {
@@ -285,19 +365,27 @@ public class TransactionImportFormViewModel extends ViewModel {
         return TrackingUtlis.determineTypeByAmount(amount);
     }
 
-    private void validateImport() throws IllegalArgumentException {
+    private Map<TransactionImportErrorFields, String> validateImport() {
+        Map<TransactionImportErrorFields, String> errors = new EnumMap<>(TransactionImportErrorFields.class);
+        for (TransactionImportErrorFields field : TransactionImportErrorFields.values()) {
+            errors.put(field, "");
+        }
+
         if (csvParser.getValue() == null) {
-            throw new IllegalArgumentException(MessageCli.IMPORT_PARSER_MISSING.getMessage());
+            errors.put(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_PARSER_MISSING.getMessage());
         }
-        if (nameHeader.getValue() == null || nameHeader.getValue().isEmpty()) {
-            throw new IllegalArgumentException(MessageCli.IMPORT_NAME_HEADER_MISSING.getMessage());
+        if (nameHeader.getValue() == null || nameHeader.getValue().trim().isEmpty()) {
+            errors.put(TransactionImportErrorFields.NAME_HEADER, MessageCli.IMPORT_NAME_HEADER_MISSING.getMessage());
         }
-        if (amountHeader.getValue() == null || amountHeader.getValue().isEmpty()) {
-            throw new IllegalArgumentException(MessageCli.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
+        if (amountHeader.getValue() == null || amountHeader.getValue().trim().isEmpty()) {
+            errors.put(TransactionImportErrorFields.AMOUNT_HEADER, MessageCli.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
         }
-        if (dateHeader.getValue() == null || dateHeader.getValue().isEmpty()) {
-            throw new IllegalArgumentException(MessageCli.IMPORT_DATE_HEADER_MISSING.getMessage());
+        if (dateHeader.getValue() == null || dateHeader.getValue().trim().isEmpty()) {
+            errors.put(TransactionImportErrorFields.DATE_HEADER, MessageCli.IMPORT_DATE_HEADER_MISSING.getMessage());
         }
+
+        updateLiveData(this.fieldErrors, errors);
+        return errors;
     }
 
     private Long findCategoryIdForTransaction(TrackingType type, String query) {
@@ -333,4 +421,5 @@ public class TransactionImportFormViewModel extends ViewModel {
     public LiveData<List<String>> getSuccessfulImports() { return successfulImports; }
     public LiveData<List<String>> getFailedImports() { return failedImports; }
     public LiveData<Boolean> getAlwaysSendToRoot() { return alwaysSendToRoot; }
+    public LiveData<Map<TransactionImportErrorFields, String>> getFieldErrors() { return fieldErrors; }
 }

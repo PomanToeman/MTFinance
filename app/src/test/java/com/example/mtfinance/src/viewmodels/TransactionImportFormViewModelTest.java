@@ -2,6 +2,8 @@ package com.example.mtfinance.src.viewmodels;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 @ExtendWith(InstantExecutorExtension.class)
@@ -51,6 +54,7 @@ public class TransactionImportFormViewModelTest {
         MockitoAnnotations.openMocks(this);
         when(application.getContentResolver()).thenReturn(contentResolver);
         viewModel = new TransactionImportFormViewModel(categoryService, trackingService, transactionService, trackingWriteRepository, synchronousExecutor, application);
+        viewModel.getFieldErrors().observeForever(m -> {});
     }
 
     @Test
@@ -65,5 +69,28 @@ public class TransactionImportFormViewModelTest {
             () -> assertEquals("", viewModel.getNameHeader().getValue()),
             () -> assertTrue(viewModel.getCsvHeaders().getValue().isEmpty())
         );
+    }
+
+    @Test
+    public void importTransaction_missingHeadersAndFile_populatesFieldErrors() {
+        viewModel.importTransaction();
+
+        Map<TransactionImportFormViewModel.TransactionImportErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertTrue(errors.get(TransactionImportFormViewModel.TransactionImportErrorFields.FILE_SOURCE).contains("CSV Parser is not initialized")),
+            () -> assertTrue(errors.get(TransactionImportFormViewModel.TransactionImportErrorFields.NAME_HEADER).contains("Name header is missing")),
+            () -> assertTrue(errors.get(TransactionImportFormViewModel.TransactionImportErrorFields.AMOUNT_HEADER).contains("Amount header is missing")),
+            () -> assertTrue(errors.get(TransactionImportFormViewModel.TransactionImportErrorFields.DATE_HEADER).contains("Date header is missing"))
+        );
+    }
+
+    @Test
+    public void clear_clearsAllImportFieldErrors() {
+        viewModel.importTransaction();
+        assertTrue(viewModel.hasFieldErrors());
+
+        viewModel.clear();
+        assertFalse(viewModel.hasFieldErrors());
     }
 }
