@@ -41,6 +41,7 @@ import com.example.mtfinance.screens.MiniHeader
 import com.example.mtfinance.screens.displayAmount
 import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
+import com.example.mtfinance.src.viewmodels.SettingsViewModel
 import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.TextComponent
 import com.patrykandpatrick.vico.compose.common.vicoTheme
@@ -63,6 +64,14 @@ fun FullCategoryDashBoard(
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
     var showMonthPicker by remember { mutableStateOf(false) }
     val currentOffset by categoryViewModel.monthOffset.observeAsState(0)
+
+    val today = LocalDate.now()
+    val activeDate = today.plusMonths(currentOffset.toLong())
+    val monthLabel = if (activeDate.year == today.year) {
+        activeDate.month.name.lowercase().replaceFirstChar { it.uppercase() }
+    } else {
+        "${activeDate.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${activeDate.year}"
+    }
 
     Column(
         modifier = Modifier
@@ -87,7 +96,7 @@ fun FullCategoryDashBoard(
                     Text("< Prev")
                 }
                 Button(onClick = { showMonthPicker = true }) {
-                    Text(text = if (currentOffset == 0) "Current Month" else "Month Offset ($currentOffset)")
+                    Text(text = monthLabel)
                 }
                 OutlinedButton(onClick = { categoryViewModel.navigateNextMonth() }) {
                     Text("Next >")
@@ -125,7 +134,7 @@ fun FullCategoryDashBoard(
             TransactionListforCategory(selectedCategory!!)
 
             Button(onClick = { categoryViewModel.resetSelectedCategory() }) {
-                Text(text = "Back", color = MaterialTheme.colorScheme.primary)
+                Text(text = "Back", color = MaterialTheme.colorScheme.onPrimary)
             }
         } else {
             Text(text = "No category selected", color = MaterialTheme.colorScheme.primary)
@@ -267,8 +276,17 @@ fun CategoryPieChart(
  */
 @Composable
 fun CategoryStackedBar(
-    categoryViewModel: CategoryViewModel = hiltViewModel()
+    categoryViewModel: CategoryViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
+    val currencySymbol = systemPreferences?.currencySymbol ?: "$"
+    val dateFormatter = try {
+        DateFormat.valueOf(systemPreferences?.dateFormat ?: "DD_MM_YYYY").toFormatter()
+    } catch (_: Exception) {
+        DateFormat.DD_MM_YYYY.toFormatter()
+    }
+
     val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
     val cumulativeTotal by categoryViewModel.totalIncludingSub.observeAsState(BigDecimal.ZERO)
     val remaining by categoryViewModel.remaining.observeAsState(BigDecimal.ZERO)
@@ -282,7 +300,7 @@ fun CategoryStackedBar(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Budget Usage", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
             Text(
-                "From ${startDate?.format(DateFormat.DD_MM_YY.toFormatter())} to ${endDate?.format(DateFormat.DD_MM_YY.toFormatter())}",
+                "From ${startDate?.format(dateFormatter)} to ${endDate?.format(dateFormatter)}",
                 color = MaterialTheme.colorScheme.primary,
                 style = MaterialTheme.typography.titleSmall,
                 textAlign = TextAlign.Right
@@ -347,7 +365,7 @@ fun CategoryStackedBar(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
                 Text("Total Spent", style = MaterialTheme.typography.labelSmall)
-                Text(displayAmount(cumulativeTotal), fontWeight = FontWeight.Bold)
+                Text(displayAmount(cumulativeTotal, currencySymbol), fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
@@ -356,7 +374,7 @@ fun CategoryStackedBar(
                     color = if (isOverBudget) Color.Red else Color.Unspecified
                 )
                 Text(
-                    displayAmount(remaining),
+                    displayAmount(remaining, currencySymbol),
                     fontWeight = FontWeight.Bold,
                     color = if (isOverBudget) Color.Red else Color.Unspecified
                 )
@@ -364,7 +382,7 @@ fun CategoryStackedBar(
         }
 
         Text(
-            "Budget: ${displayAmount(budget)}",
+            "Budget: ${displayAmount(budget, currencySymbol)}",
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center

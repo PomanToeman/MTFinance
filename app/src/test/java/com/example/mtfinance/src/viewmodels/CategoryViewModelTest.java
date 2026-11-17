@@ -165,4 +165,18 @@ public class CategoryViewModelTest {
         assertEquals(LocalDate.of(2026, 11, 14), dates[0]);
         assertEquals(LocalDate.of(2026, 12, 13), dates[1]);
     }
+
+    @Test
+    public void calculatePayPeriodDates_startDay31_shortMonthNoOverlap() {
+        LocalDate today = LocalDate.of(2026, 1, 31);
+        LocalDate[] dates = CategoryViewModel.calculatePayPeriodDates(31, 0, true, today);
+        assertEquals(LocalDate.of(2026, 1, 31), dates[0]);
+        assertEquals(LocalDate.of(2026, 2, 27), dates[1]);
+    }
+
+    @Test
+    public void jumpToMonthOffset_updatesMonthOffsetValue() {
+        viewModel.jumpToMonthOffset(-6);
+        assertEquals(-6, viewModel.getMonthOffsetValue());
+    }
 }

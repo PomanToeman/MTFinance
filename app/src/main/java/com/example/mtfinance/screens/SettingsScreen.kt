@@ -5,7 +5,6 @@
  */
 package com.example.mtfinance.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,10 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.mtfinance.screens.theme.SaveStatusColor
 import com.example.mtfinance.screens.theme.ThemeMode
 import com.example.mtfinance.screens.theme.ThemeState
-import com.example.mtfinance.screens.theme.getSaveStatusThemeColor
 import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.viewmodels.SettingsViewModel
@@ -65,7 +62,6 @@ fun SettingsScreen(
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val changesMade by settingsViewModel.changesMade.observeAsState(false)
     val isLoading by settingsViewModel.isLoading.observeAsState(false)
-    val saveStatusColorStr by settingsViewModel.saveStatusColor.observeAsState("GRAY")
     val genericErrorMessage by settingsViewModel.genericErrorMessage.observeAsState("")
     val successMessage by settingsViewModel.successMessage.observeAsState("")
     val fieldErrors by settingsViewModel.fieldErrors.observeAsState()
@@ -73,7 +69,7 @@ fun SettingsScreen(
     val provThemeMode by settingsViewModel.provisionalThemeMode.observeAsState("SYSTEM")
     val provDateFormat by settingsViewModel.provisionalDateFormat.observeAsState(DateFormat.DD_MM_YYYY)
     val provCurrencyFormat by settingsViewModel.provisionalCurrencyFormat.observeAsState(CurrencyFormat.NZD)
-    val provStartDay by settingsViewModel.provisionalStartDayOfMonth.observeAsState(1)
+    val provStartDayInput by settingsViewModel.provisionalStartDayOfMonthInput.observeAsState("1")
     val provIncludeProvisional by settingsViewModel.provisionalIncludeProvisional.observeAsState(true)
 
     var deleteConfirmDialog by remember { mutableStateOf(false) }
@@ -96,13 +92,6 @@ fun SettingsScreen(
             settingsViewModel.discardProvisionalChanges()
         }
     }
-
-    val statusColorEnum = try {
-        SaveStatusColor.valueOf(saveStatusColorStr)
-    } catch (_: Exception) {
-        SaveStatusColor.GRAY
-    }
-    val cardHeaderColor = getSaveStatusThemeColor(statusColorEnum)
 
     DefaultColumn(
         modifier = Modifier
@@ -139,7 +128,7 @@ fun SettingsScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(2.dp, cardHeaderColor, RectangleShape),
+                .border(2.dp, MaterialTheme.colorScheme.outline, RectangleShape),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -203,7 +192,7 @@ fun SettingsScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(2.dp, cardHeaderColor, RectangleShape),
+                .border(2.dp, MaterialTheme.colorScheme.outline, RectangleShape),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -270,7 +259,7 @@ fun SettingsScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(2.dp, cardHeaderColor, RectangleShape),
+                .border(2.dp, MaterialTheme.colorScheme.outline, RectangleShape),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -286,12 +275,12 @@ fun SettingsScreen(
 
                 TextField(
                     label = { Text("Start Day of Month (1-31)") },
-                    value = provStartDay.toString(),
+                    value = provStartDayInput,
                     onValueChange = { input -> settingsViewModel.setProvisionalStartDayOfMonth(input) },
                     isError = isDayError,
                     supportingText = {
-                        if (isDayError) {
-                            Text(text = dayError!!, color = MaterialTheme.colorScheme.error)
+                        if (isDayError && dayError != null) {
+                            Text(text = dayError, color = MaterialTheme.colorScheme.error)
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
