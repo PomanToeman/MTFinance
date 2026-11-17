@@ -1,8 +1,14 @@
+/**
+ * @file Utils.kt
+ * @scope General UI composables, layout helpers, dialogs, and text formatting utilities.
+ * @purpose Provides shared widgets such as DefaultColumn, FabRightBottomCorner, DeleteConfirmationDialog, and Header.
+ */
 package com.example.mtfinance.screens
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,8 +37,6 @@ import java.math.BigDecimal
 fun DefaultColumn(modifier: Modifier = Modifier, horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally, content: @Composable () -> Unit) {
     Column(
         modifier = modifier.fillMaxSize(),
-
-
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = horizontalAlignment
     ) {
@@ -45,9 +49,8 @@ fun DefaultColumn(modifier: Modifier = Modifier, horizontalAlignment: Alignment.
  */
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun FabRightBottomCorner(actionOne: () -> Unit, actionTwo: (() -> Unit)? = null, content: @Composable () -> Unit,  iconImageOne: ImageVector = Icons.Default.Add, iconImageTwo: ImageVector = Icons.Default.Add ) {
+fun FabRightBottomCorner(actionOne: () -> Unit, actionTwo: (() -> Unit)? = null, content: @Composable () -> Unit, iconImageOne: ImageVector = Icons.Default.Add, iconImageTwo: ImageVector = Icons.Default.Add) {
     Scaffold(
-
         floatingActionButton = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -61,10 +64,7 @@ fun FabRightBottomCorner(actionOne: () -> Unit, actionTwo: (() -> Unit)? = null,
                         Icon(imageVector = iconImageTwo, contentDescription = "Add", tint = Color.White)
                     }
                 }
-
-
             }
-
         },
         content = {
             content()
@@ -87,12 +87,14 @@ fun DeleteConfirmationDialog(onDismiss: () -> Unit, onConfirm: () -> Unit, onCan
     AlertDialog(
         onDismissRequest = { onDismiss() },
         title = { Text("Delete Confirmation") },
-        text = { Column( modifier = Modifier.padding(6.dp)) {
-            Text(message)
-            if (content != null) {
-                content()
+        text = {
+            Column(modifier = Modifier.padding(6.dp)) {
+                Text(message)
+                if (content != null) {
+                    content()
+                }
             }
-        } },
+        },
         confirmButton = {
             TextButton(onClick = { onConfirm() }) {
                 Text("Delete")
@@ -104,9 +106,7 @@ fun DeleteConfirmationDialog(onDismiss: () -> Unit, onConfirm: () -> Unit, onCan
             }
         }
     )
-
 }
-
 
 @Composable
 fun LoadingDialog(message: String = "Loading...") {
@@ -122,3 +122,24 @@ fun MiniHeader(text: String = "Category List") {
     Text(text = text, color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
 }
 
+/**
+ * Displays a styled top section header with centered alignment.
+ * @param text The header title string.
+ */
+@Composable
+fun Header(text: String = "Category List") {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = text,
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+    }
+}
