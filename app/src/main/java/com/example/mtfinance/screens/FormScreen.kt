@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -15,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -27,6 +29,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -71,6 +74,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val transactionType by transactionFormViewModel.type.observeAsState()
 
     val transactionNotes by transactionFormViewModel.description.observeAsState()
+    val errorMap by transactionFormViewModel.fieldErrors.observeAsState()
     val editMode by transactionFormViewModel.editMode.observeAsState()
     val successMessage by transactionFormViewModel.successMessage.observeAsState()
     val errorMessage by transactionFormViewModel.errorMessage.observeAsState()
@@ -87,9 +91,29 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
         Header(MessageCli.TRANSACTION_FORM_HEADER.getMessage())
         Text("Edit Mode: $editMode")
-        TextFieldForm("Name", transactionName, onValueChange = {transactionFormViewModel.setName(it)}, minLines = 1, maxLines = 1, enabled = editMode == false)
-        TextFieldForm("Description", transactionNotes, onValueChange = {transactionFormViewModel.setDescription(it)}, minLines = 3, maxLines = 3, placeholder = TrackingUtlis.EMPTY_DESCRIPTION)
-        NumberFieldForm("Amount", transactionAmount, setter = {transactionFormViewModel.setAmount(it)}, enabled = editMode == false)
+        TextFieldForm(
+            "Name", transactionName,
+            onValueChange = { transactionFormViewModel.setName(it) },
+            minLines = 1, maxLines = 1,
+            enabled = editMode == false,
+            isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.NAME)?.isNotEmpty() == true,
+            errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.NAME)
+        )
+        TextFieldForm(
+            "Description", transactionNotes,
+            onValueChange = { transactionFormViewModel.setDescription(it) },
+            minLines = 3, maxLines = 3,
+            placeholder = TrackingUtlis.EMPTY_DESCRIPTION,
+            isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DESCRIPTION)?.isNotEmpty() == true,
+            errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DESCRIPTION)
+        )
+        NumberFieldForm(
+            "Amount", transactionAmount,
+            setter = { transactionFormViewModel.setAmount(it) },
+            enabled = editMode == false,
+            isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.AMOUNT)?.isNotEmpty() == true,
+            errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.AMOUNT)
+        )
 
 
         DatePickerField(value = transactionDate?.format(DateTimeFormatter.ISO_LOCAL_DATE).toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
@@ -153,6 +177,7 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
     val categoryMonthlyBudget by categoryFormViewModel.monthlyBudget.observeAsState()
     val categoryType by categoryFormViewModel.type.observeAsState()
     val categoryParent by categoryFormViewModel.cachedParentCategory.observeAsState()
+    val errorMap by categoryFormViewModel.fieldErrors.observeAsState()
     val editMode by categoryFormViewModel.IsEditMode().observeAsState()
     val successMessage by categoryFormViewModel.successMessage.observeAsState()
     val errorMessage by categoryFormViewModel.errorMessage.observeAsState()
@@ -169,9 +194,29 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
     DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
         Header(MessageCli.CATEGORY_FORM_HEADER.getMessage())
         Text("Edit Mode: $editMode")
-        TextFieldForm("Name", categoryName, onValueChange = {categoryFormViewModel.setName(it)}, minLines = 1, maxLines = 1, enabled = isRoot == false)
-        TextFieldForm("Description", categoryDescription, onValueChange = {categoryFormViewModel.setDescription(it)}, minLines = 3, maxLines = 3, placeholder = TrackingUtlis.EMPTY_DESCRIPTION, enabled = isRoot == false)
-        NumberFieldForm("Monthly Budget", categoryMonthlyBudget, setter = {categoryFormViewModel.setMonthlyBudget(it)})
+        TextFieldForm(
+            "Name", categoryName,
+            onValueChange = { categoryFormViewModel.setName(it) },
+            minLines = 1, maxLines = 1,
+            enabled = isRoot == false,
+            isError = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.NAME)?.isNotEmpty() == true,
+            errorMessage = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.NAME)
+        )
+        TextFieldForm(
+            "Description", categoryDescription,
+            onValueChange = { categoryFormViewModel.setDescription(it) },
+            minLines = 3, maxLines = 3,
+            placeholder = TrackingUtlis.EMPTY_DESCRIPTION,
+            enabled = isRoot == false,
+            isError = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.DESCRIPTION)?.isNotEmpty() == true,
+            errorMessage = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.DESCRIPTION)
+        )
+        NumberFieldForm(
+            "Monthly Budget", categoryMonthlyBudget,
+            setter = { categoryFormViewModel.setMonthlyBudget(it) },
+            isError = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.MONTHLY_BUDGET)?.isNotEmpty() == true,
+            errorMessage = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.MONTHLY_BUDGET)
+        )
         Column(modifier = Modifier.padding(16.dp)) {
             if (categoryParent != null && isRoot == false) {
                 CategoryListItem(categoryParent!!, backgroundColor = Color.LightGray)
@@ -458,8 +503,28 @@ fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange:
 
 
 @Composable
-fun TextFieldForm(label: String, value: String?, onValueChange: (String) -> Unit, minLines: Int = 1, maxLines: Int = 1, placeholder: String = "", enabled: Boolean = true) {
-    TextField(label = { Text(label) }, value = value ?: "", onValueChange = onValueChange, minLines = minLines, maxLines = maxLines, placeholder = { Text(placeholder)}, enabled = enabled)
+fun TextFieldForm(label: String, value: String?, onValueChange: (String) -> Unit, minLines: Int = 1, maxLines: Int = 1, placeholder: String = "", enabled: Boolean = true, isError: Boolean = false, errorMessage: String? = "") {
+    TextField(label = { Text(label) }, value = value ?: "", onValueChange = onValueChange, minLines = minLines, maxLines = maxLines, placeholder = { Text(placeholder)}, enabled = enabled, isError = isError,
+        supportingText = {
+            if (isError) {
+                if (errorMessage != null) {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        trailingIcon = {
+            if (isError) {
+                Icon(
+                    imageVector = Icons.Filled.Error,
+                    contentDescription = "Error",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        })
 }
 
 /**
@@ -470,13 +535,34 @@ fun TextFieldForm(label: String, value: String?, onValueChange: (String) -> Unit
  * @param enabled - Whether the field is enabled.
  */
 @Composable
-fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> Unit, enabled: Boolean = true) {
+fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> Unit, enabled: Boolean = true, isError: Boolean = false, errorMessage: String? = "") {
     OutlinedTextField(
         label = { Text(label) },
         value = value?.toString() ?: "",
         prefix = { Text("$ ") },
         placeholder = { Text("0.00") },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        isError = isError,
+        supportingText = {
+            if (isError) {
+                if (errorMessage != null) {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        trailingIcon = {
+            if (isError) {
+                Icon(
+                    imageVector = Icons.Filled.Error,
+                    contentDescription = "Error",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        },
         onValueChange = {input ->
             val filteredInput = input.filter { it.isDigit() || it == '.' }
 
@@ -612,5 +698,3 @@ fun ChooseTypeForm(typeValue: TrackingType?, onTypeSelected: (TrackingType?) -> 
         }
     }
 }
-
-
