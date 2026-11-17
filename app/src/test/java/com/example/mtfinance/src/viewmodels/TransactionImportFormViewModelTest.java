@@ -93,4 +93,15 @@ public class TransactionImportFormViewModelTest {
         viewModel.clear();
         assertFalse(viewModel.hasFieldErrors());
     }
+
+    @Test
+    public void setFilePath_nonCsvFile_populatesFieldError() {
+        viewModel.setFilePath("some/path/document.pdf");
+
+        Map<TransactionImportFormViewModel.TransactionImportErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertTrue(errors.get(TransactionImportFormViewModel.TransactionImportErrorFields.FILE_SOURCE).contains("Only CSV files"))
+        );
+    }
 }

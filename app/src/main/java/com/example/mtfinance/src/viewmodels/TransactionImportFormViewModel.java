@@ -138,13 +138,53 @@ public class TransactionImportFormViewModel extends ViewModel {
     public void setFilePath(String filePath) {
         this.filePath.setValue(filePath);
         this.fileUri.setValue(null);
-        setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
+        if (filePath != null && !filePath.isEmpty() && !isCsvFile(null, filePath)) {
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, "Only CSV files (.csv) are supported");
+            setErrorMessage("Only CSV files (.csv) are supported");
+        } else {
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
+        }
     }
 
     public void setFileUri(Uri uri) {
         this.fileUri.setValue(uri);
         this.filePath.setValue("");
-        setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
+        if (uri != null && !isCsvFile(uri, null)) {
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, "Only CSV files (.csv) are supported");
+            setErrorMessage("Only CSV files (.csv) are supported");
+        } else {
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
+        }
+    }
+
+    public boolean isCsvFile(Uri uri, String path) {
+        if (uri != null) {
+            String mimeType = application.getContentResolver().getType(uri);
+            if (mimeType != null) {
+                if (mimeType.contains("pdf")) {
+                    return false;
+                }
+                if (mimeType.contains("csv") || mimeType.contains("comma-separated-values") || mimeType.contains("text/plain")) {
+                    return true;
+                }
+            }
+            String pathStr = uri.getPath();
+            if (pathStr != null && pathStr.toLowerCase().endsWith(".pdf")) {
+                return false;
+            }
+            if (pathStr != null && pathStr.toLowerCase().endsWith(".csv")) {
+                return true;
+            }
+            String uriStr = uri.toString();
+            if (uriStr.toLowerCase().endsWith(".pdf")) {
+                return false;
+            }
+            return uriStr.toLowerCase().endsWith(".csv") || mimeType == null;
+        }
+        if (path != null && !path.isEmpty()) {
+            return !path.toLowerCase().endsWith(".pdf") && path.toLowerCase().endsWith(".csv");
+        }
+        return false;
     }
 
     private void setCsvHeaders(List<String> headers) {
@@ -241,6 +281,12 @@ public class TransactionImportFormViewModel extends ViewModel {
         if ((uri == null) && (path == null || path.isEmpty())) {
             setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.NO_FILE_FOUND.getMessage());
             setErrorMessage(MessageCli.NO_FILE_FOUND.getMessage());
+            return;
+        }
+
+        if (!isCsvFile(uri, path)) {
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, "Only CSV files (.csv) are supported");
+            setErrorMessage("Only CSV files (.csv) are supported");
             return;
         }
 

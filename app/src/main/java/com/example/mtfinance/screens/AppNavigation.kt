@@ -5,7 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-
+import com.example.mtfinance.screens.forms.*
+import com.example.mtfinance.screens.lists.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -13,9 +14,7 @@ fun AppNavigation() {
     val navController = rememberNavController()
 
     SetScaffolding(content = {
-
-        NavHost(navController, startDestination = "home") {
-
+        NavHost(navController, startDestination = Routes.HOME.route) {
             composable(Routes.HOME.route) { HomeScreen(navController) }
             composable(Routes.CATEGORY.route) { CategoryListScreen(navController) }
             composable(Routes.CATEGORY_FORM.route) { CategoryFormScreen(navHostController = navController) }
@@ -24,24 +23,11 @@ fun AppNavigation() {
             composable(Routes.TRANSACTION_FORM_EDIT.route) { backStackEntry -> TransactionFormScreen(navHostController = navController, transactionId = backStackEntry.arguments?.getString("transactionId")?.toLong()) }
             composable(Routes.TRANSACTION_FORM.route) { TransactionFormScreen(navHostController = navController) }
             composable(Routes.TRANSACTION_IMPORT.route) { TransactionImportScreen(navHostController = navController) }
-
-
-
-
-
-
-
-
         }
-
-
     }, nav = navController)
-
-
-
 }
 
-enum class Routes {
+enum class Routes(val route: String) {
     HOME("home"),
     CATEGORY("category"),
     TRANSACTION("transaction"),
@@ -49,15 +35,8 @@ enum class Routes {
     TRANSACTION_FORM_EDIT("transactionForm/{transactionId}"),
     TRANSACTION_IMPORT("transactionImport"),
     CATEGORY_FORM("categoryForm"),
-    CATEGORY_FORM_EDIT("categoryForm/{categoryId}")
-    ;
+    CATEGORY_FORM_EDIT("categoryForm/{categoryId}");
 
-    val route: String
-    constructor(route: String) {
-        this.route = route
-    }
-
-
-
+    fun createCategoryEditRoute(categoryId: Long): String = "categoryForm/$categoryId"
+    fun createTransactionEditRoute(transactionId: Long): String = "transactionForm/$transactionId"
 }
-
