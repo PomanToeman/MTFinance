@@ -3,6 +3,7 @@ package com.example.mtfinance.src.viewmodels;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.concurrent.Executor;
+
 @ExtendWith(InstantExecutorExtension.class)
 public class SettingsViewModelTest {
 
@@ -30,14 +33,16 @@ public class SettingsViewModelTest {
 
     private SettingsViewModel viewModel;
     private MutableLiveData<SystemPreferences> preferencesLiveData;
+    private final Executor synchronousExecutor = Runnable::run;
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         preferencesLiveData = new MutableLiveData<>(new SystemPreferences("SYSTEM"));
         when(systemService.getPreferencesLive()).thenReturn(preferencesLiveData);
+        when(systemService.getPreferencesSync()).thenReturn(new SystemPreferences("SYSTEM"));
 
-        viewModel = new SettingsViewModel(systemService, systemRepository);
+        viewModel = new SettingsViewModel(systemService, systemRepository, synchronousExecutor);
     }
 
     @Test
@@ -49,8 +54,9 @@ public class SettingsViewModelTest {
     }
 
     @Test
-    public void setThemeMode_delegatesToRepository() {
-        viewModel.setThemeMode("DARK");
-        verify(systemRepository).updateThemeMode("DARK");
+    public void setProvisionalThemeMode_andSave_delegatesToRepository() {
+        viewModel.setProvisionalThemeMode("DARK");
+        viewModel.saveChanges();
+        verify(systemRepository).updatePreferences(any());
     }
 }
