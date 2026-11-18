@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -892,14 +893,39 @@ public class CategoryTrackingEngineTest {
                 cache.put(r.id, c);
             }
 
-            for (Category c : cache.values()) {
+            List<Category> nodes = new ArrayList<>(cache.values());
+            nodes.sort(Comparator.comparingInt(c -> countAncestorIdsInCache(c, cache)));
+
+            for (Category c : nodes) {
                 if (c.getParentId() != null && cache.containsKey(c.getParentId())) {
                     Category p = cache.get(c.getParentId());
-                    c.setParentInternal(p);
+                    if (p != null) {
+                        try {
+                            c.setParent(p);
+                        } catch (CategoryViolationException e) {
+                            c.setParentId(null);
+                            Record rec = store.get(c.getCategoryId());
+                            if (rec != null) {
+                                rec.parentId = null;
+                            }
+                        }
+                    }
                 }
             }
 
             return cache.get(id);
+        }
+
+        private int countAncestorIdsInCache(Category c, Map<Long, Category> cache) {
+            int depth = 0;
+            Long pId = c.getParentId();
+            Set<Long> visited = new HashSet<>();
+            while (pId != null && cache.containsKey(pId) && visited.add(pId)) {
+                depth++;
+                Category parent = cache.get(pId);
+                pId = parent != null ? parent.getParentId() : null;
+            }
+            return depth;
         }
     }
 }

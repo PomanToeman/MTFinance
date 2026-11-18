@@ -87,6 +87,16 @@ public class Category implements Details {
         }
     }
 
+    private void validateEditedNodeCacheCompleteness(Category newParent) {
+        if (this.getParent() == null) {
+            if (this.getParentId() != null && !this.getParentId().equals(newParent.getCategoryId())) {
+                throw new CategoryStateException("Incomplete cache detected on edited category: parentId is " + this.getParentId() + " but cached parent reference is null for " + this.getName());
+            }
+        } else {
+            validateCacheCompleteness(this.getParent());
+        }
+    }
+
     public int getSubtreeHeight() {
         int maxChildHeight = 0;
         for (Category child : children) {
@@ -104,7 +114,7 @@ public class Category implements Details {
      * @param parent - the parent to be set for this category (if possible)
      */
     public void setParent(@NonNull Category parent) throws IllegalStateException {
-        validateCacheCompleteness(this);
+        validateEditedNodeCacheCompleteness(parent);
         validateCacheCompleteness(parent);
 
         if (this.equals(parent)) {
@@ -164,7 +174,7 @@ public class Category implements Details {
      * This helper method is to set parent while bypassing checks.
      * @param parent - the parent to be set.
      */
-    void setParentInternal(Category parent) {
+    private void setParentInternal(Category parent) {
 
         if (this.equals(parent)) {
             return;
