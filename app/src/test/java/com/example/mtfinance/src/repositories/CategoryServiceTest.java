@@ -64,4 +64,26 @@ public class CategoryServiceTest {
             () -> assertEquals("Groceries", result.getName())
         );
     }
+
+    @Test
+    public void testStaleEdgeCycleStackOverflowScenario() {
+        Category x = new Category("X", "", BigDecimal.TEN, TrackingType.EXPENSE);
+        Category y = new Category("Y", "", BigDecimal.TEN, TrackingType.EXPENSE);
+        Category z = new Category("Z", "", BigDecimal.TEN, TrackingType.EXPENSE);
+        x.setCategoryId(1L);
+        y.setCategoryId(2L);
+        z.setCategoryId(3L);
+
+        y.setParent(x); // x.children = {y}
+        y.setParent(z); // z.children = {y}, but x.children STILL contains y (stale edge)
+
+        try {
+            x.setParent(y);
+            org.junit.jupiter.api.Assertions.assertThrows(StackOverflowError.class, () -> {
+                x.getChildren(true);
+            });
+        } catch (Exception e) {
+            assertNotNull(e);
+        }
+    }
 }
