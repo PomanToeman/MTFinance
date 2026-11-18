@@ -8,8 +8,12 @@ import com.example.mtfinance.src.trackingengine.CategoryViolationException;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -126,30 +130,61 @@ class CategoryTreeHelper {
     }
 
     public Category getCategoryByIdRestored(@NonNull Long id) {
-        return getCategoryByIdRestoredInternal(id, new HashSet<>());
-    }
+        if (id == null) return null;
 
-    private Category getCategoryByIdRestoredInternal(Long id, Set<Long> visited) {
-        if (id == null || visited.contains(id)) return null;
-        visited.add(id);
+        Map<Long, Category> cache = new HashMap<>();
+        collectRelatedCategories(id, cache, new HashSet<>());
 
-        Category category = categoryDao.getById(id);
-        if (category != null) {
-            Category parent = getCategoryByIdRestoredInternal(category.getParentId(), visited);
-            if (parent != null) {
-                category.setParent(parent);
-            }
+        if (!cache.containsKey(id)) return null;
 
-            for (Category child : categoryDao.getByParentId(category.getCategoryId())) {
-                if (child != null) {
-                    Category childRestored = getCategoryByIdRestoredInternal(child.getCategoryId(), visited);
-                    if (childRestored != null) {
-                        childRestored.setParent(category);
-                    }
+        List<Category> nodes = new ArrayList<>(cache.values());
+        nodes.sort(Comparator.comparingInt(c -> countAncestorIdsInCache(c, cache)));
+
+        for (Category c : nodes) {
+            if (c.getParentId() != null && cache.containsKey(c.getParentId())) {
+                Category p = cache.get(c.getParentId());
+                if (p != null) {
+                    c.setParent(p);
                 }
             }
         }
-        return category;
+
+        return cache.get(id);
+    }
+
+    private void collectRelatedCategories(Long id, Map<Long, Category> cache, Set<Long> visited) {
+        if (id == null || visited.contains(id)) return;
+        visited.add(id);
+
+        Category category = categoryDao.getById(id);
+        if (category == null) return;
+
+        cache.put(category.getCategoryId(), category);
+
+        if (category.getParentId() != null) {
+            collectRelatedCategories(category.getParentId(), cache, visited);
+        }
+
+        List<Category> children = categoryDao.getByParentId(category.getCategoryId());
+        if (children != null) {
+            for (Category child : children) {
+                if (child != null) {
+                    collectRelatedCategories(child.getCategoryId(), cache, visited);
+                }
+            }
+        }
+    }
+
+    private int countAncestorIdsInCache(Category c, Map<Long, Category> cache) {
+        int depth = 0;
+        Long pId = c.getParentId();
+        Set<Long> visited = new HashSet<>();
+        while (pId != null && cache.containsKey(pId) && visited.add(pId)) {
+            depth++;
+            Category parent = cache.get(pId);
+            pId = parent != null ? parent.getParentId() : null;
+        }
+        return depth;
     }
 
     public Category getCategoryRestored(@NonNull Category category) {
