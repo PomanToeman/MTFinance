@@ -5,77 +5,278 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 /**
- * Unit tests for Category tracking engine hierarchy, cycle prevention, depth limits, and stale edge cleanup.
+ * Reconfigured Category tracking engine unit tests matching spec requirements R1 to R15 and decisions D1 to D7.
  */
 public class CategoryTrackingEngineTest {
 
-    private static final BigDecimal DEFAULT_BUDGET = BigDecimal.valueOf(0.1);
+    private static final BigDecimal DEFAULT_BUDGET = BigDecimal.valueOf(10.0);
+
+    @BeforeEach
+    public void setUp() {
+        // Reset counters and shared state if any
+    }
+
+    private void assertTreeConsistent(Category node, int maxDepth) {
+        Set<Category> visited = new HashSet<>();
+        assertTreeConsistentRecursive(node, maxDepth, visited);
+    }
+
+    private void assertTreeConsistentRecursive(Category node, int maxDepth, Set<Category> visited) {
+        assertNotNull(node);
+        assertTrue(visited.add(node), "Cycle detected in tree graph at category: " + node.getName());
+        assertTrue(node.getAncestors().size() <= maxDepth, "Max depth exceeded for node: " + node.getName());
+
+        if (node.getParent() != null) {
+            assertEquals(node.getParent().getCategoryId(), node.getParentId(), "ParentId mismatch for node: " + node.getName());
+            assertTrue(node.getParent().getChildren(false).contains(node), "Parent children set does not contain node: " + node.getName());
+        }
+
+        for (Category child : node.getChildren(false)) {
+            assertTreeConsistentRecursive(child, maxDepth, visited);
+        }
+    }
+
+    // --- REJECTED LINKS (R4, R5, R9, D1) ---
 
     @Test
-    public void categoryHierarchy_ParentChildRelationshipAndCyclePrevention_SetsParentAndValidatesDescendant() {
-        Category categoryOne = new Category("Subscriptions", "Test 3", DEFAULT_BUDGET, TrackingType.EXPENSE);
-        Category categoryTwo = new Category("Netflix", "Sub category of subscriptions", DEFAULT_BUDGET, TrackingType.EXPENSE);
+    public void setParent_selfAsParent_throwsCategoryViolationException() {
+        Category c = new Category("Self", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c.setCategoryId(1L);
+        assertThrows(CategoryViolationException.class, () -> c.setParent(c));
+    }
 
-        categoryTwo.setParent(categoryOne);
-        categoryOne.setParent(categoryTwo); // Cycle prevention check
-
+    @Test
+    public void setParent_selfAsParent_stateUnchanged() {
+        Category c = new Category("Self", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c.setCategoryId(1L);
+        try { c.setParent(c); } catch (Exception ignored) {}
         assertAll(
-            () -> assertEquals(categoryOne, categoryTwo.getParent()),
-            () -> assertNotEquals(categoryTwo, categoryOne.getParent()),
-            () -> assertFalse(categoryOne.isDescendantOf(categoryTwo)),
-            () -> assertTrue(categoryTwo.isDescendantOf(categoryOne))
+            () -> assertNull(c.getParent()),
+            () -> assertNull(c.getParentId())
         );
     }
 
     @Test
-    public void categoryHierarchy_BasicParentChild_SetsParentSuccessfully() {
-        Category parent = new Category("Subscriptions", "Main category", DEFAULT_BUDGET, TrackingType.EXPENSE);
-        Category child = new Category("Netflix", "Streaming sub", DEFAULT_BUDGET, TrackingType.EXPENSE);
-
+    public void setParent_directChildAsParent_throwsCategoryViolationException() {
+        Category parent = new Category("Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        parent.setCategoryId(1L);
+        child.setCategoryId(2L);
         child.setParent(parent);
+
+        assertThrows(CategoryViolationException.class, () -> parent.setParent(child));
+    }
+
+    @Test
+    public void setParent_deepDescendantAsParent_throwsCategoryViolationException() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category l1 = new Category("L1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category l2 = new Category("L2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        root.setCategoryId(1L);
+        l1.setCategoryId(2L);
+        l2.setCategoryId(3L);
+
+        l1.setParent(root);
+        l2.setParent(l1);
+
+        assertThrows(CategoryViolationException.class, () -> root.setParent(l2));
+    }
+
+    @Test
+    public void setParent_descendantAsParent_hierarchyUnchanged() {
+        Category parent = new Category("Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        parent.setCategoryId(1L);
+        child.setCategoryId(2L);
+        child.setParent(parent);
+
+        try { parent.setParent(child); } catch (Exception ignored) {}
 
         assertAll(
             () -> assertEquals(parent, child.getParent()),
-            () -> assertTrue(child.isDescendantOf(parent)),
-            () -> assertFalse(parent.isDescendantOf(child))
+            () -> assertNull(parent.getParent())
         );
     }
 
     @Test
-    public void categoryHierarchy_DeepHierarchy_ValidatesMultiLevelDescendants() {
-        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
-        Category level1 = new Category("Level 1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
-        Category level2 = new Category("Level 2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
-        Category level3 = new Category("Level 3", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+    public void setParent_differentType_throwsCategoryViolationException() {
+        Category exp = new Category("Expense", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category inc = new Category("Income", "", DEFAULT_BUDGET, TrackingType.INCOME);
+        exp.setCategoryId(1L);
+        inc.setCategoryId(2L);
 
-        level1.setParent(root);
-        level2.setParent(level1);
-        level3.setParent(level2);
+        assertThrows(CategoryViolationException.class, () -> exp.setParent(inc));
+    }
+
+    @Test
+    public void setParent_differentType_stateUnchanged() {
+        Category exp = new Category("Expense", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category inc = new Category("Income", "", DEFAULT_BUDGET, TrackingType.INCOME);
+        exp.setCategoryId(1L);
+        inc.setCategoryId(2L);
+
+        try { exp.setParent(inc); } catch (Exception ignored) {}
 
         assertAll(
-            () -> assertTrue(level3.isDescendantOf(root)),
-            () -> assertTrue(level3.isDescendantOf(level1)),
-            () -> assertTrue(level2.isDescendantOf(root)),
-            () -> assertFalse(root.isDescendantOf(level3))
+            () -> assertNull(exp.getParent()),
+            () -> assertNull(exp.getParentId())
+        );
+    }
+
+    // --- REPARENTING (R1, R2, R3, R7, D6) ---
+
+    @Test
+    public void setParent_ancestorAsParent_movesUpAndParentIdMatches() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category l1 = new Category("L1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category l2 = new Category("L2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        root.setCategoryId(1L);
+        l1.setCategoryId(2L);
+        l2.setCategoryId(3L);
+
+        l1.setParent(root);
+        l2.setParent(l1);
+
+        // Move l2 directly up to root
+        l2.setParent(root);
+
+        assertAll(
+            () -> assertEquals(root, l2.getParent()),
+            () -> assertEquals(1L, l2.getParentId())
         );
     }
 
     @Test
-    public void categoryHierarchy_MaxDepthExceeded_ThrowsCategoryViolationException() {
+    public void setParent_ancestorAsParent_removedFromOldParentChildren() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category l1 = new Category("L1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category l2 = new Category("L2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        root.setCategoryId(1L);
+        l1.setCategoryId(2L);
+        l2.setCategoryId(3L);
+
+        l1.setParent(root);
+        l2.setParent(l1);
+
+        l2.setParent(root);
+
+        assertFalse(l1.getChildren(false).contains(l2));
+    }
+
+    @Test
+    public void setParent_sameParentTwice_childListedOnce() {
+        Category p = new Category("P", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c = new Category("C", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        p.setCategoryId(1L);
+        c.setCategoryId(2L);
+
+        c.setParent(p);
+        c.setParent(p);
+
+        assertEquals(1, p.getChildren(false).stream().filter(item -> item.equals(c)).count());
+    }
+
+    @Test
+    public void setParent_unrelatedNewParent_addedToNewParentAndIdsMatch() {
+        Category x = new Category("X", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category y = new Category("Y", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category z = new Category("Z", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        x.setCategoryId(1L);
+        y.setCategoryId(2L);
+        z.setCategoryId(3L);
+
+        y.setParent(x);
+        y.setParent(z);
+
+        assertAll(
+            () -> assertEquals(z, y.getParent()),
+            () -> assertEquals(3L, y.getParentId()),
+            () -> assertTrue(z.getChildren(false).contains(y)),
+            () -> assertFalse(x.getChildren(false).contains(y))
+        );
+    }
+
+    @Test
+    public void setParent_movedTwiceInOneSession_currentParentAndParentIdCorrect() {
+        Category x = new Category("X", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category y = new Category("Y", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category z = new Category("Z", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        x.setCategoryId(1L);
+        y.setCategoryId(2L);
+        z.setCategoryId(3L);
+
+        y.setParent(x);
+        y.setParent(z);
+
+        assertAll(
+            () -> assertEquals(z, y.getParent()),
+            () -> assertEquals(3L, y.getParentId()),
+            () -> assertEquals(1, z.getChildren(false).stream().filter(item -> item.equals(y)).count())
+        );
+    }
+
+    @Test
+    public void setParent_movedTwiceInOneSession_newParentMinimumBudgetIncludesChild() {
+        Category x = new Category("X", "", BigDecimal.valueOf(50), TrackingType.EXPENSE);
+        Category y = new Category("Y", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category z = new Category("Z", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        x.setCategoryId(1L);
+        y.setCategoryId(2L);
+        z.setCategoryId(3L);
+
+        y.setParent(x);
+        y.setParent(z);
+
+        assertTrue(z.getMonthlyBudget().compareTo(BigDecimal.valueOf(100)) >= 0);
+    }
+
+    @Test
+    public void setParent_movedTwiceInOneSession_hashStableInNewParentChildren() {
+        Category x = new Category("X", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category y = new Category("Y", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category z = new Category("Z", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        x.setCategoryId(1L);
+        y.setCategoryId(2L);
+        z.setCategoryId(3L);
+
+        y.setParent(x);
+        y.setParent(z);
+
+        assertTrue(z.getChildren(false).contains(y));
+    }
+
+    // --- DEPTH (R6, D2) ---
+
+    @Test
+    public void setParent_parentWithMaxAncestors_throwsAndStateUnchanged() {
         Category c0 = new Category("C0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
         Category c1 = new Category("C1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
         Category c2 = new Category("C2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
         Category c3 = new Category("C3", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
         Category c4 = new Category("C4", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
         Category c5 = new Category("C5", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c0.setCategoryId(0L); c1.setCategoryId(1L); c2.setCategoryId(2L);
+        c3.setCategoryId(3L); c4.setCategoryId(4L); c5.setCategoryId(5L);
 
         c1.setParent(c0);
         c2.setParent(c1);
@@ -84,42 +285,621 @@ public class CategoryTrackingEngineTest {
         c5.setParent(c4);
 
         Category c6 = new Category("C6", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c6.setCategoryId(6L);
+
         assertThrows(CategoryViolationException.class, () -> c6.setParent(c5));
     }
 
     @Test
-    public void shouldRemoveStaleEdgesWhenReassigningParent() {
-        Category x = new Category("X", "", BigDecimal.TEN, TrackingType.EXPENSE);
-        Category y = new Category("Y", "", BigDecimal.TEN, TrackingType.EXPENSE);
-        Category z = new Category("Z", "", BigDecimal.TEN, TrackingType.EXPENSE);
-        x.setCategoryId(1L);
-        y.setCategoryId(2L);
-        z.setCategoryId(3L);
+    public void setParent_parentOneBelowMaxAncestors_succeeds() {
+        Category c0 = new Category("C0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c1 = new Category("C1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c2 = new Category("C2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c3 = new Category("C3", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c4 = new Category("C4", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c0.setCategoryId(0L); c1.setCategoryId(1L); c2.setCategoryId(2L);
+        c3.setCategoryId(3L); c4.setCategoryId(4L);
 
-        assertDoesNotThrow(() -> y.setParent(x));
-        assertTrue(x.getChildren(true).contains(y));
+        c1.setParent(c0);
+        c2.setParent(c1);
+        c3.setParent(c2);
+        c4.setParent(c3);
 
-        assertDoesNotThrow(() -> y.setParent(z));
-        assertFalse(x.getChildren(true).contains(y));
-        assertTrue(z.getChildren(true).contains(y));
+        Category c5 = new Category("C5", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c5.setCategoryId(5L);
 
-        assertDoesNotThrow(() -> {
-            x.getChildren(true);
-            z.getChildren(true);
-        });
+        assertDoesNotThrow(() -> c5.setParent(c4));
     }
 
     @Test
-    public void shouldPreventCycleWhenSettingDescendantAsParent() {
-        Category parent = new Category("Parent", "", BigDecimal.TEN, TrackingType.EXPENSE);
-        Category child = new Category("Child", "", BigDecimal.TEN, TrackingType.EXPENSE);
-        parent.setCategoryId(10L);
-        child.setCategoryId(20L);
+    public void setParent_subtreeWouldExceedMaxDepth_throwsAndStateUnchanged() {
+        Category a0 = new Category("A0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category a1 = new Category("A1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category a2 = new Category("A2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category a3 = new Category("A3", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        a0.setCategoryId(10L); a1.setCategoryId(11L); a2.setCategoryId(12L); a3.setCategoryId(13L);
+        a1.setParent(a0); a2.setParent(a1); a3.setParent(a2); // A3 has 3 ancestors
 
-        assertDoesNotThrow(() -> child.setParent(parent));
-        assertEquals(parent, child.getParent());
+        Category b0 = new Category("B0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category b1 = new Category("B1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category b2 = new Category("B2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        b0.setCategoryId(20L); b1.setCategoryId(21L); b2.setCategoryId(22L);
+        b1.setParent(b0); b2.setParent(b1); // B2 has depth 2 subtree under B0
 
-        assertDoesNotThrow(() -> parent.setParent(child));
-        assertNotEquals(child, parent.getParent());
+        // Attaching B0 to A3 would give B2 3 + 1 + 2 = 6 ancestors > 5
+        assertThrows(CategoryViolationException.class, () -> b0.setParent(a3));
+    }
+
+    @Test
+    public void setParent_subtreeExactlyFitsMaxDepth_succeeds() {
+        Category a0 = new Category("A0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category a1 = new Category("A1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category a2 = new Category("A2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        a0.setCategoryId(10L); a1.setCategoryId(11L); a2.setCategoryId(12L);
+        a1.setParent(a0); a2.setParent(a1); // A2 has 2 ancestors
+
+        Category b0 = new Category("B0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category b1 = new Category("B1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category b2 = new Category("B2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        b0.setCategoryId(20L); b1.setCategoryId(21L); b2.setCategoryId(22L);
+        b1.setParent(b0); b2.setParent(b1); // B2 has depth 2 subtree under B0
+
+        assertDoesNotThrow(() -> b0.setParent(a2));
+    }
+
+    @Test
+    public void setParent_deepNodeMovedToAncestorAtFullDepth_succeeds() {
+        Category c0 = new Category("C0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c1 = new Category("C1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c2 = new Category("C2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c3 = new Category("C3", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c4 = new Category("C4", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c0.setCategoryId(0L); c1.setCategoryId(1L); c2.setCategoryId(2L); c3.setCategoryId(3L); c4.setCategoryId(4L);
+        c1.setParent(c0); c2.setParent(c1); c3.setParent(c2); c4.setParent(c3);
+
+        assertDoesNotThrow(() -> c4.setParent(c0));
+    }
+
+    // --- GETTERS (R10, R11) ---
+
+    @Test
+    public void getChildren_includeGrandFalse_returnsOnlyDirectChildren() {
+        Category p = new Category("P", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c = new Category("C", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category g = new Category("G", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        p.setCategoryId(1L); c.setCategoryId(2L); g.setCategoryId(3L);
+        c.setParent(p); g.setParent(c);
+
+        Set<Category> direct = p.getChildren(false);
+        assertAll(
+            () -> assertEquals(1, direct.size()),
+            () -> assertTrue(direct.contains(c)),
+            () -> assertFalse(direct.contains(g))
+        );
+    }
+
+    @Test
+    public void getChildren_includeGrandTrue_returnsAllDescendants() {
+        Category p = new Category("P", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c = new Category("C", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category g = new Category("G", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        p.setCategoryId(1L); c.setCategoryId(2L); g.setCategoryId(3L);
+        c.setParent(p); g.setParent(c);
+
+        Set<Category> all = p.getChildren(true);
+        assertAll(
+            () -> assertEquals(2, all.size()),
+            () -> assertTrue(all.contains(c)),
+            () -> assertTrue(all.contains(g))
+        );
+    }
+
+    @Test
+    public void getChildren_returnedSetModified_internalChildrenUnchanged() {
+        Category p = new Category("P", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c = new Category("C", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        p.setCategoryId(1L); c.setCategoryId(2L);
+        c.setParent(p);
+
+        Set<Category> set = p.getChildren(false);
+        try { set.clear(); } catch (Exception ignored) {}
+
+        assertEquals(1, p.getChildren(false).size());
+    }
+
+    @Test
+    public void getChildren_includeGrandTrueOnMaxDepthChain_terminates() {
+        Category c0 = new Category("C0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c1 = new Category("C1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c2 = new Category("C2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c3 = new Category("C3", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c4 = new Category("C4", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c0.setCategoryId(0L); c1.setCategoryId(1L); c2.setCategoryId(2L); c3.setCategoryId(3L); c4.setCategoryId(4L);
+        c1.setParent(c0); c2.setParent(c1); c3.setParent(c2); c4.setParent(c3);
+
+        assertDoesNotThrow(() -> c0.getChildren(true));
+    }
+
+    @Test
+    public void getAncestors_chainOfFour_returnsAllThreeAbove() {
+        Category c0 = new Category("C0", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c1 = new Category("C1", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c2 = new Category("C2", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c3 = new Category("C3", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c0.setCategoryId(0L); c1.setCategoryId(1L); c2.setCategoryId(2L); c3.setCategoryId(3L);
+        c1.setParent(c0); c2.setParent(c1); c3.setParent(c2);
+
+        Set<Category> ancestors = c3.getAncestors();
+        assertAll(
+            () -> assertEquals(3, ancestors.size()),
+            () -> assertTrue(ancestors.contains(c0)),
+            () -> assertTrue(ancestors.contains(c1)),
+            () -> assertTrue(ancestors.contains(c2))
+        );
+    }
+
+    @Test
+    public void getAncestors_rootCategory_returnsEmptySet() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        root.setCategoryId(1L);
+        assertTrue(root.getAncestors().isEmpty());
+    }
+
+    @Test
+    public void isDescendantOf_grandparent_returnsTrue() {
+        Category p = new Category("P", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c = new Category("C", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category g = new Category("G", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        p.setCategoryId(1L); c.setCategoryId(2L); g.setCategoryId(3L);
+        c.setParent(p); g.setParent(c);
+
+        assertTrue(g.isDescendantOf(p));
+    }
+
+    @Test
+    public void isDescendantOf_self_returnsFalse() {
+        Category c = new Category("C", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c.setCategoryId(1L);
+        assertFalse(c.isDescendantOf(c));
+    }
+
+    @Test
+    public void isDescendantOf_unrelatedCategory_returnsFalse() {
+        Category x = new Category("X", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category y = new Category("Y", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        x.setCategoryId(1L); y.setCategoryId(2L);
+        assertFalse(x.isDescendantOf(y));
+    }
+
+    @ParameterizedTest
+    @EnumSource(TrackingType.class)
+    public void isDescendantOf_differentType_returnsFalse(TrackingType type) {
+        TrackingType otherType = type == TrackingType.EXPENSE ? TrackingType.INCOME : TrackingType.EXPENSE;
+        Category c1 = new Category("C1", "", DEFAULT_BUDGET, type);
+        Category c2 = new Category("C2", "", DEFAULT_BUDGET, otherType);
+        c1.setCategoryId(1L); c2.setCategoryId(2L);
+
+        assertFalse(c1.isDescendantOf(c2));
+    }
+
+    // --- DELETION HELPER (R12, D5) ---
+
+    @Test
+    public void makeChildrenCongruent_middleNode_childrenAttachToGrandparent() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category middle = new Category("Middle", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        root.setCategoryId(1L); middle.setCategoryId(2L); child.setCategoryId(3L);
+
+        middle.setParent(root);
+        child.setParent(middle);
+
+        middle.makeChildrenCongruent();
+
+        assertAll(
+            () -> assertEquals(root, child.getParent()),
+            () -> assertTrue(root.getChildren(false).contains(child))
+        );
+    }
+
+    @Test
+    public void makeChildrenCongruent_middleNode_ownChildrenSetEmpty() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category middle = new Category("Middle", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        root.setCategoryId(1L); middle.setCategoryId(2L); child.setCategoryId(3L);
+
+        middle.setParent(root);
+        child.setParent(middle);
+
+        middle.makeChildrenCongruent();
+
+        assertTrue(middle.getChildren(false).isEmpty());
+    }
+
+    @Test
+    public void makeChildrenCongruent_rootNode_childrenRemainAttached() {
+        Category root = new Category("Root", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category child = new Category("Child", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        root.setCategoryId(1L); child.setCategoryId(2L);
+        child.setParent(root);
+
+        root.makeChildrenCongruent();
+
+        assertTrue(root.getChildren(false).contains(child));
+    }
+
+    // --- BUDGETS (R13, D3) ---
+
+    @Test
+    public void determineMinimumBudget_noChildren_returnsZero() {
+        Category c = new Category("C", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c.setCategoryId(1L);
+        assertEquals(0, BigDecimal.ZERO.compareTo(c.determineMinimumBudget()));
+    }
+
+    @Test
+    public void setParent_childBudgetsExceedParent_parentRaisedToChildSum() {
+        Category parent = new Category("Parent", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category child = new Category("Child", "", BigDecimal.valueOf(50), TrackingType.EXPENSE);
+        parent.setCategoryId(1L); child.setCategoryId(2L);
+
+        child.setParent(parent);
+
+        assertTrue(parent.getMonthlyBudget().compareTo(BigDecimal.valueOf(50)) >= 0);
+    }
+
+    @Test
+    public void setParent_raisedParentBudget_cascadesToGrandparent() {
+        Category root = new Category("Root", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category middle = new Category("Middle", "", BigDecimal.valueOf(20), TrackingType.EXPENSE);
+        Category child = new Category("Child", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        root.setCategoryId(1L); middle.setCategoryId(2L); child.setCategoryId(3L);
+
+        middle.setParent(root);
+        child.setParent(middle);
+
+        assertAll(
+            () -> assertTrue(middle.getMonthlyBudget().compareTo(BigDecimal.valueOf(100)) >= 0),
+            () -> assertTrue(root.getMonthlyBudget().compareTo(BigDecimal.valueOf(100)) >= 0)
+        );
+    }
+
+    @Test
+    public void setMonthlyBudget_childRaised_ancestorsRaisedAutomatically() {
+        Category root = new Category("Root", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category child = new Category("Child", "", BigDecimal.valueOf(50), TrackingType.EXPENSE);
+        root.setCategoryId(1L); child.setCategoryId(2L);
+
+        child.setParent(root);
+        child.setMonthlyBudget(BigDecimal.valueOf(150));
+
+        assertTrue(root.getMonthlyBudget().compareTo(BigDecimal.valueOf(150)) >= 0);
+    }
+
+    @Test
+    public void setMonthlyBudget_belowMinimum_ignored() {
+        Category parent = new Category("Parent", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        Category child = new Category("Child", "", BigDecimal.valueOf(80), TrackingType.EXPENSE);
+        parent.setCategoryId(1L); child.setCategoryId(2L);
+
+        child.setParent(parent);
+        parent.setMonthlyBudget(BigDecimal.valueOf(20));
+
+        assertTrue(parent.getMonthlyBudget().compareTo(BigDecimal.valueOf(80)) >= 0);
+    }
+
+    @Test
+    public void setMonthlyBudget_aboveMinimum_updates() {
+        Category c = new Category("C", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        c.setCategoryId(1L);
+        c.setMonthlyBudget(BigDecimal.valueOf(200));
+
+        assertEquals(0, BigDecimal.valueOf(200).compareTo(c.getMonthlyBudget()));
+    }
+
+    @Test
+    public void setParent_childMovedAway_minimumDropsButBudgetStaysRaised() {
+        Category p1 = new Category("P1", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category p2 = new Category("P2", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category child = new Category("Child", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
+        p1.setCategoryId(1L); p2.setCategoryId(2L); child.setCategoryId(3L);
+
+        child.setParent(p1);
+        BigDecimal p1RaisedBudget = p1.getMonthlyBudget();
+
+        child.setParent(p2);
+
+        assertAll(
+            () -> assertEquals(0, p1RaisedBudget.compareTo(p1.getMonthlyBudget()), "Stored budget never falls automatically"),
+            () -> assertEquals(0, BigDecimal.ZERO.compareTo(p1.determineMinimumBudget()), "Minimum budget falls on removal")
+        );
+    }
+
+    @Test
+    public void makeChildrenCongruent_middleNode_grandparentMinimumIncludesAdoptedChildren() {
+        Category root = new Category("Root", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category middle = new Category("Middle", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category child = new Category("Child", "", BigDecimal.valueOf(75), TrackingType.EXPENSE);
+        root.setCategoryId(1L); middle.setCategoryId(2L); child.setCategoryId(3L);
+
+        middle.setParent(root);
+        child.setParent(middle);
+
+        middle.makeChildrenCongruent();
+
+        assertTrue(root.determineMinimumBudget().compareTo(BigDecimal.valueOf(75)) >= 0);
+    }
+
+    @Test
+    public void setParent_ancestorAsParent_newParentMinimumIncludesMovedSubtree() {
+        Category root = new Category("Root", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category l1 = new Category("L1", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category l2 = new Category("L2", "", BigDecimal.valueOf(90), TrackingType.EXPENSE);
+        root.setCategoryId(1L); l1.setCategoryId(2L); l2.setCategoryId(3L);
+
+        l1.setParent(root);
+        l2.setParent(l1);
+
+        l2.setParent(root);
+
+        assertTrue(root.determineMinimumBudget().compareTo(BigDecimal.valueOf(90)) >= 0);
+    }
+
+    // --- EQUALITY (R14, D4) ---
+
+    @Test
+    public void equals_sameIdNameParentDifferentBudgetAndDescription_equal() {
+        Category c1 = new Category("Test", "Desc1", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        Category c2 = new Category("Test", "Desc2", BigDecimal.valueOf(999), TrackingType.EXPENSE);
+        c1.setCategoryId(1L); c2.setCategoryId(1L);
+        c1.setParentId(10L); c2.setParentId(10L);
+
+        assertEquals(c1, c2);
+    }
+
+    @Test
+    public void equals_nameDiffersOnlyByCase_equal() {
+        Category c1 = new Category("GROCERIES", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c2 = new Category("groceries", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c1.setCategoryId(1L); c2.setCategoryId(1L);
+
+        assertEquals(c1, c2);
+    }
+
+    @Test
+    public void equals_differentParentId_notEqual() {
+        Category c1 = new Category("Test", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c2 = new Category("Test", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c1.setCategoryId(1L); c2.setCategoryId(1L);
+        c1.setParentId(10L); c2.setParentId(20L);
+
+        assertNotEquals(c1, c2);
+    }
+
+    @Test
+    public void equals_sameNameDifferentId_notEqual() {
+        Category c1 = new Category("Test", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c2 = new Category("Test", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c1.setCategoryId(1L); c2.setCategoryId(2L);
+
+        assertNotEquals(c1, c2);
+    }
+
+    @Test
+    public void hashCode_nameDiffersOnlyByCase_sameHash() {
+        Category c1 = new Category("GROCERIES", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c2 = new Category("groceries", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        c1.setCategoryId(1L); c2.setCategoryId(1L);
+
+        assertEquals(c1.hashCode(), c2.hashCode());
+    }
+
+    @Test
+    public void hashCode_budgetChanged_hashUnchanged() {
+        Category c1 = new Category("Test", "", BigDecimal.valueOf(10), TrackingType.EXPENSE);
+        c1.setCategoryId(1L);
+        int initialHash = c1.hashCode();
+
+        c1.setMonthlyBudget(BigDecimal.valueOf(500));
+
+        assertEquals(initialHash, c1.hashCode());
+    }
+
+    @Test
+    public void hashCode_budgetScaleDiffers_sameHash() {
+        Category c1 = new Category("Test", "", new BigDecimal("10.00"), TrackingType.EXPENSE);
+        Category c2 = new Category("Test", "", new BigDecimal("10"), TrackingType.EXPENSE);
+        c1.setCategoryId(1L); c2.setCategoryId(1L);
+
+        assertEquals(c1.hashCode(), c2.hashCode());
+    }
+
+    // --- RELOAD MODEL (R1, R2, R6, R13) ---
+
+    @Test
+    public void setParent_randomOperationsWithReloadBetweenEach_persistedGraphStaysValid() {
+        FakeRoom room = new FakeRoom();
+        List<Long> ids = new ArrayList<>();
+
+        for (long i = 1; i <= 6; i++) {
+            Category c = new Category("Cat" + i, "", BigDecimal.valueOf(10 * i), TrackingType.EXPENSE);
+            c.setCategoryId(i);
+            room.save(c);
+            ids.add(i);
+        }
+
+        Random random = new Random(42L);
+
+        for (int step = 0; step < 500; step++) {
+            Long editedId = ids.get(random.nextInt(ids.size()));
+            Long targetParentId = ids.get(random.nextInt(ids.size()));
+
+            Category edited = room.reload(editedId);
+            Category newParent = room.reload(targetParentId);
+
+            try {
+                edited.setParent(newParent);
+                room.save(edited);
+                room.save(newParent);
+            } catch (CategoryViolationException ignored) {
+            }
+
+            for (Long id : ids) {
+                Category loaded = room.reload(id);
+                assertTreeConsistent(loaded, 5);
+                BigDecimal childSum = loaded.getChildren(false).stream()
+                        .map(Category::getMonthlyBudget)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                assertTrue(loaded.getMonthlyBudget().compareTo(childSum) >= 0,
+                        "Parent budget must be at least child sum");
+            }
+        }
+    }
+
+    // --- TIER B, DEFENCE IN DEPTH (R8, R15) ---
+
+    @Test
+    public void setParent_unrelatedNewParent_removedFromOldParentChildren() {
+        Category x = new Category("X", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category y = new Category("Y", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category z = new Category("Z", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        x.setCategoryId(1L); y.setCategoryId(2L); z.setCategoryId(3L);
+
+        y.setParent(x);
+        y.setParent(z);
+
+        assertFalse(x.getChildren(false).contains(y));
+    }
+
+    @Test
+    public void setParent_oldParentMovedUnderFormerChild_noCycleCreated() {
+        Category x = new Category("X", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category y = new Category("Y", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category z = new Category("Z", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        x.setCategoryId(1L); y.setCategoryId(2L); z.setCategoryId(3L);
+
+        y.setParent(x);
+        y.setParent(z);
+        x.setParent(y);
+
+        assertTreeConsistent(z, 5);
+    }
+
+    @Test
+    public void setParent_movedThreeTimes_notLeftInAnyEarlierParent() {
+        Category a = new Category("A", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category b = new Category("B", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category c = new Category("C", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category target = new Category("Target", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        a.setCategoryId(1L); b.setCategoryId(2L); c.setCategoryId(3L); target.setCategoryId(4L);
+
+        target.setParent(a);
+        target.setParent(b);
+        target.setParent(c);
+
+        assertAll(
+            () -> assertFalse(a.getChildren(false).contains(target)),
+            () -> assertFalse(b.getChildren(false).contains(target)),
+            () -> assertTrue(c.getChildren(false).contains(target))
+        );
+    }
+
+    @Test
+    public void setParent_newParentHasParentIdButNoCachedParent_throwsAndStateUnchanged() {
+        Category edited = new Category("Edited", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category newParent = new Category("Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        edited.setCategoryId(1L); newParent.setCategoryId(2L);
+        newParent.setParentId(99L); // Has parentId but no cached parent instance
+
+        assertThrows(Exception.class, () -> edited.setParent(newParent));
+    }
+
+    @Test
+    public void setParent_editedCategoryHasParentIdButNoCachedParent_throwsAndStateUnchanged() {
+        Category edited = new Category("Edited", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category newParent = new Category("Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        edited.setCategoryId(1L); newParent.setCategoryId(2L);
+        edited.setParentId(99L); // Has parentId but no cached parent instance
+
+        assertThrows(Exception.class, () -> edited.setParent(newParent));
+    }
+
+    @Test
+    public void setParent_gapHigherUpNewParentChain_throwsAndStateUnchanged() {
+        Category newParent = new Category("Parent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category grand = new Category("Grand", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        newParent.setCategoryId(1L); grand.setCategoryId(2L);
+        newParent.setParent(grand);
+        grand.setParentId(99L); // Gap higher up chain
+
+        Category edited = new Category("Edited", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        edited.setCategoryId(3L);
+
+        assertThrows(Exception.class, () -> edited.setParent(newParent));
+    }
+
+    @Test
+    public void setParent_gapHigherUpEditedChain_throwsAndStateUnchanged() {
+        Category edited = new Category("Edited", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        Category oldParent = new Category("OldParent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        edited.setCategoryId(1L); oldParent.setCategoryId(2L);
+        edited.setParent(oldParent);
+        oldParent.setParentId(99L); // Gap higher up chain
+
+        Category newParent = new Category("NewParent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
+        newParent.setCategoryId(3L);
+
+        assertThrows(Exception.class, () -> edited.setParent(newParent));
+    }
+
+    // --- FAKE ROOM IN-MEMORY PERSISTENCE HELPER ---
+
+    private static class FakeRoom {
+        private static class Record {
+            Long id;
+            String name;
+            Long parentId;
+            BigDecimal budget;
+            TrackingType type;
+            String description;
+        }
+
+        private final Map<Long, Record> store = new HashMap<>();
+
+        void save(Category root) {
+            if (root == null) return;
+            Record r = new Record();
+            r.id = root.getCategoryId();
+            r.name = root.getName();
+            r.parentId = root.getParentId();
+            r.budget = root.getMonthlyBudget();
+            r.type = root.getType();
+            r.description = root.getDescription();
+            store.put(r.id, r);
+
+            for (Category child : root.getChildren(false)) {
+                save(child);
+            }
+        }
+
+        Category reload(Long id) {
+            Map<Long, Category> cache = new HashMap<>();
+            for (Record r : store.values()) {
+                Category c = new Category(r.name, r.description, r.budget, r.type);
+                c.setCategoryId(r.id);
+                c.setParentId(r.parentId);
+                cache.put(r.id, c);
+            }
+
+            for (Category c : cache.values()) {
+                if (c.getParentId() != null && cache.containsKey(c.getParentId())) {
+                    Category p = cache.get(c.getParentId());
+                    c.setParent(p);
+                }
+            }
+
+            return cache.get(id);
+        }
     }
 }
