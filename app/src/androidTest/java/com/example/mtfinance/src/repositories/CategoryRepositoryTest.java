@@ -385,4 +385,35 @@ public class CategoryRepositoryTest {
         nonExistent.setCategoryId(99999L);
         repository.updateCategory(nonExistent);
     }
+
+    @Test
+    public void updateBudget_ancestorsRaised_ancestorsPersisted() {
+        Category parent = new Category("RepoParentR16", "Desc", BUDGET_FIFTY, TrackingType.EXPENSE);
+        repository.insert(parent);
+        Category pInDb = categoryService.getCategoryByName("RepoParentR16");
+
+        Category child = new Category("RepoChildR16", "Desc", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
+        child.setParent(pInDb);
+        repository.insert(child);
+
+        Category pReloaded = categoryService.getCategoryByIdRestored(pInDb.getCategoryId());
+        assertTrue(pReloaded.getMonthlyBudget().compareTo(BUDGET_FIVE_HUNDRED) >= 0);
+    }
+
+    @Test
+    public void updateBudget_reloadAfterRaise_everyParentAtLeastChildSum() {
+        Category root = new Category("RepoRootR16", "Desc", BUDGET_FIFTY, TrackingType.EXPENSE);
+        repository.insert(root);
+        Category rInDb = categoryService.getCategoryByName("RepoRootR16");
+
+        Category child = new Category("RepoChildR16_2", "Desc", BUDGET_FIVE_HUNDRED, TrackingType.EXPENSE);
+        child.setParent(rInDb);
+        repository.insert(child);
+
+        Category rootReloaded = categoryService.getCategoryByIdRestored(rInDb.getCategoryId());
+        Category childReloaded = categoryService.getCategoryByName("RepoChildR16_2");
+
+        BigDecimal childSum = childReloaded.getMonthlyBudget();
+        assertTrue(rootReloaded.getMonthlyBudget().compareTo(childSum) >= 0);
+    }
 }
