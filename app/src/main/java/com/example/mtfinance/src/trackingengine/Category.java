@@ -94,20 +94,17 @@ public class Category implements Details {
             return;
         }
 
-        if (!parent.isDescendantOf(this) && !this.isDescendantOf(parent)) {
-            parent.addChild(this);
-            this.parent = parent;
-            this.parentId = parent.getCategoryId();
-
+        if (parent.isDescendantOf(this) || parent.equals(this)) {
             return;
-
         }
 
-        if (this.isDescendantOf(parent)) {
-            this.getParent().removeChild(this);
-            this.setParentInternal(parent);
+        if (this.parent != null && !this.parent.equals(parent)) {
+            this.parent.removeChild(this);
         }
 
+        parent.addChild(this);
+        this.parent = parent;
+        this.parentId = parent.getCategoryId();
     }
 
     /**
@@ -144,6 +141,9 @@ public class Category implements Details {
 
         if (this.equals(parent)) {
             return;
+        }
+        if (this.parent != null && !this.parent.equals(parent)) {
+            this.parent.removeChild(this);
         }
         this.parent = parent;
         this.parentId = parent.getCategoryId();
@@ -328,13 +328,7 @@ public class Category implements Details {
 
     @Override
     public int hashCode() {
-        int result = categoryId.hashCode();
-        result = 31 * result + name.hashCode();
-        result = 31 * result + (description != null ? description.hashCode() : 0);
-        result = 31 * result + (monthlyBudget != null ? monthlyBudget.hashCode() : 0);
-        result = 31 * result + (parentId != null ? parentId.hashCode() : 0);
-        result = 31 * result + type.hashCode();
-        return result;
+        return categoryId != null ? categoryId.hashCode() : 0;
     }
 
     @Override
@@ -342,12 +336,7 @@ public class Category implements Details {
         if (this == o) return true;
         if (!(o instanceof Category)) return false;
         Category category = (Category) o;
-        if (!categoryId.equals(category.categoryId)) return false;
-        if (!name.equalsIgnoreCase(category.name)) return false;
-        if (description != null ? !description.equals(category.description) : category.description != null) return false;
-        if (monthlyBudget != null ? monthlyBudget.compareTo(category.monthlyBudget) != 0 : category.monthlyBudget != null) return false;
-        if (parentId != null ? !parentId.equals(category.parentId) : category.parentId != null) return false;
-        return type == category.type;
+        return categoryId != null && categoryId.equals(category.categoryId);
     }
 
 
