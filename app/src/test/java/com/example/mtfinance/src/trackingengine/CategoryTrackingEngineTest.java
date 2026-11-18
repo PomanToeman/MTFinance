@@ -812,7 +812,7 @@ public class CategoryTrackingEngineTest {
         edited.setCategoryId(1L); newParent.setCategoryId(2L);
         newParent.setParentId(99L); // Has parentId but no cached parent instance
 
-        assertThrows(Exception.class, () -> edited.setParent(newParent));
+        assertThrows(CategoryStateException.class, () -> edited.setParent(newParent));
     }
 
     @Test
@@ -822,7 +822,7 @@ public class CategoryTrackingEngineTest {
         edited.setCategoryId(1L); newParent.setCategoryId(2L);
         edited.setParentId(99L); // Has parentId but no cached parent instance
 
-        assertThrows(Exception.class, () -> edited.setParent(newParent));
+        assertThrows(CategoryStateException.class, () -> edited.setParent(newParent));
     }
 
     @Test
@@ -836,7 +836,7 @@ public class CategoryTrackingEngineTest {
         Category edited = new Category("Edited", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
         edited.setCategoryId(3L);
 
-        assertThrows(Exception.class, () -> edited.setParent(newParent));
+        assertThrows(CategoryStateException.class, () -> edited.setParent(newParent));
     }
 
     @Test
@@ -850,7 +850,7 @@ public class CategoryTrackingEngineTest {
         Category newParent = new Category("NewParent", "", DEFAULT_BUDGET, TrackingType.EXPENSE);
         newParent.setCategoryId(3L);
 
-        assertThrows(Exception.class, () -> edited.setParent(newParent));
+        assertThrows(CategoryStateException.class, () -> edited.setParent(newParent));
     }
 
     // --- FAKE ROOM IN-MEMORY PERSISTENCE HELPER ---
@@ -895,7 +895,7 @@ public class CategoryTrackingEngineTest {
             for (Category c : cache.values()) {
                 if (c.getParentId() != null && cache.containsKey(c.getParentId())) {
                     Category p = cache.get(c.getParentId());
-                    c.setParent(p);
+                    c.setParentInternal(p);
                 }
             }
 
