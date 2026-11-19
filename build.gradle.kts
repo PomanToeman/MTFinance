@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.compose.compiler) apply false
 }
 
-
-
-
+tasks.register<Copy>("installGitHooks") {
+    from(file(".githooks/pre-commit"))
+    into(file(".git/hooks"))
+}
