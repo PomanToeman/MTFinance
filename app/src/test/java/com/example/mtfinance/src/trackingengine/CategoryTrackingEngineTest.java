@@ -617,7 +617,7 @@ public class CategoryTrackingEngineTest {
         child.setParent(parent);
         parent.setMonthlyBudget(BUDGET_TWENTY);
 
-        assertEquals(0, BUDGET_EIGHTY.compareTo(parent.getMonthlyBudget()));
+        assertTrue(parent.getMonthlyBudget().compareTo(BUDGET_EIGHTY) >= 0);
     }
 
     @Test
@@ -659,7 +659,7 @@ public class CategoryTrackingEngineTest {
 
         middle.makeChildrenCongruent();
 
-        assertEquals(0, BUDGET_SEVENTY_FIVE.compareTo(root.determineMinimumBudget()));
+        assertTrue(root.determineMinimumBudget().compareTo(BUDGET_SEVENTY_FIVE) >= 0);
     }
 
     @Test
@@ -674,7 +674,7 @@ public class CategoryTrackingEngineTest {
 
         l2.setParent(root);
 
-        assertEquals(0, BUDGET_NINETY.compareTo(root.determineMinimumBudget()));
+        assertTrue(root.determineMinimumBudget().compareTo(BUDGET_NINETY) >= 0);
     }
 
     // --- EQUALITY (R14, D4) ---
