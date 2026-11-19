@@ -43,13 +43,16 @@ public class TrackingStressTest {
     public void setUp() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
-        categoryService = new CategoryService(database.categoryDao(), true);
+        CategoryTreeHelper helper = new CategoryTreeHelper(database.categoryDao());
+        CategoryInitializer initializer = new CategoryInitializer(helper, java.util.concurrent.Executors.newSingleThreadExecutor());
+        initializer.populateDefaultCategoriesSync();
+        categoryService = new CategoryService(database.categoryDao(), helper);
         transactionService = new TransactionService(database.transactionDao());
         trackingService = new TrackingService(database.categoryDao(), database.transactionDao(), database.categoryTransactionDao(), categoryService);
 
-        categoryRepository = new CategoryRepository(database, database.categoryDao());
+        categoryRepository = new CategoryRepository(database, database.categoryDao(), helper, initializer);
         transactionRepository = new TransactionRepository(database.transactionDao());
-        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao(), database.categoryDao(), database.transactionDao());
+        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao(), database.categoryDao(), database.transactionDao(), helper);
     }
 
     @After

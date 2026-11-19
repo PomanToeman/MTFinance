@@ -51,8 +51,11 @@ public class CategoryRepositoryTest {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         categoryDao = database.categoryDao();
-        repository = new CategoryRepository(database, categoryDao);
-        categoryService = new CategoryService(categoryDao);
+        CategoryTreeHelper helper = new CategoryTreeHelper(categoryDao);
+        CategoryInitializer initializer = new CategoryInitializer(helper, java.util.concurrent.Executors.newSingleThreadExecutor());
+        repository = new CategoryRepository(database, categoryDao, helper, initializer);
+        categoryService = new CategoryService(categoryDao, helper);
+        initializer.populateDefaultCategoriesSync();
     }
 
     @After

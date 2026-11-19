@@ -27,7 +27,8 @@ public class CategoryServiceTest {
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        categoryService = new CategoryService(categoryDao, false);
+        CategoryTreeHelper helper = new CategoryTreeHelper(categoryDao);
+        categoryService = new CategoryService(categoryDao, helper);
     }
 
     @Test

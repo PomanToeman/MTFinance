@@ -14,6 +14,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.example.mtfinance.InstantExecutorExtension;
 import com.example.mtfinance.src.repositories.CategoryService;
+import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
@@ -61,6 +62,9 @@ public class CategoryViewModelTest {
     @Mock
     private TrackingService trackingService;
 
+    @Mock
+    private SystemService systemService;
+
     private CategoryViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
@@ -72,7 +76,7 @@ public class CategoryViewModelTest {
         allCategoriesLiveData.setValue(new ArrayList<>());
         when(trackingService.getAllCategoriesWithTransactions()).thenReturn(allCategoriesLiveData);
 
-        viewModel = new CategoryViewModel(categoryService, trackingService, synchronousExecutor);
+        viewModel = new CategoryViewModel(categoryService, trackingService, systemService, synchronousExecutor);
 
         viewModel.getFilteredCategories().observeForever(res -> {});
         viewModel.getSelectedCategory().observeForever(res -> {});
