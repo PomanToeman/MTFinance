@@ -16,7 +16,6 @@ import com.example.mtfinance.src.trackingengine.SystemPreferences;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import javax.inject.Inject;
 
@@ -47,10 +46,6 @@ public class SettingsViewModel extends ViewModel {
     private final MutableLiveData<Boolean> provisionalIncludeProvisional = new MutableLiveData<>(true);
 
     @Inject
-    public SettingsViewModel(SystemService systemService, SystemRepository systemRepository) {
-        this(systemService, systemRepository, Executors.newSingleThreadExecutor());
-    }
-
     public SettingsViewModel(SystemService systemService, SystemRepository systemRepository, Executor executor) {
         this.systemService = systemService;
         this.systemRepository = systemRepository;

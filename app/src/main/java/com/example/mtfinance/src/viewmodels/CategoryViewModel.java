@@ -70,10 +70,6 @@ public class CategoryViewModel extends ViewModel {
         }
     }
 
-    public CategoryViewModel(CategoryService categoryService, TrackingService trackingService, Executor executor) {
-        this(categoryService, trackingService, null, executor);
-    }
-
     public void updatePayPeriodDates(SystemPreferences prefs, int offset) {
         int startDay = prefs != null ? prefs.getStartDayOfMonth() : 1;
         boolean includeProvisional = prefs == null || prefs.isIncludeProvisional();
