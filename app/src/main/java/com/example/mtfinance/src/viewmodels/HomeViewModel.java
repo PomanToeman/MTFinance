@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.repositories.CategoryService;
+import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingService;
 
 import java.util.concurrent.Executor;
@@ -22,6 +23,7 @@ public class HomeViewModel extends ViewModel {
 
     private final CategoryService categoryService;
     private final TrackingService trackingService;
+    private final SystemService systemService;
     private final Executor executor;
 
     private final MutableLiveData<String> title = new MutableLiveData<>();
@@ -30,11 +32,12 @@ public class HomeViewModel extends ViewModel {
     private final MutableLiveData<CategoryViewModel> pinnedCategory = new MutableLiveData<>();
 
     @Inject
-    public HomeViewModel(CategoryService categoryService, TrackingService trackingService, Executor executor) {
+    public HomeViewModel(CategoryService categoryService, TrackingService trackingService, SystemService systemService, Executor executor) {
         this.categoryService = categoryService;
         this.trackingService = trackingService;
+        this.systemService = systemService;
         this.executor = executor;
-        CategoryViewModel categoryViewModel = new CategoryViewModel(categoryService, trackingService, executor);
+        CategoryViewModel categoryViewModel = new CategoryViewModel(categoryService, trackingService, systemService, executor);
         categoryViewModel.setSelectedCategory(1L);
         this.pinnedCategory.setValue(categoryViewModel);
     }

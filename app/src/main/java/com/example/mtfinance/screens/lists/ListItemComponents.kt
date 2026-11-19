@@ -18,6 +18,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -27,24 +29,18 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.mtfinance.screens.displayAmount
 import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.Category
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.Transaction
+import com.example.mtfinance.src.viewmodels.SettingsViewModel
 import java.math.RoundingMode
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Displays essential information of a category in a compact box. Can be expanded to show description and action buttons.
- * @param categoryItem The category to display.
- * @param actionOne Primary action callback.
- * @param actionOneLabel Label for primary action.
- * @param actionTwo Secondary action callback.
- * @param actionTwoLabel Label for secondary action.
- * @param backgroundColor Background color for the item card.
  */
 @Composable
 fun CategoryListItem(
@@ -53,9 +49,13 @@ fun CategoryListItem(
     actionOneLabel: String? = null,
     actionTwo: ((Long) -> Unit)? = null,
     actionTwoLabel: String? = null,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
+    val currencySymbol = systemPreferences?.currencySymbol ?: "$"
     val expanded = remember { mutableStateOf(false) }
+
     if (categoryItem != null) {
         Box(
             modifier = Modifier
@@ -79,7 +79,7 @@ fun CategoryListItem(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "$" + categoryItem.monthlyBudget.setScale(2, RoundingMode.HALF_UP).toString(),
+                            displayAmount(categoryItem.monthlyBudget, currencySymbol),
                             textAlign = TextAlign.Right,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -196,8 +196,17 @@ fun TransactionListItem(
     actionTwo: ((Long) -> Unit)? = null,
     actionTwoLabel: String = "Select",
     expanded: Boolean = false,
-    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
+    val currencySymbol = systemPreferences?.currencySymbol ?: "$"
+    val dateFormatter = try {
+        DateFormat.valueOf(systemPreferences?.dateFormat ?: "DD_MM_YYYY").toFormatter()
+    } catch (_: Exception) {
+        DateFormat.DD_MM_YYYY.toFormatter()
+    }
+
     val expandedState = remember { mutableStateOf(expanded) }
     Box(
         modifier = Modifier
@@ -219,7 +228,7 @@ fun TransactionListItem(
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(displayAmount(transaction.amount), textAlign = TextAlign.Right, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(displayAmount(transaction.amount, currencySymbol), textAlign = TextAlign.Right, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 Row(
@@ -227,7 +236,7 @@ fun TransactionListItem(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        transaction.date.toLocalDate().format(DateFormat.FULL_DATE.toFormatter()).toString(),
+                        transaction.date.toLocalDate().format(dateFormatter).toString(),
                         textAlign = TextAlign.Left,
                         minLines = 1,
                         maxLines = 1,
@@ -261,10 +270,20 @@ fun TransactionListItem(
  * Displays all the details of a given transaction.
  */
 @Composable
-fun TransactionDetails(transaction: Transaction) {
+fun TransactionDetails(
+    transaction: Transaction,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
+) {
+    val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
+    val currencySymbol = systemPreferences?.currencySymbol ?: "$"
+    val dateFormatter = try {
+        DateFormat.valueOf(systemPreferences?.dateFormat ?: "DD_MM_YYYY").toFormatter()
+    } catch (_: Exception) {
+        DateFormat.DD_MM_YYYY.toFormatter()
+    }
+
     Text(transaction.name)
     Text(transaction.description)
-    Text(transaction.amount.toString())
-    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
-    Text(transaction.date.format(formatter).toString())
+    Text(displayAmount(transaction.amount, currencySymbol))
+    Text(transaction.date.format(dateFormatter).toString())
 }

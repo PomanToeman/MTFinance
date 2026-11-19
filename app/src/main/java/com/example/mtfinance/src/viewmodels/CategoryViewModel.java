@@ -9,8 +9,10 @@ import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.repositories.CategoryService;
+import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
+import com.example.mtfinance.src.trackingengine.SystemPreferences;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.viewmodels.utlis.SearchCriteria;
 
@@ -31,6 +33,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 public class CategoryViewModel extends ViewModel {
     private final CategoryService categoryService;
     private final TrackingService trackingService;
+    private final SystemService systemService;
     private final Executor executor;
     private final LiveData<List<CategoryWithTransactions>> allCategories;
     @NonNull
@@ -43,12 +46,14 @@ public class CategoryViewModel extends ViewModel {
     private final MutableLiveData<Map<CategoryWithTransactions, BigDecimal>> childrenTotals = new MutableLiveData<>();
     private final MutableLiveData<LocalDate> startDate = new MutableLiveData<>(LocalDate.now().withDayOfMonth(1));
     private final MutableLiveData<LocalDate> endDate = new MutableLiveData<>(LocalDate.now());
+    private final MutableLiveData<Integer> monthOffset = new MutableLiveData<>(0);
     private final LiveData<Long> updateTrigger;
 
     @Inject
-    public CategoryViewModel(CategoryService categoryService, TrackingService trackingService, Executor executor) {
+    public CategoryViewModel(CategoryService categoryService, TrackingService trackingService, SystemService systemService, Executor executor) {
         this.categoryService = categoryService;
         this.trackingService = trackingService;
+        this.systemService = systemService;
         this.executor = executor;
         this.allCategories = trackingService.getAllCategoriesWithTransactions();
 
@@ -59,6 +64,94 @@ public class CategoryViewModel extends ViewModel {
             return trackingService.searchCategoriesWithType(criteria.getTrimmedQuery(), criteria.getTypeFilter());
         });
         this.updateTrigger = Transformations.map(filteredCategories, categories -> System.currentTimeMillis());
+
+        if (systemService != null && systemService.getPreferencesLive() != null) {
+            systemService.getPreferencesLive().observeForever(prefs -> updatePayPeriodDates(prefs, getMonthOffsetValue()));
+        }
+    }
+
+    public CategoryViewModel(CategoryService categoryService, TrackingService trackingService, Executor executor) {
+        this(categoryService, trackingService, null, executor);
+    }
+
+    public void updatePayPeriodDates(SystemPreferences prefs, int offset) {
+        int startDay = prefs != null ? prefs.getStartDayOfMonth() : 1;
+        boolean includeProvisional = prefs == null || prefs.isIncludeProvisional();
+        LocalDate today = LocalDate.now();
+
+        LocalDate[] dates = calculatePayPeriodDates(startDay, offset, includeProvisional, today);
+        updateLiveData(startDate, dates[0]);
+        updateLiveData(endDate, dates[1]);
+
+        CategoryWithTransactions selected = selectedCategory.getValue();
+        if (selected != null) {
+            executor.execute(() -> loadTotals(selected));
+        }
+    }
+
+    public static LocalDate[] calculatePayPeriodDates(int startDay, int monthOffset, boolean includeProvisional, LocalDate today) {
+        int validatedStartDay = Math.max(1, Math.min(31, startDay));
+
+        LocalDate anchorMonth = today.plusMonths(monthOffset);
+
+        LocalDate periodStart;
+        if (anchorMonth.getDayOfMonth() >= Math.min(validatedStartDay, anchorMonth.lengthOfMonth())) {
+            periodStart = anchorMonth.withDayOfMonth(Math.min(validatedStartDay, anchorMonth.lengthOfMonth()));
+        } else {
+            LocalDate prevMonth = anchorMonth.minusMonths(1);
+            periodStart = prevMonth.withDayOfMonth(Math.min(validatedStartDay, prevMonth.lengthOfMonth()));
+        }
+
+        LocalDate nextPeriodStart = periodStart.plusMonths(1);
+        nextPeriodStart = nextPeriodStart.withDayOfMonth(Math.min(validatedStartDay, nextPeriodStart.lengthOfMonth()));
+
+        LocalDate periodEndFull = nextPeriodStart.minusDays(1);
+
+        LocalDate periodEnd;
+        if (monthOffset == 0 && !includeProvisional && today.isBefore(periodEndFull)) {
+            periodEnd = today;
+        } else {
+            periodEnd = periodEndFull;
+        }
+
+        return new LocalDate[]{periodStart, periodEnd};
+    }
+
+    public int getMonthOffsetValue() {
+        Integer offset = monthOffset.getValue();
+        return offset != null ? offset : 0;
+    }
+
+    public LiveData<Integer> getMonthOffset() {
+        return monthOffset;
+    }
+
+    public void navigatePreviousMonth() {
+        int current = getMonthOffsetValue();
+        int newOffset = current - 1;
+        monthOffset.setValue(newOffset);
+        SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+        updatePayPeriodDates(prefs, newOffset);
+    }
+
+    public void navigateNextMonth() {
+        int current = getMonthOffsetValue();
+        int newOffset = current + 1;
+        monthOffset.setValue(newOffset);
+        SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+        updatePayPeriodDates(prefs, newOffset);
+    }
+
+    public void resetToCurrentMonth() {
+        monthOffset.setValue(0);
+        SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+        updatePayPeriodDates(prefs, 0);
+    }
+
+    public void jumpToMonthOffset(int targetOffset) {
+        monthOffset.setValue(targetOffset);
+        SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+        updatePayPeriodDates(prefs, targetOffset);
     }
 
     public LiveData<List<CategoryWithTransactions>> getAllCategories() {

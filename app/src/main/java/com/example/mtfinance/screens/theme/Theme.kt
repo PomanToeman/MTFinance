@@ -1,7 +1,7 @@
 /**
  * @file Theme.kt
  * @scope Centralized Compose Material 3 Theme definitions and color palette.
- * @purpose Provides light and dark color schemes and global theme state management for MTFinance.
+ * @purpose Provides light and dark color schemes, global theme state management, and status colors for MTFinance.
  */
 package com.example.mtfinance.screens.theme
 
@@ -24,6 +24,16 @@ enum class ThemeMode {
     DARK
 }
 
+/**
+ * Visual status state for form save progress and validation states.
+ */
+enum class SaveStatusColor {
+    GRAY,
+    ORANGE,
+    GREEN,
+    RED
+}
+
 object ThemeState {
     var currentThemeMode by mutableStateOf(ThemeMode.SYSTEM)
 
@@ -33,6 +43,19 @@ object ThemeState {
             ThemeMode.LIGHT -> ThemeMode.DARK
             ThemeMode.DARK -> ThemeMode.SYSTEM
         }
+    }
+}
+
+/**
+ * Returns a standardized theme status color corresponding to [SaveStatusColor].
+ */
+@Composable
+fun getSaveStatusThemeColor(status: SaveStatusColor): Color {
+    return when (status) {
+        SaveStatusColor.ORANGE -> Color(0xFFFF9800)
+        SaveStatusColor.GREEN -> Color(0xFF4CAF50)
+        SaveStatusColor.RED -> MaterialTheme.colorScheme.error
+        SaveStatusColor.GRAY -> MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
     }
 }
 

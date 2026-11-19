@@ -1,0 +1,15 @@
+#!/bin/sh
+echo "=== Running MTFinance Pre-Commit Checks ==="
+
+./gradlew assembleDebug compileDebugUnitTestSources compileDebugAndroidTestSources testDebugUnitTest
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+    echo "=========================================================="
+    echo "ERROR: Pre-commit checks failed! Fix errors before commit."
+    echo "=========================================================="
+    exit 1
+fi
+
+echo "=== Pre-Commit Verification Successful ==="
+exit 0

@@ -77,6 +77,34 @@ public class Category implements Details {
         this.parentId = parentId;
     }
 
+    private static void validateCacheCompleteness(Category node) {
+        Category curr = node;
+        while (curr != null) {
+            if (curr.getParentId() != null && curr.getParent() == null) {
+                throw new CategoryStateException("Incomplete cache detected: parentId is " + curr.getParentId() + " but cached parent reference is null for category " + curr.getName());
+            }
+            curr = curr.getParent();
+        }
+    }
+
+    private void validateEditedNodeCacheCompleteness(Category newParent) {
+        if (this.getParent() == null) {
+            if (this.getParentId() != null && !this.getParentId().equals(newParent.getCategoryId())) {
+                throw new CategoryStateException("Incomplete cache detected on edited category: parentId is " + this.getParentId() + " but cached parent reference is null for " + this.getName());
+            }
+        } else {
+            validateCacheCompleteness(this.getParent());
+        }
+    }
+
+    public int getSubtreeHeight() {
+        int maxChildHeight = 0;
+        for (Category child : children) {
+            maxChildHeight = Math.max(maxChildHeight, child.getSubtreeHeight());
+        }
+        return children.isEmpty() ? 0 : 1 + maxChildHeight;
+    }
+
     /**
      * To set this category as the sub category (child) of a given category (parent) to allow dependence and more accurate tracking.
      * Parent and child cannot be different types (expense/income).
@@ -86,28 +114,34 @@ public class Category implements Details {
      * @param parent - the parent to be set for this category (if possible)
      */
     public void setParent(@NonNull Category parent) throws IllegalStateException {
-        if (parent.getAncestors().size() >= MAX_DEPTH) {
+        validateEditedNodeCacheCompleteness(parent);
+        validateCacheCompleteness(parent);
+
+        if (this.equals(parent)) {
+            throw new CategoryViolationException("Category cannot be its own parent");
+        }
+
+        if (!isSameType(parent.getType())) {
+            throw new CategoryViolationException("Parent and child must be the same tracking type");
+        }
+
+        if (parent.isDescendantOf(this)) {
+            throw new CategoryViolationException("A descendant category cannot become its own ancestor");
+        }
+
+        int parentAncestors = parent.getAncestors().size();
+        int subtreeHeight = this.getSubtreeHeight();
+        if (parentAncestors + 1 + subtreeHeight > MAX_DEPTH) {
             throw new CategoryViolationException(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(MAX_DEPTH));
         }
 
-        if (this.equals(parent) || !isSameType(parent.getType())) {
-            return;
+        if (this.parent != null && !this.parent.equals(parent)) {
+            this.parent.removeChild(this);
         }
 
-        if (!parent.isDescendantOf(this) && !this.isDescendantOf(parent)) {
-            parent.addChild(this);
-            this.parent = parent;
-            this.parentId = parent.getCategoryId();
-
-            return;
-
-        }
-
-        if (this.isDescendantOf(parent)) {
-            this.getParent().removeChild(this);
-            this.setParentInternal(parent);
-        }
-
+        this.parentId = parent.getCategoryId();
+        this.parent = parent;
+        parent.addChild(this);
     }
 
     /**
@@ -145,9 +179,14 @@ public class Category implements Details {
         if (this.equals(parent)) {
             return;
         }
+        if (this.parent != null && !this.parent.equals(parent)) {
+            this.parent.removeChild(this);
+        }
         this.parent = parent;
-        this.parentId = parent.getCategoryId();
-        parent.addChild(this);
+        this.parentId = parent != null ? parent.getCategoryId() : null;
+        if (parent != null) {
+            parent.addChild(this);
+        }
 
     }
 
@@ -328,12 +367,9 @@ public class Category implements Details {
 
     @Override
     public int hashCode() {
-        int result = categoryId.hashCode();
-        result = 31 * result + name.hashCode();
-        result = 31 * result + (description != null ? description.hashCode() : 0);
-        result = 31 * result + (monthlyBudget != null ? monthlyBudget.hashCode() : 0);
+        int result = categoryId != null ? categoryId.hashCode() : 0;
+        result = 31 * result + (name != null ? name.toLowerCase().hashCode() : 0);
         result = 31 * result + (parentId != null ? parentId.hashCode() : 0);
-        result = 31 * result + type.hashCode();
         return result;
     }
 
@@ -342,12 +378,9 @@ public class Category implements Details {
         if (this == o) return true;
         if (!(o instanceof Category)) return false;
         Category category = (Category) o;
-        if (!categoryId.equals(category.categoryId)) return false;
-        if (!name.equalsIgnoreCase(category.name)) return false;
-        if (description != null ? !description.equals(category.description) : category.description != null) return false;
-        if (monthlyBudget != null ? monthlyBudget.compareTo(category.monthlyBudget) != 0 : category.monthlyBudget != null) return false;
-        if (parentId != null ? !parentId.equals(category.parentId) : category.parentId != null) return false;
-        return type == category.type;
+        if (categoryId != null ? !categoryId.equals(category.categoryId) : category.categoryId != null) return false;
+        if (name != null ? !name.equalsIgnoreCase(category.name) : category.name != null) return false;
+        return parentId != null ? parentId.equals(category.parentId) : category.parentId == null;
     }
 
 
