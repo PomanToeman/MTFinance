@@ -38,6 +38,23 @@ import java.util.concurrent.TimeUnit;
 @ExtendWith(InstantExecutorExtension.class)
 public class CategoryViewModelTest {
 
+    private static final Long CATEGORY_ID_ONE = 1L;
+    private static final BigDecimal BUDGET_HUNDRED = BigDecimal.valueOf(100.0);
+    private static final BigDecimal TOTAL_SPENT_FORTY = BigDecimal.valueOf(40.0);
+    private static final BigDecimal EXPECTED_REMAINING_SIXTY = BigDecimal.valueOf(60.0);
+
+    private static final LocalDate TEST_DATE_NOV_18 = LocalDate.of(2026, 11, 18);
+    private static final LocalDate EXPECTED_PERIOD_START_NOV_14 = LocalDate.of(2026, 11, 14);
+    private static final LocalDate EXPECTED_PERIOD_END_DEC_13 = LocalDate.of(2026, 12, 13);
+
+    private static final LocalDate TEST_DATE_JAN_31 = LocalDate.of(2026, 1, 31);
+    private static final LocalDate EXPECTED_PERIOD_END_FEB_27 = LocalDate.of(2026, 2, 27);
+
+    private static final int START_DAY_FOURTEEN = 14;
+    private static final int START_DAY_THIRTY_ONE = 31;
+    private static final int MONTH_OFFSET_MINUS_SIX = -6;
+    private static final int ZERO_MONTH_OFFSET = 0;
+
     @Mock
     private CategoryService categoryService;
 
@@ -116,17 +133,15 @@ public class CategoryViewModelTest {
 
     @Test
     public void setSelectedCategory_loadsDashboardData() throws InterruptedException {
-        Long categoryId = 1L;
-        Category category = new Category("Groceries", "", BigDecimal.valueOf(100), TrackingType.EXPENSE);
-        category.setCategoryId(categoryId);
+        Category category = new Category("Groceries", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        category.setCategoryId(CATEGORY_ID_ONE);
         CategoryWithTransactions cwt = new CategoryWithTransactions();
         cwt.category = category;
 
-        when(trackingService.getCategoryWithTransactionsByCategoryId(categoryId)).thenReturn(cwt);
-        when(categoryService.getCategoryByIdRestored(categoryId)).thenReturn(category);
+        when(trackingService.getCategoryWithTransactionsByCategoryId(CATEGORY_ID_ONE)).thenReturn(cwt);
+        when(categoryService.getCategoryByIdRestored(CATEGORY_ID_ONE)).thenReturn(category);
 
-        BigDecimal totalInc = BigDecimal.valueOf(40);
-        when(trackingService.getTotalInCategory(any(), anyBoolean(), any(), any())).thenReturn(totalInc);
+        when(trackingService.getTotalInCategory(any(), anyBoolean(), any(), any())).thenReturn(TOTAL_SPENT_FORTY);
 
         Map<CategoryWithTransactions, BigDecimal> childTotals = new HashMap<>();
         when(trackingService.getChildrenTotals(any(), any(), any())).thenReturn(childTotals);
@@ -136,12 +151,12 @@ public class CategoryViewModelTest {
             if (selected != null) latch.countDown();
         });
 
-        viewModel.setSelectedCategory(categoryId);
+        viewModel.setSelectedCategory(CATEGORY_ID_ONE);
 
         assertTrue(latch.await(2, TimeUnit.SECONDS));
         assertAll(
-            () -> assertEquals(totalInc, viewModel.getTotalIncludingSub().getValue()),
-            () -> assertEquals(0, BigDecimal.valueOf(60).compareTo(viewModel.getRemaining().getValue())),
+            () -> assertEquals(TOTAL_SPENT_FORTY, viewModel.getTotalIncludingSub().getValue()),
+            () -> assertEquals(0, EXPECTED_REMAINING_SIXTY.compareTo(viewModel.getRemaining().getValue())),
             () -> assertEquals(childTotals, viewModel.getChildrenTotals().getValue())
         );
     }
@@ -160,23 +175,21 @@ public class CategoryViewModelTest {
 
     @Test
     public void calculatePayPeriodDates_withCustomStartDay_computesCorrectRange() {
-        LocalDate today = LocalDate.of(2026, 11, 18);
-        LocalDate[] dates = CategoryViewModel.calculatePayPeriodDates(14, 0, true, today);
-        assertEquals(LocalDate.of(2026, 11, 14), dates[0]);
-        assertEquals(LocalDate.of(2026, 12, 13), dates[1]);
+        LocalDate[] dates = CategoryViewModel.calculatePayPeriodDates(START_DAY_FOURTEEN, ZERO_MONTH_OFFSET, true, TEST_DATE_NOV_18);
+        assertEquals(EXPECTED_PERIOD_START_NOV_14, dates[0]);
+        assertEquals(EXPECTED_PERIOD_END_DEC_13, dates[1]);
     }
 
     @Test
     public void calculatePayPeriodDates_startDay31_shortMonthNoOverlap() {
-        LocalDate today = LocalDate.of(2026, 1, 31);
-        LocalDate[] dates = CategoryViewModel.calculatePayPeriodDates(31, 0, true, today);
-        assertEquals(LocalDate.of(2026, 1, 31), dates[0]);
-        assertEquals(LocalDate.of(2026, 2, 27), dates[1]);
+        LocalDate[] dates = CategoryViewModel.calculatePayPeriodDates(START_DAY_THIRTY_ONE, ZERO_MONTH_OFFSET, true, TEST_DATE_JAN_31);
+        assertEquals(TEST_DATE_JAN_31, dates[0]);
+        assertEquals(EXPECTED_PERIOD_END_FEB_27, dates[1]);
     }
 
     @Test
     public void jumpToMonthOffset_updatesMonthOffsetValue() {
-        viewModel.jumpToMonthOffset(-6);
-        assertEquals(-6, viewModel.getMonthOffsetValue());
+        viewModel.jumpToMonthOffset(MONTH_OFFSET_MINUS_SIX);
+        assertEquals(MONTH_OFFSET_MINUS_SIX, viewModel.getMonthOffsetValue());
     }
 }

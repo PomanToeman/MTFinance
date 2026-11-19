@@ -27,6 +27,13 @@ import java.util.concurrent.Executor;
 @ExtendWith(InstantExecutorExtension.class)
 public class SettingsViewModelValidationTest {
 
+    private static final String DEFAULT_THEME_SYSTEM = "SYSTEM";
+    private static final String THEME_DARK = "DARK";
+    private static final String INVALID_START_DAY_OUT_OF_RANGE = "99";
+    private static final String EMPTY_STRING = "";
+    private static final String STATUS_RED = "RED";
+    private static final String STATUS_ORANGE = "ORANGE";
+
     @Mock
     private SystemService systemService;
 
@@ -39,7 +46,7 @@ public class SettingsViewModelValidationTest {
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        SystemPreferences prefs = new SystemPreferences("SYSTEM");
+        SystemPreferences prefs = new SystemPreferences(DEFAULT_THEME_SYSTEM);
         when(systemService.getPreferencesLive()).thenReturn(new MutableLiveData<>(prefs));
         when(systemService.getPreferencesSync()).thenReturn(prefs);
 
@@ -52,49 +59,49 @@ public class SettingsViewModelValidationTest {
 
     @Test
     public void setProvisionalStartDay_emptyString_populatesEmptyFieldError() {
-        viewModel.setProvisionalStartDayOfMonth("");
+        viewModel.setProvisionalStartDayOfMonth(EMPTY_STRING);
 
         assertAll(
             () -> assertTrue(viewModel.hasFieldErrors()),
-            () -> assertEquals("RED", viewModel.getSaveStatusColor().getValue()),
+            () -> assertEquals(STATUS_RED, viewModel.getSaveStatusColor().getValue()),
             () -> assertTrue(viewModel.getFieldErrors().getValue().get(SettingsViewModel.SystemPreferenceErrorFields.START_DAY_OF_MONTH).contains("cannot be empty"))
         );
     }
 
     @Test
     public void setProvisionalStartDay_invalidDay_populatesFieldErrorAndRedStatus() {
-        viewModel.setProvisionalStartDayOfMonth("99");
+        viewModel.setProvisionalStartDayOfMonth(INVALID_START_DAY_OUT_OF_RANGE);
 
         assertAll(
             () -> assertTrue(viewModel.hasFieldErrors()),
-            () -> assertEquals("RED", viewModel.getSaveStatusColor().getValue()),
+            () -> assertEquals(STATUS_RED, viewModel.getSaveStatusColor().getValue()),
             () -> assertTrue(viewModel.getFieldErrors().getValue().get(SettingsViewModel.SystemPreferenceErrorFields.START_DAY_OF_MONTH).contains("between 1 and 31"))
         );
     }
 
     @Test
     public void setProvisionalThemeMode_validChange_setsOrangeStatusAndChangesMade() {
-        viewModel.setProvisionalThemeMode("DARK");
+        viewModel.setProvisionalThemeMode(THEME_DARK);
 
         assertAll(
             () -> assertFalse(viewModel.hasFieldErrors()),
             () -> assertTrue(viewModel.getChangesMade().getValue()),
-            () -> assertEquals("ORANGE", viewModel.getSaveStatusColor().getValue())
+            () -> assertEquals(STATUS_ORANGE, viewModel.getSaveStatusColor().getValue())
         );
     }
 
     @Test
     public void saveChanges_whenExceptionThrown_rollsBackAndSetsGenericErrorMessage() {
-        viewModel.setProvisionalThemeMode("DARK");
+        viewModel.setProvisionalThemeMode(THEME_DARK);
         doThrow(new SettingsPreferenceViolationException("Invalid Preference"))
                 .when(systemRepository).updatePreferences(any());
 
         viewModel.saveChanges();
 
         assertAll(
-            () -> assertEquals("RED", viewModel.getSaveStatusColor().getValue()),
+            () -> assertEquals(STATUS_RED, viewModel.getSaveStatusColor().getValue()),
             () -> assertTrue(viewModel.getGenericErrorMessage().getValue().contains("Preference configuration violation occurred")),
-            () -> assertEquals("SYSTEM", viewModel.getProvisionalThemeMode().getValue())
+            () -> assertEquals(DEFAULT_THEME_SYSTEM, viewModel.getProvisionalThemeMode().getValue())
         );
     }
 }

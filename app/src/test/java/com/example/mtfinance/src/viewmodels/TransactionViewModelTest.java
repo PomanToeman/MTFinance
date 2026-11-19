@@ -27,6 +27,13 @@ import java.util.List;
 @ExtendWith(InstantExecutorExtension.class)
 public class TransactionViewModelTest {
 
+    private static final Long TRANSACTION_ID_ONE = 1L;
+    private static final BigDecimal AMOUNT_TEN_FIFTY = BigDecimal.valueOf(10.50);
+    private static final BigDecimal AMOUNT_SALARY = BigDecimal.valueOf(3000.0);
+    private static final BigDecimal AMOUNT_RENT = BigDecimal.valueOf(1500.0);
+    private static final BigDecimal AMOUNT_PIZZA = BigDecimal.valueOf(25.0);
+    private static final BigDecimal AMOUNT_GROCERY = BigDecimal.valueOf(50.0);
+
     @Mock
     private TransactionService transactionService;
 
@@ -51,19 +58,18 @@ public class TransactionViewModelTest {
 
     @Test
     public void setSelectedTransaction_updatesLiveData() {
-        Long transactionId = 1L;
-        Transaction transaction = new Transaction.Builder("Lunch", BigDecimal.valueOf(10.50))
+        Transaction transaction = new Transaction.Builder("Lunch", AMOUNT_TEN_FIFTY)
                 .description("Sandwich")
                 .type(TrackingType.EXPENSE)
                 .build();
-        transaction.setTransactionId(transactionId);
+        transaction.setTransactionId(TRANSACTION_ID_ONE);
 
-        when(transactionService.getById(transactionId)).thenReturn(transaction);
+        when(transactionService.getById(TRANSACTION_ID_ONE)).thenReturn(transaction);
 
-        viewModel.setSelectedTransaction(transactionId);
+        viewModel.setSelectedTransaction(TRANSACTION_ID_ONE);
 
         assertAll(
-            () -> verify(transactionService).getById(transactionId),
+            () -> verify(transactionService).getById(TRANSACTION_ID_ONE),
             () -> assertEquals(transaction, viewModel.getSelectedTransaction().getValue())
         );
     }
@@ -71,7 +77,7 @@ public class TransactionViewModelTest {
     @Test
     public void getTransactions_returnsDataFromRepository() {
         List<Transaction> transactionsList = new ArrayList<>();
-        transactionsList.add(new Transaction.Builder("Salary", BigDecimal.valueOf(3000))
+        transactionsList.add(new Transaction.Builder("Salary", AMOUNT_SALARY)
                 .description("Monthly pay")
                 .type(TrackingType.INCOME)
                 .build());
@@ -96,7 +102,7 @@ public class TransactionViewModelTest {
     public void filterTransactions_withValidQuery_triggersSwitchMap() {
         String query = "Rent";
         List<Transaction> searchResults = new ArrayList<>();
-        searchResults.add(new Transaction.Builder("Monthly Rent", BigDecimal.valueOf(1500)).build());
+        searchResults.add(new Transaction.Builder("Monthly Rent", AMOUNT_RENT).build());
 
         MutableLiveData<List<Transaction>> repoLiveData = new MutableLiveData<>();
         repoLiveData.setValue(searchResults);
@@ -117,7 +123,7 @@ public class TransactionViewModelTest {
         String query = "Pizza";
         TrackingType type = TrackingType.EXPENSE;
         List<Transaction> searchResults = new ArrayList<>();
-        searchResults.add(new Transaction.Builder("Pizza Hut", BigDecimal.valueOf(25)).type(type).build());
+        searchResults.add(new Transaction.Builder("Pizza Hut", AMOUNT_PIZZA).type(type).build());
 
         MutableLiveData<List<Transaction>> repoLiveData = new MutableLiveData<>();
         repoLiveData.setValue(searchResults);
@@ -143,7 +149,7 @@ public class TransactionViewModelTest {
     @Test
     public void filterTransactions_withEmptyQuery_returnsAllTransactions() {
         List<Transaction> allTransactions = new ArrayList<>();
-        allTransactions.add(new Transaction.Builder("Grocery", BigDecimal.valueOf(50)).build());
+        allTransactions.add(new Transaction.Builder("Grocery", AMOUNT_GROCERY).build());
 
         MutableLiveData<List<Transaction>> allTransactionsLiveData = new MutableLiveData<>();
         allTransactionsLiveData.setValue(allTransactions);
