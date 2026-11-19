@@ -1,7 +1,6 @@
 package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.VisibleForTesting;
 
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
@@ -25,26 +24,14 @@ public class CategoryService {
     private final CategoryTreeHelper helper;
 
     /**
-     * Constructs a CategoryService with the specified CategoryDao.
+     * Constructs a CategoryService with required CategoryDao and CategoryTreeHelper.
      * @param categoryDao the Room DAO for categories
+     * @param helper the category tree helper
      */
     @Inject
-    public CategoryService(CategoryDao categoryDao) {
+    public CategoryService(CategoryDao categoryDao, CategoryTreeHelper helper) {
         this.categoryDao = categoryDao;
-        this.helper = new CategoryTreeHelper(categoryDao);
-        helper.populateDefaultCategories();
-    }
-
-    /**
-     * Test constructor supporting optional default category population.
-     * @param categoryDao the Room DAO for categories
-     * @param populateDefaultCategories whether to populate default categories
-     */
-    @VisibleForTesting
-    public CategoryService(CategoryDao categoryDao, boolean populateDefaultCategories) {
-        this.categoryDao = categoryDao;
-        this.helper = new CategoryTreeHelper(categoryDao);
-        if (populateDefaultCategories) helper.populateDefaultCategories();
+        this.helper = helper;
     }
 
     public Category getGeneralCategory() {

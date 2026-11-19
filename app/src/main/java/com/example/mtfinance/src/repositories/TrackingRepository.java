@@ -35,19 +35,21 @@ public class TrackingRepository {
      * @param categoryWithTransactionsDao the cross-ref DAO
      * @param categoryDao the category DAO
      * @param transactionDao the transaction DAO
+     * @param helper the category tree helper
      */
     @Inject
     public TrackingRepository(CategoryRepository categoryRepository,
                               TransactionRepository transactionRepository,
                               CategoryTransactionDao categoryWithTransactionsDao,
                               CategoryDao categoryDao,
-                              TransactionDao transactionDao) {
+                              TransactionDao transactionDao,
+                              CategoryTreeHelper helper) {
         this.categoryRepository = categoryRepository;
         this.transactionRepository = transactionRepository;
         this.categoryWithTransactionsDao = categoryWithTransactionsDao;
         this.categoryDao = categoryDao;
         this.transactionDao = transactionDao;
-        this.helper = new CategoryTreeHelper(categoryDao);
+        this.helper = helper;
     }
 
     /**

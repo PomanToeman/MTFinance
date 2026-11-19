@@ -22,25 +22,24 @@ public class CategoryRepository {
     private final AppDatabase appDatabase;
     private final CategoryDao categoryDao;
     private final CategoryTreeHelper helper;
+    private final CategoryInitializer initializer;
 
     /**
-     * Constructs a CategoryRepository with required AppDatabase, DAO, and helper.
-     * @param appDatabase the Room AppDatabase instance for atomic transaction management
-     * @param categoryDao the category Room DAO
+     * Constructs a CategoryRepository with required dependencies.
+     * @param appDatabase Room AppDatabase instance (optional/nullable in test mocks)
+     * @param categoryDao category Room DAO
+     * @param helper category tree helper
+     * @param initializer category initializer
      */
     @Inject
-    public CategoryRepository(AppDatabase appDatabase, CategoryDao categoryDao) {
+    public CategoryRepository(AppDatabase appDatabase,
+                              CategoryDao categoryDao,
+                              CategoryTreeHelper helper,
+                              CategoryInitializer initializer) {
         this.appDatabase = appDatabase;
         this.categoryDao = categoryDao;
-        this.helper = new CategoryTreeHelper(categoryDao);
-    }
-
-    /**
-     * Convenience constructor when AppDatabase is not directly provided.
-     * @param categoryDao the category Room DAO
-     */
-    public CategoryRepository(CategoryDao categoryDao) {
-        this(null, categoryDao);
+        this.helper = helper;
+        this.initializer = initializer;
     }
 
     /**
@@ -117,6 +116,7 @@ public class CategoryRepository {
 
         if (categoryRestored.getChildren(false).isEmpty()) {
             categoryDao.delete(categoryRestored);
+            checkAndRepopulateIfEmpty();
             return;
         }
 
@@ -134,6 +134,18 @@ public class CategoryRepository {
         }
 
         categoryDao.delete(categoryRestored);
+        checkAndRepopulateIfEmpty();
+    }
+
+    private void checkAndRepopulateIfEmpty() {
+        if (categoryDao.isEmpty()) {
+            TrackingUtlis.resetCategoryCounter();
+            if (initializer != null) {
+                initializer.populateDefaultCategoriesSync();
+            } else {
+                helper.populateDefaultCategories();
+            }
+        }
     }
 
     /**
