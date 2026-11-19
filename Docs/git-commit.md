@@ -5,7 +5,7 @@ Guidelines and rules for git operations, commit message formatting, and commit s
 ## Commit Rules
 1. **State Message Before Execution**: Explicitly announce the exact commit message before executing `git commit`.
 2. **Atomic Commits**: Group related changes into single, focused commits by architecture layer or component.
-3. **Pre-Commit Verification**: Run `:app:assembleDebug` and `:app:testDebugUnitTest` to ensure all tests pass before committing.
+3. **Pre-Commit Verification**: Run `:app:assembleDebug`, `:app:testDebugUnitTest`, and `:app:connectedDebugAndroidTest` (instrumented tests) to ensure all builds and unit/instrumented tests pass before committing.
 
 ## Commit Message Format
 All commits MUST follow conventional commit syntax:
