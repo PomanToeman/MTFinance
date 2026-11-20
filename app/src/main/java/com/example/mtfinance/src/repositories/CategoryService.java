@@ -54,7 +54,12 @@ public class CategoryService {
         return helper.getRootCategoryByType(type);
     }
 
-    public Category getCategoryById(Long id) {
+    /**
+     * Note that this category DOESN'T come with category cache fields (i.e. parents and children)
+     * @param id - The ID of category within the database.
+     * @return The skimmed category without cache.
+     */
+    public Category getCategoryByIdSkim(Long id) {
         return categoryDao.getById(id);
     }
 
@@ -67,10 +72,20 @@ public class CategoryService {
         return helper.getCategoryByName(name);
     }
 
+    /**
+     * This fully restores the category cache.
+     * @param id - The ID of category within the database.
+     * @return Category with cache.
+     */
     public Category getCategoryByIdRestored(@NonNull Long id) {
         return helper.getCategoryByIdRestored(id);
     }
 
+    /**
+     * fully restores/updates the cache of a given category.
+     * @param category - A given category (must already be in database)
+     * @return category with cache fully restored.
+     */
     public Category getCategoryRestored(@NonNull Category category) {
         return helper.getCategoryRestored(category);
     }

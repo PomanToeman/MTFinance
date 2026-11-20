@@ -37,7 +37,7 @@ public class CategoryServiceTest {
         category.setCategoryId(1L);
         when(categoryDao.getById(1L)).thenReturn(category);
 
-        Category result = categoryService.getCategoryById(1L);
+        Category result = categoryService.getCategoryByIdSkim(1L);
 
         assertAll(
             () -> assertNotNull(result),
