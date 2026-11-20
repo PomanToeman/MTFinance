@@ -1,7 +1,6 @@
 package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.VisibleForTesting;
 
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
@@ -25,26 +24,14 @@ public class CategoryService {
     private final CategoryTreeHelper helper;
 
     /**
-     * Constructs a CategoryService with the specified CategoryDao.
+     * Constructs a CategoryService with required CategoryDao and CategoryTreeHelper.
      * @param categoryDao the Room DAO for categories
+     * @param helper the category tree helper
      */
     @Inject
-    public CategoryService(CategoryDao categoryDao) {
+    public CategoryService(CategoryDao categoryDao, CategoryTreeHelper helper) {
         this.categoryDao = categoryDao;
-        this.helper = new CategoryTreeHelper(categoryDao);
-        helper.populateDefaultCategories();
-    }
-
-    /**
-     * Test constructor supporting optional default category population.
-     * @param categoryDao the Room DAO for categories
-     * @param populateDefaultCategories whether to populate default categories
-     */
-    @VisibleForTesting
-    public CategoryService(CategoryDao categoryDao, boolean populateDefaultCategories) {
-        this.categoryDao = categoryDao;
-        this.helper = new CategoryTreeHelper(categoryDao);
-        if (populateDefaultCategories) helper.populateDefaultCategories();
+        this.helper = helper;
     }
 
     public Category getGeneralCategory() {
@@ -67,7 +54,12 @@ public class CategoryService {
         return helper.getRootCategoryByType(type);
     }
 
-    public Category getCategoryById(Long id) {
+    /**
+     * Note that this category DOESN'T come with category cache fields (i.e. parents and children)
+     * @param id - The ID of category within the database.
+     * @return The skimmed category without cache.
+     */
+    public Category getCategoryByIdSkim(Long id) {
         return categoryDao.getById(id);
     }
 
@@ -80,10 +72,20 @@ public class CategoryService {
         return helper.getCategoryByName(name);
     }
 
+    /**
+     * This fully restores the category cache.
+     * @param id - The ID of category within the database.
+     * @return Category with cache.
+     */
     public Category getCategoryByIdRestored(@NonNull Long id) {
         return helper.getCategoryByIdRestored(id);
     }
 
+    /**
+     * fully restores/updates the cache of a given category.
+     * @param category - A given category (must already be in database)
+     * @return category with cache fully restored.
+     */
     public Category getCategoryRestored(@NonNull Category category) {
         return helper.getCategoryRestored(category);
     }

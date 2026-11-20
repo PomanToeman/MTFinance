@@ -27,7 +27,8 @@ public class CategoryServiceTest {
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        categoryService = new CategoryService(categoryDao, false);
+        CategoryTreeHelper helper = new CategoryTreeHelper(categoryDao);
+        categoryService = new CategoryService(categoryDao, helper);
     }
 
     @Test
@@ -36,7 +37,7 @@ public class CategoryServiceTest {
         category.setCategoryId(1L);
         when(categoryDao.getById(1L)).thenReturn(category);
 
-        Category result = categoryService.getCategoryById(1L);
+        Category result = categoryService.getCategoryByIdSkim(1L);
 
         assertAll(
             () -> assertNotNull(result),

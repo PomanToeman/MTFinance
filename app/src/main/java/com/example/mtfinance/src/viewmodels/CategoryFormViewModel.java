@@ -53,9 +53,9 @@ public class CategoryFormViewModel extends ViewModel {
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>("");
     private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
     private final LiveData<Boolean> isEditMode;
-    private final LiveData<Boolean> isRoot;
+    private final MutableLiveData<Boolean> isRoot = new MutableLiveData<>(false);
     private final LiveData<List<CategoryWithTransactions>> categorySelection;
-    private final LiveData<Category> cachedParentCategory;
+    private final MutableLiveData<Category> cachedParentCategory = new MutableLiveData<>(null);
 
     @Inject
     public CategoryFormViewModel(CategoryService categoryService, TrackingService trackingService, TrackingRepository trackingRepository, Executor executor) {
@@ -64,16 +64,8 @@ public class CategoryFormViewModel extends ViewModel {
         this.trackingRepository = trackingRepository;
         this.executor = executor;
         isEditMode = Transformations.map(formFields, fields -> fields.editCategoryId != null);
-        isRoot = Transformations.map(formFields, fields -> {
-            if (fields.editCategoryId == null) return false;
-            return categoryService.isRoot(fields.editCategoryId);
-        });
 
         categorySelection = Transformations.switchMap(type, t -> trackingService.searchCategoriesWithType("", t));
-        this.cachedParentCategory = Transformations.switchMap(formFields, fields -> {
-            if (fields.parentId == null) return null;
-            return new MutableLiveData<>(categoryService.getCategoryByIdRestored(fields.parentId));
-        });
 
         clearSync();
     }
@@ -428,6 +420,21 @@ public class CategoryFormViewModel extends ViewModel {
 
     private void updateFields(CategoryFormFields fields) {
         updateLiveData(formFields, fields);
+        if (executor != null) {
+            executor.execute(() -> {
+                boolean root = fields.editCategoryId != null && categoryService.isRoot(fields.editCategoryId);
+                updateLiveData(isRoot, root);
+
+                Category parent = fields.parentId != null ? categoryService.getCategoryByIdRestored(fields.parentId) : null;
+                updateLiveData(cachedParentCategory, parent);
+            });
+        } else {
+            boolean root = fields.editCategoryId != null && categoryService.isRoot(fields.editCategoryId);
+            updateLiveData(isRoot, root);
+
+            Category parent = fields.parentId != null ? categoryService.getCategoryByIdRestored(fields.parentId) : null;
+            updateLiveData(cachedParentCategory, parent);
+        }
     }
 
     private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {

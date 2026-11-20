@@ -16,12 +16,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
 /**
- * Package-private helper class specifically dedicated to complex category tree and hierarchy operations:
+ * Public helper class specifically dedicated to complex category tree and hierarchy operations:
  * default/root category seeding, root category getters via direct SQLite name lookups, recursive entity tree restoration,
  * and category tree cycle validation. Simple database existence queries interact with CategoryDao directly.
  */
-class CategoryTreeHelper {
+@Singleton
+public class CategoryTreeHelper {
     public final Category generalCategory = new Category("General Category", "General tracking for all categories", BigDecimal.valueOf(1000), TrackingType.EXPENSE);
     public final Category incomeCategory = new Category("Income", "Tracks income transactions", BigDecimal.valueOf(1000), TrackingType.INCOME);
     public final Category accountTransferCategory = new Category("Account Transfer", "Account Transfers", BigDecimal.valueOf(1000), TrackingType.ACCOUNT_TRANSFERS);
@@ -37,6 +41,7 @@ class CategoryTreeHelper {
      * Constructs a CategoryTreeHelper with the given CategoryDao.
      * @param categoryDao the Room DAO for categories
      */
+    @Inject
     public CategoryTreeHelper(CategoryDao categoryDao) {
         this.categoryDao = categoryDao;
     }

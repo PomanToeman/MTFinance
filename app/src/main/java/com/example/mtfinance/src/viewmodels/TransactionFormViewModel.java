@@ -60,7 +60,7 @@ public class TransactionFormViewModel extends ViewModel {
     private final MutableLiveData<String> errorMessage = new MutableLiveData<>("");
     private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
 
-    private final LiveData<Set<CategoryWithTransactions>> cachedCategories;
+    private final MutableLiveData<Set<CategoryWithTransactions>> cachedCategories = new MutableLiveData<>(new HashSet<>());
     private final LiveData<List<CategoryWithTransactions>> categorySelection;
 
     @Inject
@@ -75,12 +75,6 @@ public class TransactionFormViewModel extends ViewModel {
         this.trackingRepository = trackingRepository;
         this.executor = executor;
 
-        cachedCategories = Transformations.switchMap(categoryIds, ids -> {
-            if (ids == null || ids.isEmpty()) {
-                return new MutableLiveData<>(new HashSet<>());
-            }
-            return new MutableLiveData<>(new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(ids)));
-        });
         categorySelection = Transformations.switchMap(type, t -> {
             if (t == null) {
                 return trackingService.getAllCategoriesWithTransactions();
@@ -463,10 +457,27 @@ public class TransactionFormViewModel extends ViewModel {
     }
 
     private void updateFields(TransactionFormFields fields) {
-        try {
-            formFields.setValue(fields);
-        } catch (Exception e) {
-            formFields.postValue(fields);
+        updateLiveData(formFields, fields);
+        if (executor != null) {
+            executor.execute(() -> {
+                Set<Long> ids = fields.categoryIds;
+                Set<CategoryWithTransactions> categories;
+                if (ids == null || ids.isEmpty()) {
+                    categories = new HashSet<>();
+                } else {
+                    categories = new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(ids));
+                }
+                updateLiveData(cachedCategories, categories);
+            });
+        } else {
+            Set<Long> ids = fields.categoryIds;
+            Set<CategoryWithTransactions> categories;
+            if (ids == null || ids.isEmpty()) {
+                categories = new HashSet<>();
+            } else {
+                categories = new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(ids));
+            }
+            updateLiveData(cachedCategories, categories);
         }
     }
 

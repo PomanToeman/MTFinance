@@ -51,8 +51,11 @@ public class CategoryRepositoryTest {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         categoryDao = database.categoryDao();
-        repository = new CategoryRepository(database, categoryDao);
-        categoryService = new CategoryService(categoryDao);
+        CategoryTreeHelper helper = new CategoryTreeHelper(categoryDao);
+        CategoryInitializer initializer = new CategoryInitializer(helper, java.util.concurrent.Executors.newSingleThreadExecutor());
+        repository = new CategoryRepository(database, categoryDao, helper, initializer);
+        categoryService = new CategoryService(categoryDao, helper);
+        initializer.populateDefaultCategoriesSync();
     }
 
     @After
@@ -168,7 +171,7 @@ public class CategoryRepositoryTest {
 
         // Act
         repository.deleteCategory(parentRestored);
-        Category updatedChild = categoryService.getCategoryById(childInDb.getCategoryId());
+        Category updatedChild = categoryService.getCategoryByIdSkim(childInDb.getCategoryId());
 
         // Assert
         assertEquals((long) categoryService.getGeneralCategory().getCategoryId(), (long) updatedChild.getParentId());
@@ -192,7 +195,7 @@ public class CategoryRepositoryTest {
         restoredChild.setMonthlyBudget(BUDGET_TWO_HUNDRED);
         repository.updateCategory(restoredChild);
 
-        Category updated = categoryService.getCategoryById(found.getCategoryId());
+        Category updated = categoryService.getCategoryByIdSkim(found.getCategoryId());
 
         // Assert
         assertEquals("Updated", updated.getName());
@@ -245,13 +248,13 @@ public class CategoryRepositoryTest {
 
         // Assert
         assertFalse(exactMatch.isEmpty());
-        assertEquals(ENTERTAINMENT_NAME, categoryService.getCategoryById(exactMatch.get(0)).getName());
+        assertEquals(ENTERTAINMENT_NAME, categoryService.getCategoryByIdSkim(exactMatch.get(0)).getName());
 
         List<Long> prefixMatch = categoryService.autoSearchCategoryIds("Entertain", TrackingType.EXPENSE);
-        assertEquals(ENTERTAINMENT_NAME, categoryService.getCategoryById(prefixMatch.get(0)).getName());
+        assertEquals(ENTERTAINMENT_NAME, categoryService.getCategoryByIdSkim(prefixMatch.get(0)).getName());
 
         List<Long> descriptionMatch = categoryService.autoSearchCategoryIds("movies", TrackingType.EXPENSE);
-        assertEquals(ENTERTAINMENT_NAME, categoryService.getCategoryById(descriptionMatch.get(0)).getName());
+        assertEquals(ENTERTAINMENT_NAME, categoryService.getCategoryByIdSkim(descriptionMatch.get(0)).getName());
 
         List<Long> wrongType = categoryService.autoSearchCategoryIds(ENTERTAINMENT_NAME, TrackingType.INCOME);
         assertTrue(wrongType.isEmpty());
@@ -348,7 +351,7 @@ public class CategoryRepositoryTest {
 
         // Assert
         assertTrue(exceptionThrown);
-        Category pAfterFail = categoryService.getCategoryById(pInDb.getCategoryId());
+        Category pAfterFail = categoryService.getCategoryByIdSkim(pInDb.getCategoryId());
         // Name should still be original, proving the update was rolled back
         assertEquals("ParentTreeAtomicity", pAfterFail.getName());
     }
@@ -374,7 +377,7 @@ public class CategoryRepositoryTest {
 
         // Assert
         assertTrue(exceptionThrown);
-        Category pAfterFail = categoryService.getCategoryById(pInDb.getCategoryId());
+        Category pAfterFail = categoryService.getCategoryByIdSkim(pInDb.getCategoryId());
         assertNotNull(pAfterFail);
         assertEquals("ParentDeleteAtomicity", pAfterFail.getName());
     }
