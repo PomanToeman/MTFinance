@@ -1,5 +1,7 @@
 package com.example.mtfinance.src.viewmodels;
 
+import android.os.Looper;
+
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
@@ -12,6 +14,7 @@ import com.example.mtfinance.src.trackingengine.Transaction;
 import com.example.mtfinance.src.viewmodels.utlis.SearchCriteria;
 
 import java.util.List;
+import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
 
@@ -20,6 +23,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 @HiltViewModel
 public class TransactionViewModel extends ViewModel {
     private final TransactionService transactionService;
+    private final Executor executor;
     private final LiveData<List<Transaction>> allTransactions;
     private final LiveData<List<Transaction>> filteredTransactions;
     private final MutableLiveData<SearchCriteria> searchCriteria = new MutableLiveData<>(new SearchCriteria("", null));
@@ -28,8 +32,9 @@ public class TransactionViewModel extends ViewModel {
     private final MutableLiveData<List<Category>> categoriesUnderSelectedTransaction = new MutableLiveData<>();
 
     @Inject
-    public TransactionViewModel(TransactionService transactionService) {
+    public TransactionViewModel(TransactionService transactionService, Executor executor) {
         this.transactionService = transactionService;
+        this.executor = executor;
         this.allTransactions = transactionService.getAllLive();
 
         this.filteredTransactions = Transformations.switchMap(searchCriteria, query -> {
@@ -40,10 +45,34 @@ public class TransactionViewModel extends ViewModel {
         });
     }
 
+    public TransactionViewModel(TransactionService transactionService) {
+        this(transactionService, Runnable::run);
+    }
+
     public void setSelectedTransaction(Long id) {
+        if (executor != null) {
+            executor.execute(() -> loadSelectedTransaction(id));
+        } else {
+            loadSelectedTransaction(id);
+        }
+    }
+
+    private void loadSelectedTransaction(Long id) {
         Transaction transaction = transactionService.getById(id);
         if (transaction != null) {
-            selectedTransaction.setValue(transaction);
+            updateLiveData(selectedTransaction, transaction);
+        }
+    }
+
+    private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
+        try {
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                liveData.setValue(value);
+            } else {
+                liveData.postValue(value);
+            }
+        } catch (Exception e) {
+            liveData.postValue(value);
         }
     }
 

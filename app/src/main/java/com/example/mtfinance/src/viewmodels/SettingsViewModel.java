@@ -55,6 +55,14 @@ public class SettingsViewModel extends ViewModel {
     }
 
     public void initializeFromPersisted() {
+        if (executor != null) {
+            executor.execute(this::initializeFromPersistedSync);
+        } else {
+            initializeFromPersistedSync();
+        }
+    }
+
+    private void initializeFromPersistedSync() {
         if (systemService != null) {
             SystemPreferences prefs = systemService.getPreferencesSync();
             if (prefs != null) {
@@ -149,6 +157,14 @@ public class SettingsViewModel extends ViewModel {
     }
 
     public void reevaluateState() {
+        if (executor != null) {
+            executor.execute(this::reevaluateStateSync);
+        } else {
+            reevaluateStateSync();
+        }
+    }
+
+    private void reevaluateStateSync() {
         SystemPreferences persisted = systemService != null ? systemService.getPreferencesSync() : null;
         if (persisted == null) {
             updateLiveData(changesMade, false);

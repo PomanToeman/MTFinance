@@ -126,28 +126,56 @@ public class CategoryViewModel extends ViewModel {
         int current = getMonthOffsetValue();
         int newOffset = current - 1;
         monthOffset.setValue(newOffset);
-        SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-        updatePayPeriodDates(prefs, newOffset);
+        if (executor != null) {
+            executor.execute(() -> {
+                SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+                updatePayPeriodDates(prefs, newOffset);
+            });
+        } else {
+            SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+            updatePayPeriodDates(prefs, newOffset);
+        }
     }
 
     public void navigateNextMonth() {
         int current = getMonthOffsetValue();
         int newOffset = current + 1;
         monthOffset.setValue(newOffset);
-        SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-        updatePayPeriodDates(prefs, newOffset);
+        if (executor != null) {
+            executor.execute(() -> {
+                SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+                updatePayPeriodDates(prefs, newOffset);
+            });
+        } else {
+            SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+            updatePayPeriodDates(prefs, newOffset);
+        }
     }
 
     public void resetToCurrentMonth() {
         monthOffset.setValue(0);
-        SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-        updatePayPeriodDates(prefs, 0);
+        if (executor != null) {
+            executor.execute(() -> {
+                SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+                updatePayPeriodDates(prefs, 0);
+            });
+        } else {
+            SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+            updatePayPeriodDates(prefs, 0);
+        }
     }
 
     public void jumpToMonthOffset(int targetOffset) {
         monthOffset.setValue(targetOffset);
-        SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-        updatePayPeriodDates(prefs, targetOffset);
+        if (executor != null) {
+            executor.execute(() -> {
+                SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+                updatePayPeriodDates(prefs, targetOffset);
+            });
+        } else {
+            SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
+            updatePayPeriodDates(prefs, targetOffset);
+        }
     }
 
     public LiveData<List<CategoryWithTransactions>> getAllCategories() {
