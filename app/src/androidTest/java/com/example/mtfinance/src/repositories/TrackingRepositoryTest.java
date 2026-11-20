@@ -417,7 +417,7 @@ public class TrackingRepositoryTest {
         trackingRepository.updateCategory(cat);
 
         // Assert
-        Category updated = categoryService.getCategoryById(cat.getCategoryId());
+        Category updated = categoryService.getCategoryByIdSkim(cat.getCategoryId());
         assertEquals("Updated Name", updated.getName());
         assertEquals("Updated Desc", updated.getDescription());
         assertEquals(0, BigDecimal.valueOf(200).compareTo(updated.getMonthlyBudget()));
@@ -454,7 +454,7 @@ public class TrackingRepositoryTest {
         // Act
         restoredChild.setMonthlyBudget(BigDecimal.valueOf(150));
         trackingRepository.updateCategoryTree(restoredChild);
-        Category updatedParent = categoryService.getCategoryById(parent.getCategoryId());
+        Category updatedParent = categoryService.getCategoryByIdSkim(parent.getCategoryId());
 
         // Assert
         assertEquals(0, BigDecimal.valueOf(150).compareTo(restoredChild.getParent().getMonthlyBudget()));
