@@ -201,4 +201,15 @@ public class TransactionFormViewModelTest {
             () -> assertEquals("Invalid date format. Accepted formats: yyyy-MM-dd or dd/MM/yyyy", errors.get(TransactionFormViewModel.TransactionErrorFields.DATE))
         );
     }
+
+    @Test
+    public void setDateText_partialDateInput_setsFieldErrorLive() {
+        viewModel.setDateText("2026-11-");
+
+        Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertEquals("Invalid date format. Accepted formats: yyyy-MM-dd or dd/MM/yyyy", errors.get(TransactionFormViewModel.TransactionErrorFields.DATE))
+        );
+    }
 }
