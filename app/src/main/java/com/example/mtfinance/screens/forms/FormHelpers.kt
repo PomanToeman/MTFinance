@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -37,10 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.mtfinance.screens.lists.*
@@ -52,6 +55,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * Allows you to view and choose a category from a list via a dialogue. Can input actions as composables for specific selection actions.
@@ -325,8 +329,11 @@ fun CategorySelectionBox(
 }
 
 /**
- * Allows the user to enter a date manually via a text field (supporting ISO, dd/MM/yyyy, and system format)
+ * Allows the user to enter a date manually via a text field (supporting ISO yyyy-MM-dd and dd/MM/yyyy formats)
  * or choose a date from a DatePickerDialog backup option.
+ *
+ * Date parsing and formatting occur ONLY when the user presses Enter/Done or exits the field (focus loss).
+ * When re-focusing, the text reverts to the raw entered format (or dd/MM/yyyy if chosen via calendar dialog).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -341,8 +348,9 @@ fun DatePickerField(
     errorMessage: String? = null
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    var isFocused by remember { mutableStateOf(false) }
 
-    val formattedInitialText = remember(value, systemDateFormat) {
+    val formattedSystemText = remember(value, systemDateFormat) {
         if (value != null) {
             try {
                 value.format(systemDateFormat.toFormatter())
@@ -354,7 +362,28 @@ fun DatePickerField(
         }
     }
 
-    var textInput by remember(formattedInitialText) { mutableStateOf(formattedInitialText) }
+    var rawInputText by remember(formattedSystemText) { mutableStateOf(formattedSystemText) }
+
+    val commitDate = remember(rawInputText) {
+        {
+            if (onTextChange != null) {
+                onTextChange(rawInputText)
+            } else {
+                val parsed = DateFormat.parseSimple(rawInputText)
+                onValueChange(parsed)
+            }
+        }
+    }
+
+    val displayValue = if (isFocused) {
+        rawInputText
+    } else {
+        if (!isError && value != null) {
+            formattedSystemText
+        } else {
+            rawInputText
+        }
+    }
 
     val initialMillis = remember(value) {
         value?.toLocalDate()?.atStartOfDay(ZoneId.of("UTC"))?.toInstant()?.toEpochMilli()
@@ -362,21 +391,28 @@ fun DatePickerField(
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
 
     TextField(
-        value = textInput,
+        value = displayValue,
         onValueChange = { newText ->
-            textInput = newText
-            if (onTextChange != null) {
-                onTextChange(newText)
-            } else {
-                val parsed = DateFormat.parse(newText, systemDateFormat)
-                onValueChange(parsed)
-            }
+            rawInputText = newText
         },
         label = { Text(label) },
         enabled = enabled,
         isError = isError,
         singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(
+            onDone = { commitDate() },
+            onNext = { commitDate() }
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onFocusChanged { focusState ->
+                val prevFocused = isFocused
+                isFocused = focusState.isFocused
+                if (prevFocused && !focusState.isFocused) {
+                    commitDate()
+                }
+            },
         supportingText = {
             if (isError && !errorMessage.isNullOrBlank()) {
                 Text(
@@ -421,13 +457,13 @@ fun DatePickerField(
                                 .atZone(ZoneId.of("UTC"))
                                 .toLocalDate()
                             val selectedDateTime = selectedLocalDate.atStartOfDay()
-                            val formatted = try {
-                                selectedLocalDate.format(systemDateFormat.toFormatter())
-                            } catch (e: Exception) {
-                                selectedLocalDate.toString()
+                            val ddMmYyyyFormatted = selectedLocalDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                            rawInputText = ddMmYyyyFormatted
+                            if (onTextChange != null) {
+                                onTextChange(ddMmYyyyFormatted)
+                            } else {
+                                onValueChange(selectedDateTime)
                             }
-                            textInput = formatted
-                            onValueChange(selectedDateTime)
                         }
                     }
                 ) {
