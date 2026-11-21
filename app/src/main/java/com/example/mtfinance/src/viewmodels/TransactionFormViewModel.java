@@ -44,6 +44,36 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         NAME, DESCRIPTION, CATEGORY_IDS, AMOUNT, TYPE, DATE
     }
 
+    /**
+     * Outcome of {@link #saveNewTransaction}. Returned directly to the caller so batch callers
+     * (such as the CSV import) never have to read the LiveData messages.
+     */
+    public static final class SaveResult {
+        private final boolean success;
+        private final String message;
+
+        private SaveResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
+        }
+
+        public static SaveResult success(String message) {
+            return new SaveResult(true, message);
+        }
+
+        public static SaveResult failure(String message) {
+            return new SaveResult(false, message);
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+    }
+
     private final TrackingService trackingService;
     private final CategoryService categoryService;
     private final TransactionService transactionService;
@@ -459,21 +489,8 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
                 setErrorMessage("");
                 setSuccessMessage(TransactionMessages.TRANSACTION_UPDATED.getMessage());
             } else {
-                Transaction newTransaction = new Transaction.Builder(fields.name, fields.amount)
-                        .description(fields.description)
-                        .type(fields.type)
-                        .date(fields.date)
-                        .build();
-
-                boolean first = true;
-                for (Long catId : fields.categoryIds) {
-                    if (first) {
-                        trackingRepository.insertTransaction(newTransaction, catId);
-                        first = false;
-                    } else {
-                        trackingRepository.insertRelationship(newTransaction.getTransactionId(), catId);
-                    }
-                }
+                persistNewTransaction(fields.name, fields.description, fields.amount,
+                        fields.type, fields.date, fields.categoryIds);
 
                 setErrorMessage("");
                 setSuccessMessage(TransactionMessages.TRANSACTION_SAVED.getMessage());
@@ -483,6 +500,51 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             setSuccessMessage("");
         } finally {
             setIsLoading(false);
+        }
+    }
+
+    /**
+     * Validates and saves one new transaction without reading or writing any form state or LiveData.
+     * The outcome is the return value, so it is safe to call repeatedly from a background thread
+     * (for example the CSV import) with no polling and no stale reads.
+     *
+     * @return a successful result, or a failure carrying the reason
+     */
+    public SaveResult saveNewTransaction(String name,
+                                         BigDecimal amount,
+                                         TrackingType type,
+                                         LocalDateTime date,
+                                         Set<Long> categoryIds) {
+        return saveNewTransaction(name, "", amount, type, date, categoryIds);
+    }
+
+    /**
+     * Validates and saves one new transaction with an explicit description string.
+     *
+     * @param name transaction name
+     * @param description transaction description/memo
+     * @param amount transaction amount
+     * @param type transaction tracking type
+     * @param date transaction timestamp
+     * @param categoryIds linked category IDs
+     * @return a successful result, or a failure carrying the reason
+     */
+    public SaveResult saveNewTransaction(String name,
+                                         String description,
+                                         BigDecimal amount,
+                                         TrackingType type,
+                                         LocalDateTime date,
+                                         Set<Long> categoryIds) {
+        Map<TransactionErrorFields, String> errors = collectErrors(name, amount, categoryIds, date, type);
+        if (hasFieldErrors(errors)) {
+            return SaveResult.failure(GeneralMessages.FORM_INCOMPLETE.getMessage(String.join("; ", errors.values())));
+        }
+
+        try {
+            persistNewTransaction(name, description != null ? description : "", amount, type, date, categoryIds);
+            return SaveResult.success(TransactionMessages.TRANSACTION_SAVED.getMessage());
+        } catch (Exception e) {
+            return SaveResult.failure(TransactionMessages.TRANSACTION_SAVE_FAILED.getMessage(e.getMessage()));
         }
     }
 
@@ -515,32 +577,71 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
     }
 
     private Map<TransactionErrorFields, String> validateFormSync(TransactionFormFields fields) {
+        Map<TransactionErrorFields, String> errors =
+                collectErrors(fields.name, fields.amount, fields.categoryIds, fields.date, fields.type);
+        updateLiveData(this.fieldErrors, errors);
+        return errors;
+    }
+
+    /**
+     * Pure validation: returns the field errors for the given values and touches no LiveData.
+     */
+    private Map<TransactionErrorFields, String> collectErrors(String name,
+                                                              BigDecimal amount,
+                                                              Set<Long> categoryIds,
+                                                              LocalDateTime date,
+                                                              TrackingType type) {
         Map<TransactionErrorFields, String> errors = new EnumMap<>(TransactionErrorFields.class);
 
-        if (fields.name == null || fields.name.trim().isEmpty()) {
+        if (name == null || name.trim().isEmpty()) {
             errors.put(TransactionErrorFields.NAME, TransactionMessages.TRANSACTION_NAME_EMPTY.getMessage());
         }
 
-        if (fields.amount == null || fields.amount.compareTo(BigDecimal.ZERO) <= 0) {
-            errors.put(TransactionErrorFields.AMOUNT, GeneralMessages.INVALID_AMOUNT.getMessage(fields.amount));
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            errors.put(TransactionErrorFields.AMOUNT, GeneralMessages.INVALID_AMOUNT.getMessage(amount));
         }
 
-        if (fields.categoryIds == null || fields.categoryIds.isEmpty()) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
             errors.put(TransactionErrorFields.CATEGORY_IDS, TransactionMessages.TRANSACTION_CATEGORY_EMPTY.getMessage());
-        } else if (!categoryService.verifyExistingIds(fields.categoryIds)) {
+        } else if (!categoryService.verifyExistingIds(categoryIds)) {
             errors.put(TransactionErrorFields.CATEGORY_IDS, TransactionMessages.TRANSACTION_CATEGORIES_NOT_EXIST.getMessage());
         }
 
-        if (fields.date == null) {
+        if (date == null) {
             errors.put(TransactionErrorFields.DATE, "Date cannot be empty or invalid.");
         }
 
-        if (fields.type == null) {
+        if (type == null) {
             errors.put(TransactionErrorFields.TYPE, "Type cannot be empty.");
         }
 
-        updateLiveData(this.fieldErrors, errors);
         return errors;
+    }
+
+    /**
+     * Writes a new transaction and its category links. Shared by the form save and the import.
+     */
+    private void persistNewTransaction(String name,
+                                       String description,
+                                       BigDecimal amount,
+                                       TrackingType type,
+                                       LocalDateTime date,
+                                       Set<Long> categoryIds) {
+        Transaction newTransaction = new Transaction.Builder(name, amount)
+                .description(description)
+                .type(type)
+                .date(date)
+                .build();
+
+        boolean first = true;
+        for (Long catId : categoryIds) {
+            if (first) {
+                trackingRepository.insertTransaction(newTransaction, catId);
+                first = false;
+            } else {
+                trackingRepository.insertRelationship(newTransaction.getTransactionId(), catId);
+            }
+        }
     }
 
     private static class TransactionFormFields {
@@ -578,8 +679,6 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             updateLiveData(cachedCategories, categories);
         }
     }
-
-
 
     public LiveData<String> getName() { return name; }
     public LiveData<String> getDescription() { return description; }

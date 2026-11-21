@@ -8,6 +8,7 @@ import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -129,6 +130,28 @@ public class CategoryService {
     }
 
     public List<Long> autoSearchCategoryIds(String query, TrackingType type) {
-        return categoryDao.autoSearchBestFittingCategories(query, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
+        return autoSearchCategoryIds(query, "", type);
+    }
+
+    /**
+     * Auto searches matching category IDs by searching both query (name) and description.
+     *
+     * @param query transaction name query
+     * @param description transaction description query
+     * @param type transaction tracking type
+     * @return list of matching category IDs
+     */
+    public List<Long> autoSearchCategoryIds(String query, String description, TrackingType type) {
+        String safeQuery = query != null ? query.trim() : "";
+        String safeDescription = description != null ? description.trim() : "";
+
+        List<Long> matchedByName = categoryDao.autoSearchBestFittingCategories(safeQuery, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
+        if (!matchedByName.isEmpty()) {
+            return matchedByName;
+        }
+        if (!safeDescription.isEmpty()) {
+            return categoryDao.autoSearchBestFittingCategories(safeDescription, TrackingUtlis.EMPTY_DESCRIPTION, type.toString());
+        }
+        return Collections.emptyList();
     }
 }

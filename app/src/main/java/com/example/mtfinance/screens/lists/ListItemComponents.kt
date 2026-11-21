@@ -43,7 +43,6 @@ import com.example.mtfinance.src.trackingengine.Category
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.Transaction
 import com.example.mtfinance.src.viewmodels.SettingsViewModel
-import java.math.RoundingMode
 
 /**
  * Displays essential information of a category in a compact box. Can be expanded to show description and action buttons.
