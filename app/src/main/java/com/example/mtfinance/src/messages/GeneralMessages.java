@@ -10,7 +10,8 @@ public enum GeneralMessages implements MessageCli {
     NON_CSV_FILE_READ("Only CSV files (.csv) are supported"),
     STREAM_OPEN_FAILED("Could not open stream from Uri"),
     IMPORT_CONFIGURATION_REQUIRED("Please configure required import headers and CSV file"),
-    OPTIONAL_HEADER_DESCRIPTION_NOTE(""), OPTIONAL_HEADER_TYPE_NOTE("");
+    OPTIONAL_HEADER_DESCRIPTION_NOTE("Optional: If left blank, transaction description defaults to empty"),
+    OPTIONAL_HEADER_TYPE_NOTE("Optional: If left blank, transaction type is automatically determined by amount sign");
 
     private final String message;
 

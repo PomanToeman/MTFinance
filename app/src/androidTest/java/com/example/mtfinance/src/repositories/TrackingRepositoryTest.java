@@ -674,6 +674,34 @@ public class TrackingRepositoryTest {
         trackingRepository.deleteRelationship(trans.getTransactionId(), 99999L);
     }
 
+    @Test
+    public void deleteAllTransactions_existingTransactionsAndCategories_deletesTransactionsRetainsCategories() {
+        Category customCat = new Category("CustomCat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        categoryRepository.insert(customCat);
+        Transaction trans = new Transaction.Builder("TestTrans", BigDecimal.TEN).build();
+        trackingRepository.insertTransaction(trans, customCat.getCategoryId());
+
+        assertFalse(database.transactionDao().getAll().isEmpty());
+
+        trackingRepository.deleteAllTransactions();
+
+        assertTrue(database.transactionDao().getAll().isEmpty());
+        assertTrue(database.categoryDao().exists(customCat.getCategoryId()));
+    }
+
+    @Test
+    public void deleteAllAppData_existingTransactionsAndCustomCategories_wipesTransactionsAndNonRootCategories() {
+        Category customCat = new Category("CustomCatWipe", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        categoryRepository.insert(customCat);
+        Transaction trans = new Transaction.Builder("TestTransWipe", BigDecimal.TEN).build();
+        trackingRepository.insertTransaction(trans, customCat.getCategoryId());
+
+        trackingRepository.deleteAllAppData();
+
+        assertTrue(database.transactionDao().getAll().isEmpty());
+        assertFalse(database.categoryDao().exists(customCat.getCategoryId()));
+    }
+
     private <T> T getValue(LiveData<T> liveData) throws InterruptedException {
         final Object[] data = new Object[1];
         final CountDownLatch latch = new CountDownLatch(1);

@@ -13,6 +13,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.mtfinance.InstantExecutorExtension;
 import com.example.mtfinance.src.repositories.SystemRepository;
 import com.example.mtfinance.src.repositories.SystemService;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.SettingsPreferenceViolationException;
 import com.example.mtfinance.src.trackingengine.SystemPreferences;
 
@@ -40,6 +41,9 @@ public class SettingsViewModelValidationTest {
     @Mock
     private SystemRepository systemRepository;
 
+    @Mock
+    private TrackingRepository trackingRepository;
+
     private SettingsViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
@@ -50,7 +54,7 @@ public class SettingsViewModelValidationTest {
         when(systemService.getPreferencesLive()).thenReturn(new MutableLiveData<>(prefs));
         when(systemService.getPreferencesSync()).thenReturn(prefs);
 
-        viewModel = new SettingsViewModel(systemService, systemRepository, synchronousExecutor);
+        viewModel = new SettingsViewModel(systemService, systemRepository, trackingRepository, synchronousExecutor);
         viewModel.getFieldErrors().observeForever(e -> {});
         viewModel.getChangesMade().observeForever(c -> {});
         viewModel.getSaveStatusColor().observeForever(s -> {});

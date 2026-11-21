@@ -233,46 +233,49 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
         updateLiveData(this.isLoading, isLoading);
     }
 
+    private void validateHeaderInput(String value, TransactionImportErrorFields field, String missingMessage, boolean required) {
+        List<String> headers = csvHeaders.getValue();
+        if (value == null || value.trim().isEmpty()) {
+            if (required) {
+                setFieldError(field, missingMessage);
+            } else {
+                setFieldError(field, "");
+            }
+        } else if (headers != null && !headers.isEmpty() && headers.stream().noneMatch(h -> h.equalsIgnoreCase(value.trim()))) {
+            setFieldError(field, "Header '" + value.trim() + "' does not exist in CSV file.");
+        } else {
+            setFieldError(field, "");
+        }
+    }
+
     public void setNameHeader(String nameHeader) {
         updateLiveData(this.nameHeader, nameHeader);
         resetMessages();
-        if (nameHeader == null || nameHeader.trim().isEmpty()) {
-            setFieldError(TransactionImportErrorFields.NAME_HEADER, ImportMessages.IMPORT_NAME_HEADER_MISSING.getMessage());
-        } else {
-            setFieldError(TransactionImportErrorFields.NAME_HEADER, "");
-        }
+        validateHeaderInput(nameHeader, TransactionImportErrorFields.NAME_HEADER, ImportMessages.IMPORT_NAME_HEADER_MISSING.getMessage(), true);
     }
 
     public void setDescriptionHeader(String descriptionHeader) {
         updateLiveData(this.descriptionHeader, descriptionHeader);
         resetMessages();
-        setFieldError(TransactionImportErrorFields.DESCRIPTION_HEADER, "");
+        validateHeaderInput(descriptionHeader, TransactionImportErrorFields.DESCRIPTION_HEADER, "", false);
     }
 
     public void setAmountHeader(String amountHeader) {
         updateLiveData(this.amountHeader, amountHeader);
         resetMessages();
-        if (amountHeader == null || amountHeader.trim().isEmpty()) {
-            setFieldError(TransactionImportErrorFields.AMOUNT_HEADER, ImportMessages.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
-        } else {
-            setFieldError(TransactionImportErrorFields.AMOUNT_HEADER, "");
-        }
+        validateHeaderInput(amountHeader, TransactionImportErrorFields.AMOUNT_HEADER, ImportMessages.IMPORT_AMOUNT_HEADER_MISSING.getMessage(), true);
     }
 
     public void setDateHeader(String dateHeader) {
         updateLiveData(this.dateHeader, dateHeader);
         resetMessages();
-        if (dateHeader == null || dateHeader.trim().isEmpty()) {
-            setFieldError(TransactionImportErrorFields.DATE_HEADER, ImportMessages.IMPORT_DATE_HEADER_MISSING.getMessage());
-        } else {
-            setFieldError(TransactionImportErrorFields.DATE_HEADER, "");
-        }
+        validateHeaderInput(dateHeader, TransactionImportErrorFields.DATE_HEADER, ImportMessages.IMPORT_DATE_HEADER_MISSING.getMessage(), true);
     }
 
     public void setTypeHeader(String typeHeader) {
         updateLiveData(this.typeHeader, typeHeader);
         resetMessages();
-        setFieldError(TransactionImportErrorFields.TYPE_HEADER, "");
+        validateHeaderInput(typeHeader, TransactionImportErrorFields.TYPE_HEADER, "", false);
     }
 
     public void setDateFormatter(DateFormat format) {
@@ -610,18 +613,25 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
         if (headers == null || headers.isEmpty()) {
             errors.put(TransactionImportErrorFields.FILE_SOURCE, ImportMessages.IMPORT_PARSER_MISSING.getMessage());
         }
-        if (nameHeader.getValue() == null || nameHeader.getValue().trim().isEmpty()) {
-            errors.put(TransactionImportErrorFields.NAME_HEADER, ImportMessages.IMPORT_NAME_HEADER_MISSING.getMessage());
-        }
-        if (amountHeader.getValue() == null || amountHeader.getValue().trim().isEmpty()) {
-            errors.put(TransactionImportErrorFields.AMOUNT_HEADER, ImportMessages.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
-        }
-        if (dateHeader.getValue() == null || dateHeader.getValue().trim().isEmpty()) {
-            errors.put(TransactionImportErrorFields.DATE_HEADER, ImportMessages.IMPORT_DATE_HEADER_MISSING.getMessage());
-        }
+
+        validateHeaderInputForMap(nameHeader.getValue(), headers, TransactionImportErrorFields.NAME_HEADER, ImportMessages.IMPORT_NAME_HEADER_MISSING.getMessage(), true, errors);
+        validateHeaderInputForMap(descriptionHeader.getValue(), headers, TransactionImportErrorFields.DESCRIPTION_HEADER, "", false, errors);
+        validateHeaderInputForMap(amountHeader.getValue(), headers, TransactionImportErrorFields.AMOUNT_HEADER, ImportMessages.IMPORT_AMOUNT_HEADER_MISSING.getMessage(), true, errors);
+        validateHeaderInputForMap(dateHeader.getValue(), headers, TransactionImportErrorFields.DATE_HEADER, ImportMessages.IMPORT_DATE_HEADER_MISSING.getMessage(), true, errors);
+        validateHeaderInputForMap(typeHeader.getValue(), headers, TransactionImportErrorFields.TYPE_HEADER, "", false, errors);
 
         updateLiveData(this.fieldErrors, errors);
         return errors;
+    }
+
+    private void validateHeaderInputForMap(String value, List<String> availableHeaders, TransactionImportErrorFields field, String missingMessage, boolean required, Map<TransactionImportErrorFields, String> errors) {
+        if (value == null || value.trim().isEmpty()) {
+            if (required) {
+                errors.put(field, missingMessage);
+            }
+        } else if (availableHeaders != null && !availableHeaders.isEmpty() && availableHeaders.stream().noneMatch(h -> h.equalsIgnoreCase(value.trim()))) {
+            errors.put(field, "Header '" + value.trim() + "' does not exist in CSV file.");
+        }
     }
 
     private Long findCategoryIdForTransaction(TrackingType type, String name, String description, Map<TrackingType, Long> rootCategoryIds) {

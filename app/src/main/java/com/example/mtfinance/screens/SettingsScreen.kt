@@ -77,6 +77,7 @@ fun SettingsScreen(
     val provIncludeProvisional by settingsViewModel.provisionalIncludeProvisional.observeAsState(true)
 
     var deleteConfirmDialog by remember { mutableStateOf(false) }
+    var deleteTransactionsDialog by remember { mutableStateOf(false) }
 
     // Sync Room persisted theme to Compose ThemeState
     LaunchedEffect(systemPreferences) {
@@ -329,12 +330,20 @@ fun SettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Danger Zone", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                Text("Permanently wipe all transaction and category records.", style = MaterialTheme.typography.bodySmall)
+                Text("Permanently wipe records or delete all transactions.", style = MaterialTheme.typography.bodySmall)
                 Button(
                     onClick = { deleteConfirmDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Delete All App Data")
+                }
+                Button(
+                    onClick = { deleteTransactionsDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Delete All Transactions (Retain Categories)")
                 }
             }
         }
@@ -342,9 +351,24 @@ fun SettingsScreen(
         if (deleteConfirmDialog) {
             DeleteConfirmationDialog(
                 onDismiss = { deleteConfirmDialog = false },
-                onConfirm = { deleteConfirmDialog = false },
+                onConfirm = {
+                    deleteConfirmDialog = false
+                    settingsViewModel.deleteAllAppData()
+                },
                 onCancel = { deleteConfirmDialog = false },
                 message = "Are you sure you want to permanently delete ALL categories and transactions? This action cannot be undone."
+            )
+        }
+
+        if (deleteTransactionsDialog) {
+            DeleteConfirmationDialog(
+                onDismiss = { deleteTransactionsDialog = false },
+                onConfirm = {
+                    deleteTransactionsDialog = false
+                    settingsViewModel.deleteTransactionsOnly()
+                },
+                onCancel = { deleteTransactionsDialog = false },
+                message = "Are you sure you want to permanently delete ALL transactions while retaining categories? This action cannot be undone."
             )
         }
 

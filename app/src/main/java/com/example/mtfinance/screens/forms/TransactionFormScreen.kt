@@ -37,6 +37,7 @@ import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.messages.ButtonMessages
 import com.example.mtfinance.src.messages.GeneralMessages
+import com.example.mtfinance.src.trackingengine.TrackingType
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
 
@@ -114,11 +115,16 @@ fun TransactionFormScreen(
             isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DATE)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DATE)
         )
-        ChooseTypeForm(
-            transactionType,
-            onTypeSelected = { transactionFormViewModel.setType(it) },
-            enabled = editMode == false
+        SelectForm(
+            label = "Type",
+            options = TrackingType.entries.map { it.name },
+            selectedOption = transactionType?.name,
+            onOptionSelected = { transactionFormViewModel.setTypeText(it) }
         )
+        val typeErr = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.TYPE)
+        if (!typeErr.isNullOrBlank()) {
+            Text(typeErr, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
         CategorySelectionBox(
             label = "Categories",
             chosenCategories = cachedCategories?.map { it.category } ?: emptyList(),

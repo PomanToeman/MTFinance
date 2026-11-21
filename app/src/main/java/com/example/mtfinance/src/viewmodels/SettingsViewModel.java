@@ -10,6 +10,7 @@ import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.DateFormat;
 import com.example.mtfinance.src.repositories.SystemRepository;
 import com.example.mtfinance.src.repositories.SystemService;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.messages.GeneralMessages;
 import com.example.mtfinance.src.trackingengine.DefaultSettings;
 import com.example.mtfinance.src.trackingengine.SettingsPreferenceViolationException;
@@ -34,6 +35,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
 
     private final SystemService systemService;
     private final SystemRepository systemRepository;
+    private final TrackingRepository trackingRepository;
     private final Executor executor;
 
     private final MutableLiveData<Map<SystemPreferenceErrorFields, String>> fieldErrors = new MutableLiveData<>(new EnumMap<>(SystemPreferenceErrorFields.class));
@@ -50,12 +52,41 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     private final MutableLiveData<Boolean> provisionalIncludeProvisional = new MutableLiveData<>(true);
 
     @Inject
-    public SettingsViewModel(SystemService systemService, SystemRepository systemRepository, Executor executor) {
+    public SettingsViewModel(SystemService systemService, SystemRepository systemRepository, TrackingRepository trackingRepository, Executor executor) {
         this.systemService = systemService;
         this.systemRepository = systemRepository;
+        this.trackingRepository = trackingRepository;
         this.executor = executor;
         resetFieldErrors();
         initializeFromPersisted();
+    }
+
+    public void deleteAllAppData() {
+        executor.execute(() -> {
+            try {
+                updateLiveData(isLoading, true);
+                trackingRepository.deleteAllAppData();
+                updateLiveData(successMessage, "All app data deleted successfully.");
+            } catch (Exception e) {
+                updateLiveData(genericErrorMessage, "Failed to delete app data: " + e.getMessage());
+            } finally {
+                updateLiveData(isLoading, false);
+            }
+        });
+    }
+
+    public void deleteTransactionsOnly() {
+        executor.execute(() -> {
+            try {
+                updateLiveData(isLoading, true);
+                trackingRepository.deleteAllTransactions();
+                updateLiveData(successMessage, "All transactions deleted successfully (categories retained).");
+            } catch (Exception e) {
+                updateLiveData(genericErrorMessage, "Failed to delete transactions: " + e.getMessage());
+            } finally {
+                updateLiveData(isLoading, false);
+            }
+        });
     }
 
     public void initializeFromPersisted() {

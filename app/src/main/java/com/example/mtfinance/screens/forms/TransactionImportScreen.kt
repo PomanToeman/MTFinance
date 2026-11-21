@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import com.example.mtfinance.src.messages.GeneralMessages
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -54,6 +55,7 @@ fun TransactionImportScreen(
 ) {
     val csvHeaders by transactionImportViewModel.csvHeaders.observeAsState()
     val previewRows by transactionImportViewModel.previewRows.observeAsState()
+    val errorMap by transactionImportViewModel.fieldErrors.observeAsState()
     val nameHeader by transactionImportViewModel.nameHeader.observeAsState()
     val descriptionHeader by transactionImportViewModel.descriptionHeader.observeAsState()
     val amountHeader by transactionImportViewModel.amountHeader.observeAsState()
@@ -123,36 +125,69 @@ fun TransactionImportScreen(
                 typeHeader = typeHeader
             )
 
+            // Name Header
+            val nameErr = errorMap?.get(TransactionImportFormViewModel.TransactionImportErrorFields.NAME_HEADER)
             SelectForm(
                 label = "Name Header",
                 options = csvHeaders,
                 selectedOption = nameHeader,
                 onOptionSelected = { transactionImportViewModel.setNameHeader(it) }
             )
+            if (!nameErr.isNullOrBlank()) {
+                Text(nameErr, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+
+            // Description Header (Optional)
+            val descErr = errorMap?.get(TransactionImportFormViewModel.TransactionImportErrorFields.DESCRIPTION_HEADER)
             SelectForm(
-                label = "Description Header",
+                label = "Description Header (Optional)",
                 options = csvHeaders,
                 selectedOption = descriptionHeader,
                 onOptionSelected = { transactionImportViewModel.setDescriptionHeader(it) }
             )
+            if (!descErr.isNullOrBlank()) {
+                Text(descErr, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            } else if (descriptionHeader.isNullOrBlank()) {
+                Text(GeneralMessages.OPTIONAL_HEADER_DESCRIPTION_NOTE.getMessage(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+
+            // Amount Header
+            val amountErr = errorMap?.get(TransactionImportFormViewModel.TransactionImportErrorFields.AMOUNT_HEADER)
             SelectForm(
                 label = "Amount Header",
                 options = csvHeaders,
                 selectedOption = amountHeader,
                 onOptionSelected = { transactionImportViewModel.setAmountHeader(it) }
             )
+            if (!amountErr.isNullOrBlank()) {
+                Text(amountErr, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+
+            // Date Header
+            val dateErr = errorMap?.get(TransactionImportFormViewModel.TransactionImportErrorFields.DATE_HEADER)
             SelectForm(
                 label = "Date Header",
                 options = csvHeaders,
                 selectedOption = dateHeader,
                 onOptionSelected = { transactionImportViewModel.setDateHeader(it) }
             )
+            if (!dateErr.isNullOrBlank()) {
+                Text(dateErr, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+
+            // Type Header (Optional)
+            val typeErr = errorMap?.get(TransactionImportFormViewModel.TransactionImportErrorFields.TYPE_HEADER)
             SelectForm(
-                label = "Type Header",
+                label = "Type Header (Optional)",
                 options = csvHeaders,
                 selectedOption = typeHeader,
                 onOptionSelected = { transactionImportViewModel.setTypeHeader(it) }
             )
+            if (!typeErr.isNullOrBlank()) {
+                Text(typeErr, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            } else if (typeHeader.isNullOrBlank()) {
+                Text(GeneralMessages.OPTIONAL_HEADER_TYPE_NOTE.getMessage(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

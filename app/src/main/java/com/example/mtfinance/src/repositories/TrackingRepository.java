@@ -153,6 +153,30 @@ public class TrackingRepository {
     }
 
     /**
+     * Deletes all transactions and category cross-references while retaining all categories.
+     */
+    public void deleteAllTransactions() {
+        categoryWithTransactionsDao.deleteAllCrossRefs();
+        transactionDao.deleteAll();
+    }
+
+    /**
+     * Permanently deletes all transactions and non-root categories.
+     */
+    public void deleteAllAppData() {
+        deleteAllTransactions();
+        List<Category> allCategories = categoryDao.getAll();
+        for (Category cat : allCategories) {
+            if (!helper.isRoot(cat)) {
+                try {
+                    categoryRepository.deleteCategory(cat);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
+    /**
      * Deletes a category and handles its transactions and sub-categories.
      * @param categoryId - The category ID
      * @param deleteTransactions - If true, delete all associated transactions

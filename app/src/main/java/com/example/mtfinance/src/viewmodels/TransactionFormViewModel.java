@@ -298,13 +298,39 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
     public void setType(TrackingType type) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
+            TrackingType oldType = fields.type;
             fields.type = type;
+            if (oldType != type) {
+                fields.categoryIds.clear();
+                updateLiveData(cachedCategories, new HashSet<>());
+            }
             updateFields(fields);
-            if (type == null) {
-                setFieldError(TransactionErrorFields.TYPE, "Type cannot be empty.");
+            if (type == null || type == TrackingType.OTHER) {
+                setFieldError(TransactionErrorFields.TYPE, "Type cannot be empty or invalid.");
             } else {
                 setFieldError(TransactionErrorFields.TYPE, "");
             }
+        }
+    }
+
+    public void setTypeText(String typeStr) {
+        if (typeStr == null || typeStr.trim().isEmpty()) {
+            setFieldError(TransactionErrorFields.TYPE, "Type cannot be empty.");
+            return;
+        }
+        TrackingType parsed = TrackingType.fromString(typeStr);
+        if (parsed == TrackingType.OTHER && !typeStr.trim().equalsIgnoreCase("other")) {
+            setFieldError(TransactionErrorFields.TYPE, "Invalid type. Valid types are EXPENSE, INCOME, ACCOUNT_TRANSFERS.");
+            TransactionFormFields fields = formFields.getValue();
+            if (fields != null) {
+                fields.type = TrackingType.OTHER;
+                fields.categoryIds.clear();
+                updateLiveData(cachedCategories, new HashSet<>());
+                updateFields(fields);
+            }
+        } else {
+            setFieldError(TransactionErrorFields.TYPE, "");
+            setType(parsed);
         }
     }
 

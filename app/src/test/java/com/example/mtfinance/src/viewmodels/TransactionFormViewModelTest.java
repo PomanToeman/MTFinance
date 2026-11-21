@@ -223,4 +223,23 @@ public class TransactionFormViewModelTest {
             () -> assertEquals("Date cannot be empty.", errors.get(TransactionFormViewModel.TransactionErrorFields.DATE))
         );
     }
+
+    @Test
+    public void setType_differentValidType_clearsChosenCategories() {
+        viewModel.addCategoryId(1L);
+        assertEquals(1, viewModel.getCategoryIds().getValue().size());
+
+        viewModel.setType(TrackingType.INCOME);
+        assertTrue(viewModel.getCategoryIds().getValue().isEmpty());
+    }
+
+    @Test
+    public void setTypeText_invalidTypeInput_populatesFieldError() {
+        viewModel.setTypeText("INVALID_TYPE");
+        Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertFalse(errors.get(TransactionFormViewModel.TransactionErrorFields.TYPE).isEmpty())
+        );
+    }
 }

@@ -33,6 +33,9 @@ public interface CategoryTransactionDao {
     @Query("DELETE FROM categoryTransactionCrossRef WHERE categoryId = :categoryId AND transactionId = :transactionId")
     void deleteCrossRef(long categoryId, long transactionId);
 
+    @Query("DELETE FROM categoryTransactionCrossRef")
+    void deleteAllCrossRefs();
+
 
     @Transaction
     @Query("SELECT * FROM categories WHERE LOWER(name) LIKE '%' || LOWER(:query) || '%' OR (LOWER(description) LIKE '%' || LOWER(:query) || '%' AND description != :defaultDescription)")
