@@ -10,6 +10,14 @@ import java.util.Map;
  */
 public interface BaseFormViewModel<K extends Enum<K>> {
     LiveData<Map<K, String>> getFieldErrors();
+
+    /**
+     * Convenience method returning the error map LiveData.
+     */
+    default LiveData<Map<K, String>> getErrorMap() {
+        return getFieldErrors();
+    }
+
     boolean hasFieldErrors();
     void resetFieldErrors();
     void resetFieldError(K field);
