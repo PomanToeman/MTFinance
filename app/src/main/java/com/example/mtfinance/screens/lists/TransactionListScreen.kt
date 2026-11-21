@@ -52,7 +52,7 @@ fun TransactionListScreen(
                 horizontalAlignment = Alignment.Start,
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .let { if (selectedTransaction == null) it.verticalScroll(rememberScrollState()) else it }
             ) {
                 if (selectedTransaction == null) {
                     Header(ScreenMessages.TRANSACTION_LIST_HEADER.getMessage())

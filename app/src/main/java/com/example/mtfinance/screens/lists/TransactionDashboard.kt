@@ -14,9 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -53,71 +52,85 @@ fun TransactionDashboardScreen(
     val selectedTransaction by transactionViewModel.selectedTransaction.observeAsState()
     val categoriesUnderSelectedTransaction by transactionViewModel.categoriesUnderSelectedTransaction.observeAsState()
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(FORM_SPACING_UNIT)
-            .verticalScroll(rememberScrollState()),
+            .padding(FORM_SPACING_UNIT),
         verticalArrangement = Arrangement.spacedBy(FORM_SPACING_UNIT)
     ) {
         if (selectedTransaction != null) {
-            Header(ScreenMessages.TRANSACTION_DASHBOARD_HEADER.getMessage())
-            TransactionDetails(selectedTransaction!!)
-
-            // Direct Edit Button
-            Button(
-                onClick = { navHostController.navigate(Routes.TRANSACTION_FORM.route + "/${selectedTransaction!!.transactionId}") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Text(ButtonMessages.EDIT.getMessage())
+            item {
+                Header(ScreenMessages.TRANSACTION_DASHBOARD_HEADER.getMessage())
+            }
+            item {
+                TransactionDetails(selectedTransaction!!)
+            }
+            item {
+                Button(
+                    onClick = { navHostController.navigate(Routes.TRANSACTION_FORM.route + "/${selectedTransaction!!.transactionId}") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(ButtonMessages.EDIT.getMessage())
+                }
             }
         } else {
-            Header(CategoryMessages.NO_TRANSACTIONS.getMessage())
+            item {
+                Header(CategoryMessages.NO_TRANSACTIONS.getMessage())
+            }
         }
 
         if (categoriesUnderSelectedTransaction != null && categoriesUnderSelectedTransaction!!.isNotEmpty()) {
-            OutlinedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            item {
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    Text(
-                        "Categories Associated",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    CategoryRawList(
-                        categories = categoriesUnderSelectedTransaction!!,
-                        actionOne = { categoryId: Long ->
-                            navHostController.navigate(Routes.CATEGORY_FORM.route + "/$categoryId")
-                        },
-                        actionOneLabel = ButtonMessages.EDIT.getMessage(),
-                        backgroundColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Categories Associated",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
+            }
+            items(categoriesUnderSelectedTransaction!!.size) { index ->
+                val category = categoriesUnderSelectedTransaction!!.elementAt(index)
+                CategoryListItem(
+                    categoryItem = category,
+                    actionOne = { categoryId: Long ->
+                        navHostController.navigate(Routes.CATEGORY_FORM.route + "/$categoryId")
+                    },
+                    actionOneLabel = ButtonMessages.EDIT.getMessage(),
+                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(FORM_SECTION_SPACING - FORM_SPACING_UNIT))
+        item {
+            Spacer(modifier = Modifier.height(FORM_SECTION_SPACING - FORM_SPACING_UNIT))
+        }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            OutlinedButton(onClick = { transactionViewModel.resetSelectedTransaction() }) {
-                Text(ButtonMessages.BACK.getMessage())
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                OutlinedButton(onClick = { transactionViewModel.resetSelectedTransaction() }) {
+                    Text(ButtonMessages.BACK.getMessage())
+                }
             }
         }
     }
