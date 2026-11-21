@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.screens.forms.SelectForm
 import com.example.mtfinance.screens.theme.ThemeMode
 import com.example.mtfinance.screens.theme.ThemeState
 import com.example.mtfinance.src.CurrencyFormat
@@ -73,8 +74,6 @@ fun SettingsScreen(
     val provIncludeProvisional by settingsViewModel.provisionalIncludeProvisional.observeAsState(true)
 
     var deleteConfirmDialog by remember { mutableStateOf(false) }
-    var currencyMenu by remember { mutableStateOf(false) }
-    var dateFormatMenu by remember { mutableStateOf(false) }
 
     // Sync Room persisted theme to Compose ThemeState
     LaunchedEffect(systemPreferences) {
@@ -204,54 +203,31 @@ fun SettingsScreen(
                 )
 
                 // Currency Selector
-                TextField(
-                    label = { Text("Currency Format") },
-                    value = provCurrencyFormat.getDisplayName(),
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = {
-                        IconButton(onClick = { currencyMenu = !currencyMenu }) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "Currency List")
+                SelectForm(
+                    label = "Currency Format",
+                    options = CurrencyFormat.entries.map { it.getDisplayName() },
+                    selectedOption = provCurrencyFormat.getDisplayName(),
+                    onOptionSelected = { selectedName ->
+                        val matched = CurrencyFormat.entries.firstOrNull { it.getDisplayName() == selectedName }
+                        if (matched != null) {
+                            settingsViewModel.setProvisionalCurrencyFormat(matched)
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (currencyMenu) {
-                    CurrencyFormat.entries.forEach { cur ->
-                        DropdownMenuItem(
-                            text = { Text(cur.getDisplayName()) },
-                            onClick = {
-                                settingsViewModel.setProvisionalCurrencyFormat(cur)
-                                currencyMenu = false
-                            }
-                        )
                     }
-                }
+                )
 
                 // Date Format Selector (Displays pattern string instead of enum name)
-                TextField(
-                    label = { Text("Date Display Format") },
-                    value = provDateFormat.getString(),
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = {
-                        IconButton(onClick = { dateFormatMenu = !dateFormatMenu }) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "Date Format List")
+                SelectForm(
+                    label = "Date Display Format",
+                    options = DateFormat.entries.map { it.getString() },
+                    selectedOption = provDateFormat.getString(),
+                    onOptionSelected = { selectedPattern ->
+                        try {
+                            val matched = DateFormat.fromString(selectedPattern)
+                            settingsViewModel.setProvisionalDateFormat(matched)
+                        } catch (_: Exception) {
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (dateFormatMenu) {
-                    DateFormat.entries.forEach { fmt ->
-                        DropdownMenuItem(
-                            text = { Text(fmt.getString()) },
-                            onClick = {
-                                settingsViewModel.setProvisionalDateFormat(fmt)
-                                dateFormatMenu = false
-                            }
-                        )
                     }
-                }
+                )
             }
         }
 
@@ -314,7 +290,8 @@ fun SettingsScreen(
             Button(
                 onClick = { settingsViewModel.saveChanges() },
                 enabled = changesMade && !settingsViewModel.hasFieldErrors(),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
                 Text("Save Changes")
             }
