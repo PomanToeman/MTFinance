@@ -393,32 +393,36 @@ fun SelectFormNonEditable(
     label: String,
     options: List<String?>?,
     selectedOption: String?,
-    onOptionSelected: (String) -> Unit
+    onOptionSelected: (String) -> Unit,
+    enabled: Boolean = true
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
     val displayText = selectedOption ?: ""
     val nonNullOptions = options?.filterNotNull() ?: emptyList()
 
     ExposedDropdownMenuBox(
-        expanded = isMenuExpanded,
-        onExpandedChange = { isMenuExpanded = !isMenuExpanded },
+        expanded = isMenuExpanded && enabled,
+        onExpandedChange = { if (enabled) isMenuExpanded = !isMenuExpanded },
         modifier = Modifier.fillMaxWidth()
     ) {
         OutlinedTextField(
             value = displayText,
             onValueChange = {},
             readOnly = true,
+            enabled = enabled,
             label = { Text(label) },
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
             trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded)
+                if (enabled) {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded)
+                }
             }
         )
 
-        if (nonNullOptions.isNotEmpty()) {
+        if (enabled && nonNullOptions.isNotEmpty()) {
             ExposedDropdownMenu(
                 expanded = isMenuExpanded,
                 onDismissRequest = { isMenuExpanded = false }

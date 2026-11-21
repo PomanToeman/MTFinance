@@ -327,8 +327,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                     systemRepository.updatePreferences(prefs);
                 }
 
-                updateLiveData(changesMade, false);
-                updateLiveData(saveStatusColor, "GREEN");
+                reevaluateState();
                 updateLiveData(successMessage, "Settings saved successfully!");
                 updateLiveData(genericErrorMessage, "");
             } catch (SettingsPreferenceViolationException e) {

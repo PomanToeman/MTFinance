@@ -15,6 +15,7 @@ import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
+import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
@@ -303,6 +304,16 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             if (oldType != type) {
                 fields.categoryIds.clear();
                 updateLiveData(cachedCategories, new HashSet<>());
+                if (type != null && type != TrackingType.EXPENSE && type != TrackingType.OTHER) {
+                    try {
+                        Category rootCat = categoryService.getRootCategoryByType(type);
+                        if (rootCat != null) {
+                            fields.categoryIds.add(rootCat.getCategoryId());
+                            updateLiveData(cachedCategories, new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(fields.categoryIds)));
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
             }
             updateFields(fields);
             if (type == null || type == TrackingType.OTHER) {
@@ -459,6 +470,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
     public void clearSync() {
         TransactionFormFields fields = new TransactionFormFields();
         formFields.postValue(fields);
+        updateLiveData(cachedCategories, new HashSet<>());
         resetFieldErrors();
         setErrorMessage("");
         setSuccessMessage("");
