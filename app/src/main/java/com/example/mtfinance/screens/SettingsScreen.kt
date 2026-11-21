@@ -47,6 +47,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.mtfinance.screens.forms.SelectForm
 import com.example.mtfinance.screens.theme.ThemeMode
+import com.example.mtfinance.screens.theme.getSaveButtonColors
 import com.example.mtfinance.screens.theme.ThemeState
 import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
@@ -291,7 +292,7 @@ fun SettingsScreen(
                 onClick = { settingsViewModel.saveChanges() },
                 enabled = changesMade && !settingsViewModel.hasFieldErrors(),
                 modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                colors = getSaveButtonColors()
             ) {
                 Text("Save Changes")
             }

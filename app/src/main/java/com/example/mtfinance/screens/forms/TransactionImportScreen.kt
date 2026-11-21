@@ -35,6 +35,7 @@ import androidx.navigation.NavHostController
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
 import com.example.mtfinance.screens.Routes
+import com.example.mtfinance.screens.theme.getSaveButtonColors
 import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.viewmodels.TransactionImportFormViewModel
 
@@ -159,10 +160,7 @@ fun TransactionImportScreen(
 
             Button(
                 onClick = { transactionImportViewModel.importTransaction() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2E7D32),
-                    contentColor = Color.White
-                )
+                colors = getSaveButtonColors()
             ) {
                 Text("Import")
             }

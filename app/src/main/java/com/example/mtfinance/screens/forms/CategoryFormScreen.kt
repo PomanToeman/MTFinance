@@ -32,6 +32,7 @@ import com.example.mtfinance.screens.DeleteConfirmationDialog
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
 import com.example.mtfinance.screens.theme.SaveStatusColor
+import com.example.mtfinance.screens.theme.getSaveButtonColors
 import com.example.mtfinance.screens.theme.getSaveStatusThemeColor
 import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.messages.ButtonMessages
@@ -161,10 +162,7 @@ fun CategoryFormScreen(
             Button(
                 onClick = { categoryFormViewModel.saveCategory() },
                 modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                colors = getSaveButtonColors()
             ) {
                 Text(ButtonMessages.SAVE.getMessage())
             }

@@ -59,6 +59,16 @@ fun getSaveStatusThemeColor(status: SaveStatusColor): Color {
     }
 }
 
+/**
+ * Returns centralized button colors for all save and submission buttons app-wide.
+ * Allows quick theme-level changes to save button coloring.
+ */
+@Composable
+fun getSaveButtonColors() = androidx.compose.material3.ButtonDefaults.buttonColors(
+    containerColor = Color(0xFF2E7D32),
+    contentColor = Color.White
+)
+
 private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF64B5F6),
     onPrimary = Color(0xFF002147),
