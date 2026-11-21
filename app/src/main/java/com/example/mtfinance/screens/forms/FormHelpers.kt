@@ -24,6 +24,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
@@ -59,6 +60,9 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+
+val FORM_SPACING_UNIT = 16.dp
+val FORM_SECTION_SPACING = 32.dp
 
 /**
  * Allows you to view and choose a category from a list via a dialogue. Can input actions as composables for specific selection actions.
@@ -492,17 +496,35 @@ fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange:
 }
 
 @Composable
-fun TextFieldForm(label: String, value: String?, onValueChange: (String) -> Unit, minLines: Int = 1, maxLines: Int = 1, placeholder: String = "", enabled: Boolean = true, isError: Boolean = false, errorMessage: String? = "") {
-    TextField(label = { Text(label) }, value = value ?: "", onValueChange = onValueChange, minLines = minLines, maxLines = maxLines, placeholder = { Text(placeholder)}, enabled = enabled, isError = isError,
+fun TextFieldForm(
+    label: String,
+    value: String?,
+    onValueChange: (String) -> Unit,
+    minLines: Int = 1,
+    maxLines: Int = 1,
+    placeholder: String = "",
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    errorMessage: String? = ""
+) {
+    OutlinedTextField(
+        value = value ?: "",
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        minLines = minLines,
+        maxLines = maxLines,
+        placeholder = { Text(placeholder) },
+        enabled = enabled,
+        isError = isError,
+        singleLine = maxLines == 1,
+        modifier = Modifier.fillMaxWidth(),
         supportingText = {
-            if (isError) {
-                if (errorMessage != null) {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
+            if (isError && !errorMessage.isNullOrBlank()) {
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         },
         trailingIcon = {
@@ -513,30 +535,39 @@ fun TextFieldForm(label: String, value: String?, onValueChange: (String) -> Unit
                     tint = MaterialTheme.colorScheme.error
                 )
             }
-        })
+        }
+    )
 }
 
 /**
  * Allows you to input an amount into a field with a given setter. Allows dollars and cents (via decimal)
  */
 @Composable
-fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> Unit, enabled: Boolean = true, isError: Boolean = false, errorMessage: String? = "") {
+fun NumberFieldForm(
+    label: String,
+    value: BigDecimal?,
+    setter: (BigDecimal?) -> Unit,
+    currencySymbol: String = "$",
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    errorMessage: String? = ""
+) {
     OutlinedTextField(
         label = { Text(label) },
         value = value?.toString() ?: "",
-        prefix = { Text("$ ") },
+        prefix = { Text("$currencySymbol ") },
         placeholder = { Text("0.00") },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         isError = isError,
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
         supportingText = {
-            if (isError) {
-                if (errorMessage != null) {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
+            if (isError && !errorMessage.isNullOrBlank()) {
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         },
         trailingIcon = {
@@ -548,11 +579,10 @@ fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> 
                 )
             }
         },
-        onValueChange = {input ->
+        onValueChange = { input ->
             val filteredInput = input.filter { it.isDigit() || it == '.' }
 
-            if (filteredInput.isNotEmpty() ) {
-
+            if (filteredInput.isNotEmpty()) {
                 if (filteredInput.chars().filter { ch -> ch.toChar() == '.' }.count() == 1L) {
                     if (filteredInput.last() == '.') {
                         setter(BigDecimal(filteredInput + "0"))
@@ -561,8 +591,7 @@ fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> 
                     if (filteredInput.first() == '.') {
                         setter(BigDecimal("0" + filteredInput))
                         return@OutlinedTextField
-                    }
-                    else {
+                    } else {
                         val parts = filteredInput.split(".")
                         if (parts[1].length > 2) {
                             setter(BigDecimal(parts[0] + "." + parts[1].substring(0, 2)))
@@ -571,21 +600,16 @@ fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> 
                     }
                 }
 
-
                 try {
                     setter(BigDecimal(filteredInput))
                 } catch (_: NumberFormatException) {
                     setter(value)
                 }
-            }
-            else {
+            } else {
                 setter(null)
             }
-
-
         },
         enabled = enabled
-
     )
 }
 
@@ -594,40 +618,57 @@ fun NumberFieldForm(label: String, value: BigDecimal?, setter: (BigDecimal?) -> 
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SelectForm(label: String, options: List<String?>?, selectedOption: String?, onOptionSelected: (String) -> Unit) {
+fun SelectForm(
+    label: String,
+    options: List<String?>?,
+    selectedOption: String?,
+    onOptionSelected: (String) -> Unit
+) {
     var isMenuExpanded by remember { mutableStateOf(false) }
-    var textFieldValue: String? by remember { mutableStateOf(selectedOption ?: "") }
-    val filteredOptions = options?.filter { textFieldValue?.let { other -> it?.contains(other, ignoreCase = true) }
-        ?: false }
+    var textFieldValue by remember(selectedOption) { mutableStateOf(selectedOption ?: "") }
+    val filteredOptions = options?.filter { opt ->
+        opt != null && (textFieldValue.isBlank() || opt.contains(textFieldValue, ignoreCase = true))
+    } ?: emptyList()
 
     ExposedDropdownMenuBox(
         expanded = isMenuExpanded,
         onExpandedChange = { isMenuExpanded = !isMenuExpanded },
+        modifier = Modifier.fillMaxWidth()
     ) {
-        TextField(
-            value = textFieldValue ?: "",
-            onValueChange = {value -> textFieldValue = value; onOptionSelected(value)},
+        OutlinedTextField(
+            value = textFieldValue,
+            onValueChange = { value ->
+                textFieldValue = value
+                onOptionSelected(value)
+            },
             label = { Text(label) },
-            trailingIcon = { IconButton(onClick = { isMenuExpanded = !isMenuExpanded }) {
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true),
+            trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded)
-            }})
+            }
+        )
 
-    }
-
-    if (filteredOptions?.isNotEmpty() ?: false && isMenuExpanded) {
-        filteredOptions.forEach { selectionOption ->
-            DropdownMenuItem(
-                text = {
+        if (filteredOptions.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = isMenuExpanded,
+                onDismissRequest = { isMenuExpanded = false }
+            ) {
+                filteredOptions.forEach { selectionOption ->
                     if (selectionOption != null) {
-                        Text(selectionOption)
+                        DropdownMenuItem(
+                            text = { Text(selectionOption) },
+                            onClick = {
+                                textFieldValue = selectionOption
+                                onOptionSelected(selectionOption)
+                                isMenuExpanded = false
+                            }
+                        )
                     }
-                },
-                onClick = {
-                    textFieldValue = selectionOption
-                    onOptionSelected(selectionOption ?: "")
-                    isMenuExpanded = false
                 }
-            )
+            }
         }
     }
 }

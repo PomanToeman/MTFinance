@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -12,8 +13,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -75,21 +80,48 @@ fun SetScaffolding(content: @Composable () -> Unit, nav: NavHostController) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChooseTypeForm(typeValue: TrackingType?, onTypeSelected: (TrackingType?) -> Unit, enabled: Boolean = true, includeNone: Boolean = false) {
+fun ChooseTypeForm(
+    typeValue: TrackingType?,
+    onTypeSelected: (TrackingType?) -> Unit,
+    enabled: Boolean = true,
+    includeNone: Boolean = false
+) {
     var expanded by remember { mutableStateOf(false) }
+    var rawText by remember(typeValue) {
+        mutableStateOf(typeValue?.toString()?.lowercase() ?: if (includeNone) "none" else "")
+    }
 
-    Box(
-        modifier = Modifier.padding(16.dp)
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) expanded = !expanded },
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Button(onClick = { expanded = !expanded }, enabled = enabled) {
-            if (typeValue != null) {
-                Text("Type: " + typeValue.toString().lowercase())
-            } else {
-                Text("Type: None")
+        OutlinedTextField(
+            value = rawText,
+            onValueChange = { input ->
+                rawText = input
+                val matched = TrackingType.entries.firstOrNull { it.name.equals(input.trim(), ignoreCase = true) }
+                if (matched != null) {
+                    onTypeSelected(matched)
+                } else if (includeNone && input.trim().equals("none", ignoreCase = true)) {
+                    onTypeSelected(null)
+                }
+            },
+            label = { Text("Type") },
+            readOnly = false,
+            enabled = enabled,
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, enabled),
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             }
-        }
-        DropdownMenu(
+        )
+
+        ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
@@ -97,6 +129,7 @@ fun ChooseTypeForm(typeValue: TrackingType?, onTypeSelected: (TrackingType?) -> 
                 DropdownMenuItem(
                     text = { Text(type.toString().lowercase()) },
                     onClick = {
+                        rawText = type.toString().lowercase()
                         onTypeSelected(type)
                         expanded = false
                     }
@@ -104,8 +137,9 @@ fun ChooseTypeForm(typeValue: TrackingType?, onTypeSelected: (TrackingType?) -> 
             }
             if (includeNone) {
                 DropdownMenuItem(
-                    text = { Text("None") },
+                    text = { Text("none") },
                     onClick = {
+                        rawText = "none"
                         onTypeSelected(null)
                         expanded = false
                     }
