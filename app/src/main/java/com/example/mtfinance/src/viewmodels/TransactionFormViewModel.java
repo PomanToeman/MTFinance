@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.DateFormat;
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.CategoryService;
@@ -66,6 +67,7 @@ public class TransactionFormViewModel extends ViewModel {
     private final MutableLiveData<Set<CategoryWithTransactions>> cachedCategories = new MutableLiveData<>(new HashSet<>());
     private final LiveData<List<CategoryWithTransactions>> categorySelection;
     private final LiveData<DateFormat> systemDateFormat;
+    private final LiveData<CurrencyFormat> currencyFormat;
 
     @Inject
     public TransactionFormViewModel(TrackingService trackingService,
@@ -92,8 +94,15 @@ public class TransactionFormViewModel extends ViewModel {
                     return DateFormat.DD_MM_YYYY;
                 }
             });
+            this.currencyFormat = Transformations.map(systemService.getPreferencesLive(), prefs -> {
+                if (prefs == null || prefs.getCurrencyFormat() == null) {
+                    return CurrencyFormat.NZD;
+                }
+                return CurrencyFormat.fromString(prefs.getCurrencyFormat());
+            });
         } else {
             this.systemDateFormat = new MutableLiveData<>(DateFormat.DD_MM_YYYY);
+            this.currencyFormat = new MutableLiveData<>(CurrencyFormat.NZD);
         }
 
         categorySelection = Transformations.switchMap(type, t -> {
@@ -562,6 +571,7 @@ public class TransactionFormViewModel extends ViewModel {
     public LiveData<TrackingType> getType() { return type; }
     public LiveData<LocalDateTime> getDate() { return date; }
     public LiveData<DateFormat> getSystemDateFormat() { return systemDateFormat; }
+    public LiveData<CurrencyFormat> getCurrencyFormat() { return currencyFormat; }
     public LiveData<Boolean> getIsLoading() { return isLoading; }
     public LiveData<String> getErrorMessage() { return errorMessage; }
     public LiveData<String> getSuccessMessage() { return successMessage; }

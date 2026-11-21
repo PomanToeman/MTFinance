@@ -5,8 +5,10 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.CategoryService;
+import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.Category;
@@ -37,6 +39,7 @@ public class CategoryFormViewModel extends ViewModel {
     private final CategoryService categoryService;
     private final TrackingService trackingService;
     private final TrackingRepository trackingRepository;
+    private final SystemService systemService;
     private final Executor executor;
 
     private final MutableLiveData<CategoryFormFields> formFields = new MutableLiveData<>(new CategoryFormFields());
@@ -56,18 +59,38 @@ public class CategoryFormViewModel extends ViewModel {
     private final MutableLiveData<Boolean> isRoot = new MutableLiveData<>(false);
     private final LiveData<List<CategoryWithTransactions>> categorySelection;
     private final MutableLiveData<Category> cachedParentCategory = new MutableLiveData<>(null);
+    private final LiveData<CurrencyFormat> currencyFormat;
 
     @Inject
-    public CategoryFormViewModel(CategoryService categoryService, TrackingService trackingService, TrackingRepository trackingRepository, Executor executor) {
+    public CategoryFormViewModel(CategoryService categoryService, TrackingService trackingService, TrackingRepository trackingRepository, SystemService systemService, Executor executor) {
         this.categoryService = categoryService;
         this.trackingService = trackingService;
         this.trackingRepository = trackingRepository;
+        this.systemService = systemService;
         this.executor = executor;
         isEditMode = Transformations.map(formFields, fields -> fields.editCategoryId != null);
+
+        if (systemService != null) {
+            this.currencyFormat = Transformations.map(systemService.getPreferencesLive(), prefs -> {
+                if (prefs == null || prefs.getCurrencyFormat() == null) {
+                    return CurrencyFormat.NZD;
+                }
+                return CurrencyFormat.fromString(prefs.getCurrencyFormat());
+            });
+        } else {
+            this.currencyFormat = new MutableLiveData<>(CurrencyFormat.NZD);
+        }
 
         categorySelection = Transformations.switchMap(type, t -> trackingService.searchCategoriesWithType("", t));
 
         clearSync();
+    }
+
+    /**
+     * Overloaded constructor for callers and tests without SystemService.
+     */
+    public CategoryFormViewModel(CategoryService categoryService, TrackingService trackingService, TrackingRepository trackingRepository, Executor executor) {
+        this(categoryService, trackingService, trackingRepository, null, executor);
     }
 
     /**
@@ -149,6 +172,7 @@ public class CategoryFormViewModel extends ViewModel {
         fields.parentId = category.getParentId();
         fields.monthlyBudget = category.getMonthlyBudget();
         fields.minimumBudget = category.determineMinimumBudget();
+        fields.type = category.getType();
         updateFields(fields);
     }
 
@@ -488,6 +512,9 @@ public class CategoryFormViewModel extends ViewModel {
     }
     public LiveData<TrackingType> getType() {
         return type;
+    }
+    public LiveData<CurrencyFormat> getCurrencyFormat() {
+        return currencyFormat;
     }
     public LiveData<Boolean> getIsLoading() {
         return isLoading;
