@@ -147,11 +147,12 @@ fun TransactionFormScreen(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(FORM_SPACING_UNIT),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
                 onClick = { transactionFormViewModel.saveTransaction() },
+                modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF2E7D32),
                     contentColor = Color.White
@@ -163,6 +164,7 @@ fun TransactionFormScreen(
             if (editMode == true) {
                 Button(
                     onClick = { deleteConfirmation = true },
+                    modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFC62828),
                         contentColor = Color.White
@@ -173,6 +175,7 @@ fun TransactionFormScreen(
             } else {
                 Button(
                     onClick = { transactionFormViewModel.clear() },
+                    modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFC62828),
                         contentColor = Color.White
