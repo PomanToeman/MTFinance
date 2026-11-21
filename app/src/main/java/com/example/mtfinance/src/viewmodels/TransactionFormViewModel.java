@@ -285,7 +285,7 @@ public class TransactionFormViewModel extends ViewModel {
             fields.date = date;
             updateFields(fields);
             if (date == null) {
-                setFieldError(TransactionErrorFields.DATE, "Invalid date format. Accepted formats: yyyy-MM-dd or dd/MM/yyyy");
+                setFieldError(TransactionErrorFields.DATE, "Date cannot be empty.");
             } else {
                 setFieldError(TransactionErrorFields.DATE, "");
             }

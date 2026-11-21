@@ -212,4 +212,15 @@ public class TransactionFormViewModelTest {
             () -> assertEquals("Invalid date format. Accepted formats: yyyy-MM-dd or dd/MM/yyyy", errors.get(TransactionFormViewModel.TransactionErrorFields.DATE))
         );
     }
+
+    @Test
+    public void setDate_nullDate_setsFieldErrorDateCannotBeEmpty() {
+        viewModel.setDate((java.time.LocalDateTime) null);
+
+        Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertEquals("Date cannot be empty.", errors.get(TransactionFormViewModel.TransactionErrorFields.DATE))
+        );
+    }
 }
