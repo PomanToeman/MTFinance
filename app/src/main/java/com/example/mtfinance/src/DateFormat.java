@@ -1,7 +1,11 @@
 package com.example.mtfinance.src;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.Arrays;
+import java.util.Locale;
 
 public enum DateFormat {
 
@@ -48,6 +52,92 @@ public enum DateFormat {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Unknown date format pattern: " + pattern));
+    }
+
+    /**
+     * Attempts to parse a raw date string input into a {@link LocalDateTime}.
+     * Checks ISO formats, system preference format, dd/MM/yyyy, and remaining enum patterns.
+     *
+     * @param dateStr raw date string input to parse
+     * @param systemFormat system preference {@link DateFormat}, or null
+     * @return parsed {@link LocalDateTime}, or null if input is unparseable or blank
+     */
+    public static LocalDateTime parse(String dateStr, DateFormat systemFormat) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = dateStr.trim();
+
+        try {
+            return LocalDateTime.parse(trimmed);
+        } catch (Exception ignored) {
+        }
+        try {
+            return LocalDate.parse(trimmed).atStartOfDay();
+        } catch (Exception ignored) {
+        }
+
+        if (systemFormat != null) {
+            LocalDateTime systemParsed = parseWithPattern(trimmed, systemFormat.pattern);
+            if (systemParsed != null) {
+                return systemParsed;
+            }
+        }
+
+        LocalDateTime ddMmYyyyParsed = parseWithPattern(trimmed, DD_MM_YYYY.pattern);
+        if (ddMmYyyyParsed != null) {
+            return ddMmYyyyParsed;
+        }
+
+        for (DateFormat format : values()) {
+            if (format == systemFormat || format == DD_MM_YYYY) {
+                continue;
+            }
+            LocalDateTime parsed = parseWithPattern(trimmed, format.pattern);
+            if (parsed != null) {
+                return parsed;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Convenience method to parse a date string using default system format matching.
+     *
+     * @param dateStr raw date string input to parse
+     * @return parsed {@link LocalDateTime}, or null if unparseable
+     */
+    public static LocalDateTime parse(String dateStr) {
+        return parse(dateStr, null);
+    }
+
+    private static LocalDateTime parseWithPattern(String text, String pattern) {
+        try {
+            DateTimeFormatter formatter = new DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendPattern(pattern)
+                    .toFormatter(Locale.ENGLISH);
+            if (pattern.contains("HH:mm")) {
+                return LocalDateTime.parse(text, formatter);
+            } else {
+                return LocalDate.parse(text, formatter).atStartOfDay();
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            DateTimeFormatter formatter = new DateTimeFormatterBuilder()
+                    .parseCaseInsensitive()
+                    .appendPattern(pattern)
+                    .toFormatter(Locale.getDefault());
+            if (pattern.contains("HH:mm")) {
+                return LocalDateTime.parse(text, formatter);
+            } else {
+                return LocalDate.parse(text, formatter).atStartOfDay();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     @Override

@@ -53,6 +53,13 @@ public class TransactionFormViewModelTest {
     private TransactionFormViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
+    private static final String VALID_ISO_DATE_STR = "2026-11-21";
+    private static final String VALID_DD_MM_YYYY_DATE_STR = "21/11/2026";
+    private static final String INVALID_DATE_STR = "not-a-valid-date";
+    private static final int EXPECTED_YEAR = 2026;
+    private static final int EXPECTED_MONTH = 11;
+    private static final int EXPECTED_DAY = 21;
+
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -153,6 +160,45 @@ public class TransactionFormViewModelTest {
         assertAll(
             () -> verify(trackingWriteRepository).deleteTransaction(transId),
             () -> assertEquals("Transaction deleted successfully", viewModel.getSuccessMessage().getValue())
+        );
+    }
+
+    @Test
+    public void setDateText_validIsoDate_setsDateAndClearsError() {
+        viewModel.setDateText(VALID_ISO_DATE_STR);
+        java.time.LocalDateTime dateVal = viewModel.getDate().getValue();
+
+        assertAll(
+            () -> assertNotNull(dateVal),
+            () -> assertEquals(EXPECTED_YEAR, dateVal != null ? dateVal.getYear() : 0),
+            () -> assertEquals(EXPECTED_MONTH, dateVal != null ? dateVal.getMonthValue() : 0),
+            () -> assertEquals(EXPECTED_DAY, dateVal != null ? dateVal.getDayOfMonth() : 0),
+            () -> assertEquals("", viewModel.getFieldErrors().getValue().get(TransactionFormViewModel.TransactionErrorFields.DATE))
+        );
+    }
+
+    @Test
+    public void setDateText_validDdMmYyyyDate_setsDateAndClearsError() {
+        viewModel.setDateText(VALID_DD_MM_YYYY_DATE_STR);
+        java.time.LocalDateTime dateVal = viewModel.getDate().getValue();
+
+        assertAll(
+            () -> assertNotNull(dateVal),
+            () -> assertEquals(EXPECTED_YEAR, dateVal != null ? dateVal.getYear() : 0),
+            () -> assertEquals(EXPECTED_MONTH, dateVal != null ? dateVal.getMonthValue() : 0),
+            () -> assertEquals(EXPECTED_DAY, dateVal != null ? dateVal.getDayOfMonth() : 0),
+            () -> assertEquals("", viewModel.getFieldErrors().getValue().get(TransactionFormViewModel.TransactionErrorFields.DATE))
+        );
+    }
+
+    @Test
+    public void setDateText_invalidDate_setsFieldError() {
+        viewModel.setDateText(INVALID_DATE_STR);
+
+        Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
+        assertAll(
+            () -> assertNotNull(errors),
+            () -> assertEquals("Invalid date format", errors.get(TransactionFormViewModel.TransactionErrorFields.DATE))
         );
     }
 }

@@ -5,8 +5,10 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.DateFormat;
 import com.example.mtfinance.src.MessageCli;
 import com.example.mtfinance.src.repositories.CategoryService;
+import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.repositories.TransactionService;
@@ -42,6 +44,7 @@ public class TransactionFormViewModel extends ViewModel {
     private final CategoryService categoryService;
     private final TransactionService transactionService;
     private final TrackingRepository trackingRepository;
+    private final SystemService systemService;
     private final Executor executor;
 
     private final MutableLiveData<TransactionFormFields> formFields = new MutableLiveData<>(new TransactionFormFields());
@@ -62,18 +65,36 @@ public class TransactionFormViewModel extends ViewModel {
 
     private final MutableLiveData<Set<CategoryWithTransactions>> cachedCategories = new MutableLiveData<>(new HashSet<>());
     private final LiveData<List<CategoryWithTransactions>> categorySelection;
+    private final LiveData<DateFormat> systemDateFormat;
 
     @Inject
     public TransactionFormViewModel(TrackingService trackingService,
                                     CategoryService categoryService,
                                     TransactionService transactionService,
                                     TrackingRepository trackingRepository,
+                                    SystemService systemService,
                                     Executor executor) {
         this.trackingService = trackingService;
         this.categoryService = categoryService;
         this.transactionService = transactionService;
         this.trackingRepository = trackingRepository;
+        this.systemService = systemService;
         this.executor = executor;
+
+        if (systemService != null) {
+            this.systemDateFormat = Transformations.map(systemService.getPreferencesLive(), prefs -> {
+                if (prefs == null || prefs.getDateFormat() == null) {
+                    return DateFormat.DD_MM_YYYY;
+                }
+                try {
+                    return DateFormat.valueOf(prefs.getDateFormat());
+                } catch (Exception e) {
+                    return DateFormat.DD_MM_YYYY;
+                }
+            });
+        } else {
+            this.systemDateFormat = new MutableLiveData<>(DateFormat.DD_MM_YYYY);
+        }
 
         categorySelection = Transformations.switchMap(type, t -> {
             if (t == null) {
@@ -83,6 +104,17 @@ public class TransactionFormViewModel extends ViewModel {
         });
 
         clearSync();
+    }
+
+    /**
+     * Overloaded constructor for callers and tests without SystemService.
+     */
+    public TransactionFormViewModel(TrackingService trackingService,
+                                    CategoryService categoryService,
+                                    TransactionService transactionService,
+                                    TrackingRepository trackingRepository,
+                                    Executor executor) {
+        this(trackingService, categoryService, transactionService, trackingRepository, null, executor);
     }
 
     /**
@@ -218,6 +250,33 @@ public class TransactionFormViewModel extends ViewModel {
     }
 
     /**
+     * Sets transaction date from text input, parsing against ISO, system preference, and fallback formats.
+     * @param dateStr raw date string input
+     */
+    public void setDateText(String dateStr) {
+        TransactionFormFields fields = formFields.getValue();
+        if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
+            if (dateStr == null || dateStr.trim().isEmpty()) {
+                fields.date = null;
+                updateFields(fields);
+                setFieldError(TransactionErrorFields.DATE, "Date cannot be empty.");
+                return;
+            }
+            DateFormat sysFmt = systemDateFormat.getValue() != null ? systemDateFormat.getValue() : DateFormat.DD_MM_YYYY;
+            LocalDateTime parsed = DateFormat.parse(dateStr, sysFmt);
+            if (parsed != null) {
+                fields.date = parsed;
+                updateFields(fields);
+                setFieldError(TransactionErrorFields.DATE, "");
+            } else {
+                fields.date = null;
+                updateFields(fields);
+                setFieldError(TransactionErrorFields.DATE, "Invalid date format");
+            }
+        }
+    }
+
+    /**
      * Sets transaction date and time.
      * @param date - date and time
      */
@@ -226,7 +285,11 @@ public class TransactionFormViewModel extends ViewModel {
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
             fields.date = date;
             updateFields(fields);
-            setFieldError(TransactionErrorFields.DATE, "");
+            if (date == null) {
+                setFieldError(TransactionErrorFields.DATE, "Invalid date format");
+            } else {
+                setFieldError(TransactionErrorFields.DATE, "");
+            }
         }
     }
 
@@ -441,6 +504,10 @@ public class TransactionFormViewModel extends ViewModel {
             errors.put(TransactionErrorFields.CATEGORY_IDS, MessageCli.TRANSACTION_CATEGORIES_NOT_EXIST.getMessage());
         }
 
+        if (fields.date == null) {
+            errors.put(TransactionErrorFields.DATE, "Date cannot be empty or invalid.");
+        }
+
         updateLiveData(this.fieldErrors, errors);
         return errors;
     }
@@ -495,6 +562,7 @@ public class TransactionFormViewModel extends ViewModel {
     public LiveData<BigDecimal> getAmount() { return amount; }
     public LiveData<TrackingType> getType() { return type; }
     public LiveData<LocalDateTime> getDate() { return date; }
+    public LiveData<DateFormat> getSystemDateFormat() { return systemDateFormat; }
     public LiveData<Boolean> getIsLoading() { return isLoading; }
     public LiveData<String> getErrorMessage() { return errorMessage; }
     public LiveData<String> getSuccessMessage() { return successMessage; }
