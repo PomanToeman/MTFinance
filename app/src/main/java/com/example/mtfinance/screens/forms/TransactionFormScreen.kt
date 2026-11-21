@@ -33,7 +33,8 @@ import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
 import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
-import com.example.mtfinance.src.MessageCli
+import com.example.mtfinance.src.messages.ButtonMessages
+import com.example.mtfinance.src.messages.GeneralMessages
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
 
@@ -158,7 +159,7 @@ fun TransactionFormScreen(
                     contentColor = Color.White
                 )
             ) {
-                Text(MessageCli.SAVE_BUTTON.getMessage())
+                Text(ButtonMessages.SAVE.getMessage())
             }
 
             if (editMode == true) {
@@ -170,7 +171,7 @@ fun TransactionFormScreen(
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Delete")
+                    Text(ButtonMessages.DELETE.getMessage())
                 }
             } else {
                 Button(
@@ -181,7 +182,7 @@ fun TransactionFormScreen(
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Clear")
+                    Text(ButtonMessages.CLEAR.getMessage())
                 }
             }
         }
@@ -191,7 +192,7 @@ fun TransactionFormScreen(
                 onDismiss = { deleteConfirmation = false },
                 onConfirm = { transactionFormViewModel.deleteTransaction() },
                 onCancel = { deleteConfirmation = false },
-                message = MessageCli.DELETE_BUTTON_CONFIRMATION.getMessage(transactionName)
+                message = GeneralMessages.DELETE_BUTTON_CONFIRMATION.getMessage(transactionName)
             )
         }
 
@@ -200,7 +201,7 @@ fun TransactionFormScreen(
             horizontalArrangement = Arrangement.Start
         ) {
             OutlinedButton(onClick = { navHostController.navigate("transaction") }) {
-                Text("Back")
+                Text(ButtonMessages.BACK.getMessage())
             }
         }
     }

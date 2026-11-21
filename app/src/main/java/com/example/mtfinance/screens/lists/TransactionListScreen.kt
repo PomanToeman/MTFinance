@@ -24,7 +24,9 @@ import com.example.mtfinance.screens.DefaultColumn
 import com.example.mtfinance.screens.FabRightBottomCorner
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.Routes
-import com.example.mtfinance.src.MessageCli
+import com.example.mtfinance.src.messages.ButtonMessages
+import com.example.mtfinance.src.messages.CategoryMessages
+import com.example.mtfinance.src.messages.ScreenMessages
 import com.example.mtfinance.src.viewmodels.TransactionViewModel
 
 /**
@@ -53,7 +55,7 @@ fun TransactionListScreen(
                     .verticalScroll(rememberScrollState())
             ) {
                 if (selectedTransaction == null) {
-                    Header(MessageCli.TRANSACTION_LIST_HEADER.getMessage())
+                    Header(ScreenMessages.TRANSACTION_LIST_HEADER.getMessage())
                     Search(searchQuery) { transactionViewModel.setSearchQuery(it) }
                     ChooseTypeButton(typeFilter, onTypeSelected = { transactionViewModel.setTypeFilter(it) }, includeNone = true)
 
@@ -61,12 +63,12 @@ fun TransactionListScreen(
                         TransactionList(
                             filteredTransactions!!,
                             actionOne = { transactionId: Long -> transactionViewModel.setSelectedTransaction(transactionId) },
-                            actionOneLabel = MessageCli.SHOW_MORE_BUTTON.getMessage(),
+                            actionOneLabel = ButtonMessages.SHOW_MORE.getMessage(),
                             actionTwo = { transactionId: Long -> navHostController.navigate(Routes.TRANSACTION_FORM.route + "/$transactionId") },
-                            actionTwoLabel = MessageCli.EDIT_BUTTON.getMessage()
+                            actionTwoLabel = ButtonMessages.EDIT.getMessage()
                         )
                     } else {
-                        Text(MessageCli.NO_TRANSACTIONS.getMessage(), color = MaterialTheme.colorScheme.primary)
+                        Text(CategoryMessages.NO_TRANSACTIONS.getMessage(), color = MaterialTheme.colorScheme.primary)
                     }
                 } else {
                     TransactionDashboardScreen(transactionViewModel = transactionViewModel)

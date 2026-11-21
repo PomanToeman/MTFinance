@@ -16,7 +16,9 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.mtfinance.screens.Header
-import com.example.mtfinance.src.MessageCli
+import com.example.mtfinance.src.messages.ButtonMessages
+import com.example.mtfinance.src.messages.CategoryMessages
+import com.example.mtfinance.src.messages.ScreenMessages
 import com.example.mtfinance.src.viewmodels.TransactionViewModel
 
 /**
@@ -29,9 +31,9 @@ fun TransactionDashboardScreen(transactionViewModel: TransactionViewModel = hilt
     val categoriesUnderSelectedTransaction by transactionViewModel.categoriesUnderSelectedTransaction.observeAsState()
     Column(modifier = Modifier.fillMaxSize(), content =  {
         if (selectedTransaction != null) {
-            Header(MessageCli.TRANSACTION_DASHBOARD_HEADER.getMessage())
+            Header(ScreenMessages.TRANSACTION_DASHBOARD_HEADER.getMessage())
         } else {
-            Header(MessageCli.NO_TRANSACTIONS.getMessage())
+            Header(CategoryMessages.NO_TRANSACTIONS.getMessage())
         }
         if (selectedTransaction != null) {
             TransactionDetails(selectedTransaction!!)
@@ -43,7 +45,7 @@ fun TransactionDashboardScreen(transactionViewModel: TransactionViewModel = hilt
         }
 
         Button(onClick = { transactionViewModel.resetSelectedTransaction() }) {
-            Text(MessageCli.BACK_BUTTON.getMessage())
+            Text(ButtonMessages.BACK.getMessage())
         }
     })
 }

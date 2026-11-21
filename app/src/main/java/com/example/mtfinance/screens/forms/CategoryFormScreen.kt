@@ -33,7 +33,7 @@ import com.example.mtfinance.screens.DeleteConfirmationDialog
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
 import com.example.mtfinance.src.CurrencyFormat
-import com.example.mtfinance.src.MessageCli
+import com.example.mtfinance.src.messages.GeneralMessages
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.viewmodels.CategoryFormViewModel
 
@@ -197,7 +197,7 @@ fun CategoryFormScreen(
                 onDismiss = { deleteConfirmation = false },
                 onConfirm = { categoryFormViewModel.deleteCategory(deleteTransactions) },
                 onCancel = { deleteConfirmation = false },
-                message = MessageCli.DELETE_BUTTON_CONFIRMATION.getMessage(categoryName),
+                message = GeneralMessages.DELETE_BUTTON_CONFIRMATION.getMessage(categoryName),
                 content = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(

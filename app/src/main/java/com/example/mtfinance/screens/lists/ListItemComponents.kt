@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.mtfinance.screens.displayAmount
 import com.example.mtfinance.src.DateFormat
-import com.example.mtfinance.src.MessageCli
+import com.example.mtfinance.src.messages.CategoryMessages
 import com.example.mtfinance.src.trackingengine.Category
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.Transaction
@@ -88,7 +88,7 @@ fun CategoryListItem(
 
                     if (expanded.value) {
                         Text(
-                            MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.description),
+                            CategoryMessages.CATEGORY_DESCRIPTION.getMessage(categoryItem.description),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             minLines = 1,
                             maxLines = 3,
@@ -173,7 +173,7 @@ fun CategoryDetails(categoryItem: CategoryWithTransactions) {
         horizontalAlignment = Alignment.Start
     ) {
         Text(
-            MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.category.description),
+            CategoryMessages.CATEGORY_DESCRIPTION.getMessage(categoryItem.category.description),
             color = MaterialTheme.colorScheme.primary,
             minLines = 1,
             maxLines = 10,
