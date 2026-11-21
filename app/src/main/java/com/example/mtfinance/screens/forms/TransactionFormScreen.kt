@@ -26,11 +26,11 @@ import com.example.mtfinance.screens.DeleteConfirmationDialog
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
 import com.example.mtfinance.screens.ChooseTypeForm
+import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 /**
  * The UI screen that allows the user to create and edit transactions in the database.
@@ -41,6 +41,7 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val transactionAmount by transactionFormViewModel.amount.observeAsState()
     val transactionDate by transactionFormViewModel.date.observeAsState()
     val transactionType by transactionFormViewModel.type.observeAsState()
+    val systemDateFormat by transactionFormViewModel.systemDateFormat.observeAsState(DateFormat.DD_MM_YYYY)
 
     val transactionNotes by transactionFormViewModel.description.observeAsState()
     val errorMap by transactionFormViewModel.fieldErrors.observeAsState()
@@ -87,8 +88,16 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         )
 
 
-        DatePickerField(value = transactionDate?.format(DateTimeFormatter.ISO_LOCAL_DATE).toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
-            LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))}, enabled = editMode == false)
+        DatePickerField(
+            label = "Date",
+            value = transactionDate,
+            onValueChange = { transactionFormViewModel.setDate(it) },
+            onTextChange = { transactionFormViewModel.setDateText(it) },
+            systemDateFormat = systemDateFormat ?: DateFormat.DD_MM_YYYY,
+            enabled = editMode == false,
+            isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DATE)?.isNotEmpty() == true,
+            errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DATE)
+        )
         ChooseTypeForm(transactionType, onTypeSelected = {transactionFormViewModel.setType(it)}, enabled = editMode == false)
         CategorySelectionBox(
             label = "Categories",

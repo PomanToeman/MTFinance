@@ -40,13 +40,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.mtfinance.screens.lists.*
+import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.trackingengine.Category
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * Allows you to view and choose a category from a list via a dialogue. Can input actions as composables for specific selection actions.
@@ -320,26 +325,112 @@ fun CategorySelectionBox(
 }
 
 /**
- * Allows you to select a date from a date picker dialogue.
+ * Allows the user to enter a date manually via a text field (supporting ISO, dd/MM/yyyy, and system format)
+ * or choose a date from a DatePickerDialog backup option.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange: (Long?) -> Unit, enabled: Boolean = true) {
+fun DatePickerField(
+    label: String = "Date",
+    value: LocalDateTime?,
+    onValueChange: (LocalDateTime?) -> Unit,
+    onTextChange: ((String) -> Unit)? = null,
+    systemDateFormat: DateFormat = DateFormat.DD_MM_YYYY,
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    errorMessage: String? = null
+) {
     var showDialog by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = valuelong?.toEpochDay()?.times(1000 * 60 * 60 * 24))
 
-    // Button to trigger the dialog
-    TextButton(onClick = { showDialog = true }, enabled = enabled) {
-        Text(text = value ?: "Select Date")
+    val formattedInitialText = remember(value, systemDateFormat) {
+        if (value != null) {
+            try {
+                value.format(systemDateFormat.toFormatter())
+            } catch (e: Exception) {
+                value.toString()
+            }
+        } else {
+            ""
+        }
     }
+
+    var textInput by remember(formattedInitialText) { mutableStateOf(formattedInitialText) }
+
+    val initialMillis = remember(value) {
+        value?.toLocalDate()?.atStartOfDay(ZoneId.of("UTC"))?.toInstant()?.toEpochMilli()
+    }
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+
+    TextField(
+        value = textInput,
+        onValueChange = { newText ->
+            textInput = newText
+            if (onTextChange != null) {
+                onTextChange(newText)
+            } else {
+                val parsed = DateFormat.parse(newText, systemDateFormat)
+                onValueChange(parsed)
+            }
+        },
+        label = { Text(label) },
+        enabled = enabled,
+        isError = isError,
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        supportingText = {
+            if (isError && !errorMessage.isNullOrBlank()) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        trailingIcon = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isError) {
+                    Icon(
+                        imageVector = Icons.Filled.Error,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+                IconButton(
+                    onClick = { showDialog = true },
+                    enabled = enabled
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CalendarToday,
+                        contentDescription = "Select Date from Calendar"
+                    )
+                }
+            }
+        }
+    )
 
     if (showDialog) {
         DatePickerDialog(
             onDismissRequest = { showDialog = false },
             confirmButton = {
-                TextButton(onClick = { showDialog = false
-                    onValueChange(datePickerState.selectedDateMillis)
-                }) {
+                TextButton(
+                    onClick = {
+                        showDialog = false
+                        val selectedMillis = datePickerState.selectedDateMillis
+                        if (selectedMillis != null) {
+                            val selectedLocalDate = Instant.ofEpochMilli(selectedMillis)
+                                .atZone(ZoneId.of("UTC"))
+                                .toLocalDate()
+                            val selectedDateTime = selectedLocalDate.atStartOfDay()
+                            val formatted = try {
+                                selectedLocalDate.format(systemDateFormat.toFormatter())
+                            } catch (e: Exception) {
+                                selectedLocalDate.toString()
+                            }
+                            textInput = formatted
+                            onValueChange(selectedDateTime)
+                        }
+                    }
+                ) {
                     Text("OK")
                 }
             },
@@ -348,13 +439,25 @@ fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange:
                     Text("Cancel")
                 }
             }
-
-
         ) {
-            // The calendar UI goes inside the dialog content slot
-            return@DatePickerDialog DatePicker(state = datePickerState)
+            DatePicker(state = datePickerState)
         }
     }
+}
+
+/** Overload for backwards compatibility */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerField(value: String? = null, valuelong: LocalDate?, onValueChange: (Long?) -> Unit, enabled: Boolean = true) {
+    val dateTime = valuelong?.atStartOfDay()
+    DatePickerField(
+        label = "Date",
+        value = dateTime,
+        onValueChange = { dt ->
+            onValueChange(dt?.toLocalDate()?.toEpochDay()?.times(1000 * 60 * 60 * 24))
+        },
+        enabled = enabled
+    )
 }
 
 @Composable
