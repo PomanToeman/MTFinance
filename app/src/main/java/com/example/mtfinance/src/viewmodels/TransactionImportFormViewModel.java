@@ -8,7 +8,8 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.DateFormat;
-import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.messages.ImportMessages;
+import com.example.mtfinance.src.messages.GeneralMessages;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TrackingRepository;
@@ -206,7 +207,7 @@ public class TransactionImportFormViewModel extends ViewModel {
     public void setNameHeader(String nameHeader) {
         updateLiveData(this.nameHeader, nameHeader);
         if (nameHeader == null || nameHeader.trim().isEmpty()) {
-            setFieldError(TransactionImportErrorFields.NAME_HEADER, MessageCli.IMPORT_NAME_HEADER_MISSING.getMessage());
+            setFieldError(TransactionImportErrorFields.NAME_HEADER, ImportMessages.IMPORT_NAME_HEADER_MISSING.getMessage());
         } else {
             setFieldError(TransactionImportErrorFields.NAME_HEADER, "");
         }
@@ -215,7 +216,7 @@ public class TransactionImportFormViewModel extends ViewModel {
     public void setAmountHeader(String amountHeader) {
         updateLiveData(this.amountHeader, amountHeader);
         if (amountHeader == null || amountHeader.trim().isEmpty()) {
-            setFieldError(TransactionImportErrorFields.AMOUNT_HEADER, MessageCli.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
+            setFieldError(TransactionImportErrorFields.AMOUNT_HEADER, ImportMessages.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
         } else {
             setFieldError(TransactionImportErrorFields.AMOUNT_HEADER, "");
         }
@@ -224,7 +225,7 @@ public class TransactionImportFormViewModel extends ViewModel {
     public void setDateHeader(String dateHeader) {
         updateLiveData(this.dateHeader, dateHeader);
         if (dateHeader == null || dateHeader.trim().isEmpty()) {
-            setFieldError(TransactionImportErrorFields.DATE_HEADER, MessageCli.IMPORT_DATE_HEADER_MISSING.getMessage());
+            setFieldError(TransactionImportErrorFields.DATE_HEADER, ImportMessages.IMPORT_DATE_HEADER_MISSING.getMessage());
         } else {
             setFieldError(TransactionImportErrorFields.DATE_HEADER, "");
         }
@@ -279,8 +280,8 @@ public class TransactionImportFormViewModel extends ViewModel {
         String path = filePath.getValue();
 
         if ((uri == null) && (path == null || path.isEmpty())) {
-            setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.NO_FILE_FOUND.getMessage());
-            setErrorMessage(MessageCli.NO_FILE_FOUND.getMessage());
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, ImportMessages.NO_FILE_FOUND.getMessage());
+            setErrorMessage(ImportMessages.NO_FILE_FOUND.getMessage());
             return;
         }
 
@@ -295,8 +296,8 @@ public class TransactionImportFormViewModel extends ViewModel {
             if (uri != null) {
                 InputStream inputStream = application.getContentResolver().openInputStream(uri);
                 if (inputStream == null) {
-                    setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_FILE_INVALID.getMessage("Could not open stream from Uri"));
-                    setErrorMessage(MessageCli.IMPORT_FILE_INVALID.getMessage("Could not open stream from Uri"));
+                    setFieldError(TransactionImportErrorFields.FILE_SOURCE, ImportMessages.IMPORT_FILE_INVALID.getMessage("Could not open stream from Uri"));
+                    setErrorMessage(ImportMessages.IMPORT_FILE_INVALID.getMessage("Could not open stream from Uri"));
                     return;
                 }
                 reader = new BufferedReader(new InputStreamReader(inputStream));
@@ -319,11 +320,11 @@ public class TransactionImportFormViewModel extends ViewModel {
             setCsvHeaders(csvParser.getHeaderNames());
             setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
         } catch (IOException e) {
-            setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_FILE_INVALID.getMessage(e.getMessage()));
-            setErrorMessage(MessageCli.IMPORT_FILE_INVALID.getMessage(e.getMessage()));
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, ImportMessages.IMPORT_FILE_INVALID.getMessage(e.getMessage()));
+            setErrorMessage(ImportMessages.IMPORT_FILE_INVALID.getMessage(e.getMessage()));
         } catch (Exception e) {
-            setFieldError(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_FILE_READ_FAILED.getMessage(e.getMessage()));
-            setErrorMessage(MessageCli.IMPORT_FILE_READ_FAILED.getMessage(e.getMessage()));
+            setFieldError(TransactionImportErrorFields.FILE_SOURCE, ImportMessages.IMPORT_FILE_READ_FAILED.getMessage(e.getMessage()));
+            setErrorMessage(ImportMessages.IMPORT_FILE_READ_FAILED.getMessage(e.getMessage()));
         }
     }
 
@@ -337,7 +338,7 @@ public class TransactionImportFormViewModel extends ViewModel {
             Map<TransactionImportErrorFields, String> errors = validateImport();
 
             if (hasFieldErrors(errors)) {
-                setErrorMessage(MessageCli.FORM_INCOMPLETE.getMessage("Please configure required import headers and CSV file"));
+                setErrorMessage(GeneralMessages.FORM_INCOMPLETE.getMessage("Please configure required import headers and CSV file"));
                 setSuccessMessage("");
                 return;
             }
@@ -390,12 +391,12 @@ public class TransactionImportFormViewModel extends ViewModel {
 
             updateLiveData(this.successfulImports, successfulImports);
 
-            setSuccessMessage(MessageCli.IMPORT_SUCCESS.getMessage(successfulImports.size()));
+            setSuccessMessage(ImportMessages.IMPORT_SUCCESS.getMessage(successfulImports.size()));
             if (!failedImports.isEmpty()) {
-                setErrorMessage(MessageCli.IMPORT_FAILED.getMessage(failedImports.size()));
+                setErrorMessage(ImportMessages.IMPORT_FAILED.getMessage(failedImports.size()));
             }
         } catch (Exception e) {
-            setErrorMessage(MessageCli.IMPORT_STOPPED.getMessage());
+            setErrorMessage(ImportMessages.IMPORT_STOPPED.getMessage());
         } finally {
             setIsLoading(Boolean.FALSE);
         }
@@ -418,16 +419,16 @@ public class TransactionImportFormViewModel extends ViewModel {
         }
 
         if (csvParser.getValue() == null) {
-            errors.put(TransactionImportErrorFields.FILE_SOURCE, MessageCli.IMPORT_PARSER_MISSING.getMessage());
+            errors.put(TransactionImportErrorFields.FILE_SOURCE, ImportMessages.IMPORT_PARSER_MISSING.getMessage());
         }
         if (nameHeader.getValue() == null || nameHeader.getValue().trim().isEmpty()) {
-            errors.put(TransactionImportErrorFields.NAME_HEADER, MessageCli.IMPORT_NAME_HEADER_MISSING.getMessage());
+            errors.put(TransactionImportErrorFields.NAME_HEADER, ImportMessages.IMPORT_NAME_HEADER_MISSING.getMessage());
         }
         if (amountHeader.getValue() == null || amountHeader.getValue().trim().isEmpty()) {
-            errors.put(TransactionImportErrorFields.AMOUNT_HEADER, MessageCli.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
+            errors.put(TransactionImportErrorFields.AMOUNT_HEADER, ImportMessages.IMPORT_AMOUNT_HEADER_MISSING.getMessage());
         }
         if (dateHeader.getValue() == null || dateHeader.getValue().trim().isEmpty()) {
-            errors.put(TransactionImportErrorFields.DATE_HEADER, MessageCli.IMPORT_DATE_HEADER_MISSING.getMessage());
+            errors.put(TransactionImportErrorFields.DATE_HEADER, ImportMessages.IMPORT_DATE_HEADER_MISSING.getMessage());
         }
 
         updateLiveData(this.fieldErrors, errors);

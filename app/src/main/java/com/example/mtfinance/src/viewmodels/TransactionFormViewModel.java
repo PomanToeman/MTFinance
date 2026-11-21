@@ -7,7 +7,8 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.DateFormat;
-import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.messages.TransactionMessages;
+import com.example.mtfinance.src.messages.GeneralMessages;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingService;
@@ -177,7 +178,7 @@ public class TransactionFormViewModel extends ViewModel {
             fields.name = name != null ? name : "";
             updateFields(fields);
             if (fields.name.trim().isEmpty()) {
-                setFieldError(TransactionErrorFields.NAME, MessageCli.TRANSACTION_NAME_EMPTY.getMessage());
+                setFieldError(TransactionErrorFields.NAME, TransactionMessages.TRANSACTION_NAME_EMPTY.getMessage());
             } else {
                 setFieldError(TransactionErrorFields.NAME, "");
             }
@@ -220,7 +221,7 @@ public class TransactionFormViewModel extends ViewModel {
             fields.categoryIds.remove(categoryId);
             updateFields(fields);
             if (fields.categoryIds.isEmpty()) {
-                setFieldError(TransactionErrorFields.CATEGORY_IDS, MessageCli.TRANSACTION_CATEGORY_EMPTY.getMessage());
+                setFieldError(TransactionErrorFields.CATEGORY_IDS, TransactionMessages.TRANSACTION_CATEGORY_EMPTY.getMessage());
             }
         }
     }
@@ -235,7 +236,7 @@ public class TransactionFormViewModel extends ViewModel {
             fields.amount = amount;
             updateFields(fields);
             if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-                setFieldError(TransactionErrorFields.AMOUNT, MessageCli.INVALID_AMOUNT.getMessage(amount));
+                setFieldError(TransactionErrorFields.AMOUNT, GeneralMessages.INVALID_AMOUNT.getMessage(amount));
             } else {
                 setFieldError(TransactionErrorFields.AMOUNT, "");
             }
@@ -358,7 +359,7 @@ public class TransactionFormViewModel extends ViewModel {
             fields.editMode = true;
             formFields.postValue(fields);
         } else {
-            setErrorMessage(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
+            setErrorMessage(TransactionMessages.TRANSACTION_NOT_FOUND.getMessage());
             fields.transactionId = null;
             fields.editMode = false;
             formFields.postValue(fields);
@@ -402,7 +403,7 @@ public class TransactionFormViewModel extends ViewModel {
             Map<TransactionErrorFields, String> errors = validateFormSync(fields);
 
             if (hasFieldErrors(errors)) {
-                setErrorMessage(MessageCli.FORM_INCOMPLETE.getMessage("Please fix transaction form field errors"));
+                setErrorMessage(GeneralMessages.FORM_INCOMPLETE.getMessage("Please fix transaction form field errors"));
                 setSuccessMessage("");
                 return;
             }
@@ -432,7 +433,7 @@ public class TransactionFormViewModel extends ViewModel {
                 }
 
                 setErrorMessage("");
-                setSuccessMessage(MessageCli.TRANSACTION_UPDATED.getMessage());
+                setSuccessMessage(TransactionMessages.TRANSACTION_UPDATED.getMessage());
             } else {
                 Transaction newTransaction = new Transaction.Builder(fields.name, fields.amount)
                         .description(fields.description)
@@ -451,10 +452,10 @@ public class TransactionFormViewModel extends ViewModel {
                 }
 
                 setErrorMessage("");
-                setSuccessMessage(MessageCli.TRANSACTION_SAVED.getMessage());
+                setSuccessMessage(TransactionMessages.TRANSACTION_SAVED.getMessage());
             }
         } catch (Exception e) {
-            setErrorMessage(MessageCli.TRANSACTION_SAVE_FAILED.getMessage(e.getMessage()));
+            setErrorMessage(TransactionMessages.TRANSACTION_SAVE_FAILED.getMessage(e.getMessage()));
             setSuccessMessage("");
         } finally {
             setIsLoading(false);
@@ -474,16 +475,16 @@ public class TransactionFormViewModel extends ViewModel {
     public void deleteTransactionSync() {
         TransactionFormFields fields = formFields.getValue();
         if (fields == null || fields.transactionId == null) {
-            setErrorMessage(MessageCli.TRANSACTION_DELETE_NONE.getMessage());
+            setErrorMessage(TransactionMessages.TRANSACTION_DELETE_NONE.getMessage());
             return;
         }
         try {
             setIsLoading(true);
             trackingRepository.deleteTransaction(fields.transactionId);
             clearSync();
-            setSuccessMessage(MessageCli.TRANSACTION_DELETED.getMessage());
+            setSuccessMessage(TransactionMessages.TRANSACTION_DELETED.getMessage());
         } catch (Exception e) {
-            setErrorMessage(MessageCli.TRANSACTION_DELETE_FAILED.getMessage(e.getMessage()));
+            setErrorMessage(TransactionMessages.TRANSACTION_DELETE_FAILED.getMessage(e.getMessage()));
         } finally {
             setIsLoading(false);
         }
@@ -496,17 +497,17 @@ public class TransactionFormViewModel extends ViewModel {
         }
 
         if (fields.name == null || fields.name.trim().isEmpty()) {
-            errors.put(TransactionErrorFields.NAME, MessageCli.TRANSACTION_NAME_EMPTY.getMessage());
+            errors.put(TransactionErrorFields.NAME, TransactionMessages.TRANSACTION_NAME_EMPTY.getMessage());
         }
 
         if (fields.amount == null || fields.amount.compareTo(BigDecimal.ZERO) <= 0) {
-            errors.put(TransactionErrorFields.AMOUNT, MessageCli.INVALID_AMOUNT.getMessage(fields.amount));
+            errors.put(TransactionErrorFields.AMOUNT, GeneralMessages.INVALID_AMOUNT.getMessage(fields.amount));
         }
 
         if (fields.categoryIds == null || fields.categoryIds.isEmpty()) {
-            errors.put(TransactionErrorFields.CATEGORY_IDS, MessageCli.TRANSACTION_CATEGORY_EMPTY.getMessage());
+            errors.put(TransactionErrorFields.CATEGORY_IDS, TransactionMessages.TRANSACTION_CATEGORY_EMPTY.getMessage());
         } else if (!categoryService.verifyExistingIds(fields.categoryIds)) {
-            errors.put(TransactionErrorFields.CATEGORY_IDS, MessageCli.TRANSACTION_CATEGORIES_NOT_EXIST.getMessage());
+            errors.put(TransactionErrorFields.CATEGORY_IDS, TransactionMessages.TRANSACTION_CATEGORIES_NOT_EXIST.getMessage());
         }
 
         if (fields.date == null) {

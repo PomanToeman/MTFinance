@@ -2,7 +2,7 @@ package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
 
-import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.messages.CategoryMessages;
 import com.example.mtfinance.src.repositories.roomdatabase.AppDatabase;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.trackingengine.Category;
@@ -59,11 +59,11 @@ public class CategoryRepository {
 
     private Long insertInternal(@NonNull Category category) {
         if (category.equals(helper.getGeneralCategory()) || !TrackingType.EXPENSE.equals(category.getType())) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_SAVE_FAILED.getMessage("Invalid category type or root duplication"));
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_SAVE_FAILED.getMessage("Invalid category type or root duplication"));
         }
 
         if (category.getName() != null && categoryDao.nameExists(category.getName().trim())) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_NAME_EXISTS.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_NAME_EXISTS.getMessage());
         }
 
         if (category.getParent() == null && category.getParentId() != null) {
@@ -102,16 +102,16 @@ public class CategoryRepository {
 
     private void deleteCategoryInternal(@NonNull Category categoryToDelete) {
         if (categoryToDelete.getCategoryId() == null || !categoryDao.exists(categoryToDelete.getCategoryId())) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_NOT_FOUND.getMessage());
         }
 
         if (helper.isRoot(categoryToDelete)) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
 
         Category categoryRestored = helper.getCategoryByIdRestored(categoryToDelete.getCategoryId());
         if (categoryRestored == null) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_NOT_FOUND.getMessage());
         }
 
         if (categoryRestored.getChildren(false).isEmpty()) {
@@ -160,10 +160,10 @@ public class CategoryRepository {
 
     private void updateCategoryInternal(@NonNull Category category) {
         if (category.getCategoryId() == null || !categoryDao.exists(category.getCategoryId())) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_NOT_FOUND.getMessage());
         }
         if (helper.isRoot(category.getCategoryId())) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
         categoryDao.update(category);
     }
@@ -178,7 +178,7 @@ public class CategoryRepository {
         TrackingUtlis.checkAmount(newBudget);
         Category root = helper.getRootCategoryByType(type);
         if (root == null || !helper.isRoot(root)) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_NOT_FOUND.getMessage());
         }
         root.setMonthlyBudget(newBudget);
         categoryDao.update(root);
@@ -194,7 +194,7 @@ public class CategoryRepository {
         TrackingUtlis.checkAmount(newBudget);
         Category category = categoryDao.getById(categoryId);
         if (category == null || !helper.isRoot(category)) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
         category.setMonthlyBudget(newBudget);
         categoryDao.update(category);
@@ -216,7 +216,7 @@ public class CategoryRepository {
     private void updateAllCategoriesInternal(Collection<Category> categories) {
         for (Category c : categories) {
             if (c.getCategoryId() != null && helper.isRoot(c.getCategoryId())) {
-                throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+                throw new CategoryViolationException(CategoryMessages.CATEGORY_ROOT_EDIT_DENIED.getMessage());
             }
         }
         categoryDao.updateAll(categories);
@@ -237,7 +237,7 @@ public class CategoryRepository {
 
     private void updateCategoryTreeInternal(@NonNull Category category) {
         if (helper.isRoot(category)) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
 
         if (category.getParent() == null && category.getParentId() != null) {

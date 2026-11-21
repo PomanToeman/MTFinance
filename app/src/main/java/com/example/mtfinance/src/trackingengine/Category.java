@@ -7,7 +7,7 @@ import androidx.room.Index;
 import androidx.room.PrimaryKey;
 import androidx.room.ColumnInfo;
 
-import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.messages.CategoryMessages;
 
 import java.math.BigDecimal;
 import java.util.Collection;
@@ -132,7 +132,7 @@ public class Category implements Details {
         int parentAncestors = parent.getAncestors().size();
         int subtreeHeight = this.getSubtreeHeight();
         if (parentAncestors + 1 + subtreeHeight > MAX_DEPTH) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(MAX_DEPTH));
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_MAX_DEPTH_REACHED.getMessage(MAX_DEPTH));
         }
 
         if (this.parent != null && !this.parent.equals(parent)) {

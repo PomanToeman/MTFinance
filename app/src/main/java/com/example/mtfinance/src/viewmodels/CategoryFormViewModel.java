@@ -6,7 +6,8 @@ import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.CurrencyFormat;
-import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.messages.CategoryMessages;
+import com.example.mtfinance.src.messages.GeneralMessages;
 import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingService;
@@ -162,7 +163,7 @@ public class CategoryFormViewModel extends ViewModel {
         if (fields.editCategoryId == null) return;
 
         if (!categoryService.categoryExists(fields.editCategoryId)) {
-            setErrorMessage(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+            setErrorMessage(CategoryMessages.CATEGORY_NOT_FOUND.getMessage());
             return;
         }
         Category category = categoryService.getCategoryByIdRestored(fields.editCategoryId);
@@ -185,7 +186,7 @@ public class CategoryFormViewModel extends ViewModel {
         fields.name = name != null ? name : "";
         updateFields(fields);
         if (fields.name.trim().isEmpty()) {
-            setFieldError(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EMPTY.getMessage());
+            setFieldError(CategoryErrorFields.NAME, CategoryMessages.CATEGORY_NAME_EMPTY.getMessage());
         } else {
             setFieldError(CategoryErrorFields.NAME, "");
         }
@@ -239,20 +240,20 @@ public class CategoryFormViewModel extends ViewModel {
             return;
         }
         if (parentId.equals(fields.editCategoryId)) {
-            setFieldError(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_PARENT_SELF.getMessage());
-            setErrorMessage(MessageCli.CATEGORY_PARENT_SELF.getMessage());
+            setFieldError(CategoryErrorFields.PARENT_ID, CategoryMessages.CATEGORY_PARENT_SELF.getMessage());
+            setErrorMessage(CategoryMessages.CATEGORY_PARENT_SELF.getMessage());
             return;
         }
 
         if (!categoryService.categoryExists(parentId)) {
-            setFieldError(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
-            setErrorMessage(MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
+            setFieldError(CategoryErrorFields.PARENT_ID, CategoryMessages.CATEGORY_PARENT_NOT_FOUND.getMessage());
+            setErrorMessage(CategoryMessages.CATEGORY_PARENT_NOT_FOUND.getMessage());
             return;
         }
         Category parentCat = categoryService.getCategoryByIdRestored(parentId);
         if (parentCat != null && parentCat.getAncestors().size() >= Category.MAX_DEPTH) {
-            setFieldError(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
-            setErrorMessage(MessageCli.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
+            setFieldError(CategoryErrorFields.PARENT_ID, CategoryMessages.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
+            setErrorMessage(CategoryMessages.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
             return;
         }
         setFieldError(CategoryErrorFields.PARENT_ID, "");
@@ -266,11 +267,11 @@ public class CategoryFormViewModel extends ViewModel {
         CategoryFormFields fields = getFields();
         if (monthlyBudget == null) {
             fields.monthlyBudget = null;
-            setFieldError(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.INVALID_AMOUNT.getMessage("null"));
+            setFieldError(CategoryErrorFields.MONTHLY_BUDGET, GeneralMessages.INVALID_AMOUNT.getMessage("null"));
         } else if (monthlyBudget.compareTo(fields.minimumBudget) < 0) {
             fields.monthlyBudget = monthlyBudget;
-            setFieldError(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.BELOW_MINIMUM_BUDGET.getMessage(monthlyBudget.toString(), fields.minimumBudget.toString()));
-            setErrorMessage(MessageCli.BELOW_MINIMUM_BUDGET.getMessage(monthlyBudget.toString(), fields.minimumBudget.toString()));
+            setFieldError(CategoryErrorFields.MONTHLY_BUDGET, CategoryMessages.BELOW_MINIMUM_BUDGET.getMessage(monthlyBudget.toString(), fields.minimumBudget.toString()));
+            setErrorMessage(CategoryMessages.BELOW_MINIMUM_BUDGET.getMessage(monthlyBudget.toString(), fields.minimumBudget.toString()));
         } else {
             fields.monthlyBudget = monthlyBudget;
             setFieldError(CategoryErrorFields.MONTHLY_BUDGET, "");
@@ -306,17 +307,17 @@ public class CategoryFormViewModel extends ViewModel {
     public void deleteCategorySync(boolean deleteTransactions) {
         CategoryFormFields fields = getFields();
         if (fields.editCategoryId == null || !categoryService.categoryExists(fields.editCategoryId)) {
-            setErrorMessage(MessageCli.CATEGORY_DELETE_NONE.getMessage());
+            setErrorMessage(CategoryMessages.CATEGORY_DELETE_NONE.getMessage());
             return;
         }
         try {
             setIsLoading(true);
             trackingRepository.deleteCategory(fields.editCategoryId, deleteTransactions);
             clearSync();
-            setSuccessMessage(MessageCli.CATEGORY_DELETED.getMessage());
+            setSuccessMessage(CategoryMessages.CATEGORY_DELETED.getMessage());
             setErrorMessage("");
         } catch (Exception e) {
-            setErrorMessage(MessageCli.CATEGORY_DELETE_FAILED.getMessage(e.getMessage()));
+            setErrorMessage(CategoryMessages.CATEGORY_DELETE_FAILED.getMessage(e.getMessage()));
             setSuccessMessage("");
         } finally {
             setIsLoading(false);
@@ -340,7 +341,7 @@ public class CategoryFormViewModel extends ViewModel {
             Map<CategoryErrorFields, String> errors = validateFormSync(fields);
 
             if (hasFieldErrors(errors)) {
-                setErrorMessage(MessageCli.FORM_INCOMPLETE.getMessage("Please fix form field errors"));
+                setErrorMessage(GeneralMessages.FORM_INCOMPLETE.getMessage("Please fix form field errors"));
                 setSuccessMessage("");
                 return;
             }
@@ -374,13 +375,13 @@ public class CategoryFormViewModel extends ViewModel {
                 }
             }
 
-            setSuccessMessage(MessageCli.CATEGORY_SAVED.getMessage());
+            setSuccessMessage(CategoryMessages.CATEGORY_SAVED.getMessage());
             setErrorMessage("");
             if (fields.editCategoryId != null) {
                 loadCategoryForEditingSync();
             }
         } catch (Exception e) {
-            setErrorMessage(MessageCli.CATEGORY_SAVE_FAILED.getMessage(e.getMessage()));
+            setErrorMessage(CategoryMessages.CATEGORY_SAVE_FAILED.getMessage(e.getMessage()));
             setSuccessMessage("");
         } finally {
             setIsLoading(false);
@@ -400,7 +401,7 @@ public class CategoryFormViewModel extends ViewModel {
             errors.put(CategoryErrorFields.MONTHLY_BUDGET, e.getMessage());
         }
         if (fields.minimumBudget != null && fields.minimumBudget.compareTo(fields.monthlyBudget) > 0) {
-            errors.put(CategoryErrorFields.MONTHLY_BUDGET, MessageCli.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
+            errors.put(CategoryErrorFields.MONTHLY_BUDGET, CategoryMessages.BELOW_MINIMUM_BUDGET.getMessage(fields.monthlyBudget.toString(), fields.minimumBudget.toString()));
         }
 
         if (fields.editCategoryId != null && categoryService.isRoot(fields.editCategoryId)) {
@@ -409,23 +410,23 @@ public class CategoryFormViewModel extends ViewModel {
         }
 
         if (fields.name == null || fields.name.trim().isEmpty()) {
-            errors.put(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EMPTY.getMessage());
+            errors.put(CategoryErrorFields.NAME, CategoryMessages.CATEGORY_NAME_EMPTY.getMessage());
         } else if (categoryService.categoryNameExists(fields.name)) {
             if (fields.editCategoryId == null) {
-                errors.put(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EXISTS.getMessage());
+                errors.put(CategoryErrorFields.NAME, CategoryMessages.CATEGORY_NAME_EXISTS.getMessage());
             } else {
                 Category current = categoryService.getCategoryByIdRestored(fields.editCategoryId);
                 if (current != null && !current.getName().equalsIgnoreCase(fields.name.trim())) {
-                    errors.put(CategoryErrorFields.NAME, MessageCli.CATEGORY_NAME_EXISTS.getMessage());
+                    errors.put(CategoryErrorFields.NAME, CategoryMessages.CATEGORY_NAME_EXISTS.getMessage());
                 }
             }
         }
 
         if (fields.parentId != null) {
             if (fields.parentId.equals(fields.editCategoryId)) {
-                errors.put(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_PARENT_SELF.getMessage());
+                errors.put(CategoryErrorFields.PARENT_ID, CategoryMessages.CATEGORY_PARENT_SELF.getMessage());
             } else if (!categoryService.categoryExists(fields.parentId)) {
-                errors.put(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
+                errors.put(CategoryErrorFields.PARENT_ID, CategoryMessages.CATEGORY_PARENT_NOT_FOUND.getMessage());
             }
         }
 
