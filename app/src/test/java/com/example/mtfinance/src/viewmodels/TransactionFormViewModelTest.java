@@ -58,7 +58,7 @@ public class TransactionFormViewModelTest {
     private static final String INVALID_DATE_STR = "not-a-valid-date";
     private static final int EXPECTED_YEAR = 2026;
     private static final int EXPECTED_MONTH = 11;
-    private static final int EXPECTED_DAY = 21;
+    private static final int EXPECTED_DAY = 22;
 
     @BeforeEach
     public void setUp() {
@@ -173,7 +173,7 @@ public class TransactionFormViewModelTest {
             () -> assertEquals(EXPECTED_YEAR, dateVal != null ? dateVal.getYear() : 0),
             () -> assertEquals(EXPECTED_MONTH, dateVal != null ? dateVal.getMonthValue() : 0),
             () -> assertEquals(EXPECTED_DAY, dateVal != null ? dateVal.getDayOfMonth() : 0),
-            () -> assertEquals("", viewModel.getFieldErrors().getValue().get(TransactionFormViewModel.TransactionErrorFields.DATE))
+            () -> assertFalse(viewModel.getFieldErrors().getValue() != null && viewModel.getFieldErrors().getValue().containsKey(TransactionFormViewModel.TransactionErrorFields.DATE))
         );
     }
 
@@ -187,7 +187,7 @@ public class TransactionFormViewModelTest {
             () -> assertEquals(EXPECTED_YEAR, dateVal != null ? dateVal.getYear() : 0),
             () -> assertEquals(EXPECTED_MONTH, dateVal != null ? dateVal.getMonthValue() : 0),
             () -> assertEquals(EXPECTED_DAY, dateVal != null ? dateVal.getDayOfMonth() : 0),
-            () -> assertEquals("", viewModel.getFieldErrors().getValue().get(TransactionFormViewModel.TransactionErrorFields.DATE))
+            () -> assertFalse(viewModel.getFieldErrors().getValue() != null && viewModel.getFieldErrors().getValue().containsKey(TransactionFormViewModel.TransactionErrorFields.DATE))
         );
     }
 

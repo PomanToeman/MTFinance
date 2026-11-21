@@ -79,29 +79,23 @@ public class SettingsViewModel extends ViewModel {
     }
 
     public void resetFieldErrors() {
-        Map<SystemPreferenceErrorFields, String> errors = new EnumMap<>(SystemPreferenceErrorFields.class);
-        for (SystemPreferenceErrorFields field : SystemPreferenceErrorFields.values()) {
-            errors.put(field, "");
-        }
-        updateLiveData(fieldErrors, errors);
+        updateLiveData(fieldErrors, new EnumMap<>(SystemPreferenceErrorFields.class));
         updateLiveData(genericErrorMessage, "");
     }
 
     public boolean hasFieldErrors() {
         Map<SystemPreferenceErrorFields, String> current = fieldErrors.getValue();
-        if (current == null || current.isEmpty()) return false;
-        for (String err : current.values()) {
-            if (err != null && !err.trim().isEmpty()) {
-                return true;
-            }
-        }
-        return false;
+        return current != null && !current.isEmpty();
     }
 
     private void setFieldError(SystemPreferenceErrorFields field, String message) {
         Map<SystemPreferenceErrorFields, String> currentMap = fieldErrors.getValue();
         Map<SystemPreferenceErrorFields, String> newMap = currentMap != null ? new EnumMap<>(currentMap) : new EnumMap<>(SystemPreferenceErrorFields.class);
-        newMap.put(field, message != null ? message : "");
+        if (message == null || message.trim().isEmpty()) {
+            newMap.remove(field);
+        } else {
+            newMap.put(field, message);
+        }
         updateLiveData(fieldErrors, newMap);
         reevaluateState();
     }

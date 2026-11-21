@@ -131,11 +131,7 @@ public class TransactionFormViewModel extends ViewModel {
      * Resets all field-specific error messages in the map.
      */
     public void resetFieldErrors() {
-        Map<TransactionErrorFields, String> errors = new EnumMap<>(TransactionErrorFields.class);
-        for (TransactionErrorFields field : TransactionErrorFields.values()) {
-            errors.put(field, "");
-        }
-        updateLiveData(this.fieldErrors, errors);
+        updateLiveData(this.fieldErrors, new EnumMap<>(TransactionErrorFields.class));
     }
 
     /**
@@ -152,19 +148,17 @@ public class TransactionFormViewModel extends ViewModel {
      * @return true if at least one field has a non-empty error message
      */
     public boolean hasFieldErrors(Map<TransactionErrorFields, String> errors) {
-        if (errors == null || errors.isEmpty()) return false;
-        for (String error : errors.values()) {
-            if (error != null && !error.trim().isEmpty()) {
-                return true;
-            }
-        }
-        return false;
+        return errors != null && !errors.isEmpty();
     }
 
     private void setFieldError(TransactionErrorFields field, String message) {
         Map<TransactionErrorFields, String> currentMap = fieldErrors.getValue();
         Map<TransactionErrorFields, String> newMap = currentMap != null ? new EnumMap<>(currentMap) : new EnumMap<>(TransactionErrorFields.class);
-        newMap.put(field, message != null ? message : "");
+        if (message == null || message.trim().isEmpty()) {
+            newMap.remove(field);
+        } else {
+            newMap.put(field, message);
+        }
         updateLiveData(this.fieldErrors, newMap);
     }
 
@@ -494,9 +488,6 @@ public class TransactionFormViewModel extends ViewModel {
 
     private Map<TransactionErrorFields, String> validateFormSync(TransactionFormFields fields) {
         Map<TransactionErrorFields, String> errors = new EnumMap<>(TransactionErrorFields.class);
-        for (TransactionErrorFields field : TransactionErrorFields.values()) {
-            errors.put(field, "");
-        }
 
         if (fields.name == null || fields.name.trim().isEmpty()) {
             errors.put(TransactionErrorFields.NAME, TransactionMessages.TRANSACTION_NAME_EMPTY.getMessage());

@@ -98,11 +98,7 @@ public class CategoryFormViewModel extends ViewModel {
      * Resets all field-specific error messages in the map.
      */
     public void resetFieldErrors() {
-        Map<CategoryErrorFields, String> errors = new EnumMap<>(CategoryErrorFields.class);
-        for (CategoryErrorFields field : CategoryErrorFields.values()) {
-            errors.put(field, "");
-        }
-        updateLiveData(this.fieldErrors, errors);
+        updateLiveData(this.fieldErrors, new EnumMap<>(CategoryErrorFields.class));
     }
 
     /**
@@ -119,19 +115,17 @@ public class CategoryFormViewModel extends ViewModel {
      * @return true if at least one field has a non-empty error message
      */
     public boolean hasFieldErrors(Map<CategoryErrorFields, String> errors) {
-        if (errors == null || errors.isEmpty()) return false;
-        for (String error : errors.values()) {
-            if (error != null && !error.trim().isEmpty()) {
-                return true;
-            }
-        }
-        return false;
+        return errors != null && !errors.isEmpty();
     }
 
     private void setFieldError(CategoryErrorFields field, String message) {
         Map<CategoryErrorFields, String> currentMap = fieldErrors.getValue();
         Map<CategoryErrorFields, String> newMap = currentMap != null ? new EnumMap<>(currentMap) : new EnumMap<>(CategoryErrorFields.class);
-        newMap.put(field, message != null ? message : "");
+        if (message == null || message.trim().isEmpty()) {
+            newMap.remove(field);
+        } else {
+            newMap.put(field, message);
+        }
         updateLiveData(this.fieldErrors, newMap);
     }
 
@@ -391,9 +385,6 @@ public class CategoryFormViewModel extends ViewModel {
 
     private Map<CategoryErrorFields, String> validateFormSync(CategoryFormFields fields) {
         Map<CategoryErrorFields, String> errors = new EnumMap<>(CategoryErrorFields.class);
-        for (CategoryErrorFields field : CategoryErrorFields.values()) {
-            errors.put(field, "");
-        }
 
         try {
             TrackingUtlis.checkAmount(fields.monthlyBudget);

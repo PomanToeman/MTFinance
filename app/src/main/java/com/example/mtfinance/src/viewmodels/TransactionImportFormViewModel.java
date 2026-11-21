@@ -99,11 +99,7 @@ public class TransactionImportFormViewModel extends ViewModel {
      * Resets all field-specific import error messages in the map.
      */
     public void resetFieldErrors() {
-        Map<TransactionImportErrorFields, String> errors = new EnumMap<>(TransactionImportErrorFields.class);
-        for (TransactionImportErrorFields field : TransactionImportErrorFields.values()) {
-            errors.put(field, "");
-        }
-        updateLiveData(this.fieldErrors, errors);
+        updateLiveData(this.fieldErrors, new EnumMap<>(TransactionImportErrorFields.class));
     }
 
     /**
@@ -120,19 +116,17 @@ public class TransactionImportFormViewModel extends ViewModel {
      * @return true if at least one import field has a non-empty error message
      */
     public boolean hasFieldErrors(Map<TransactionImportErrorFields, String> errors) {
-        if (errors == null || errors.isEmpty()) return false;
-        for (String error : errors.values()) {
-            if (error != null && !error.trim().isEmpty()) {
-                return true;
-            }
-        }
-        return false;
+        return errors != null && !errors.isEmpty();
     }
 
     private void setFieldError(TransactionImportErrorFields field, String message) {
         Map<TransactionImportErrorFields, String> currentMap = fieldErrors.getValue();
         Map<TransactionImportErrorFields, String> newMap = currentMap != null ? new EnumMap<>(currentMap) : new EnumMap<>(TransactionImportErrorFields.class);
-        newMap.put(field, message != null ? message : "");
+        if (message == null || message.trim().isEmpty()) {
+            newMap.remove(field);
+        } else {
+            newMap.put(field, message);
+        }
         updateLiveData(this.fieldErrors, newMap);
     }
 
@@ -414,9 +408,6 @@ public class TransactionImportFormViewModel extends ViewModel {
 
     private Map<TransactionImportErrorFields, String> validateImport() {
         Map<TransactionImportErrorFields, String> errors = new EnumMap<>(TransactionImportErrorFields.class);
-        for (TransactionImportErrorFields field : TransactionImportErrorFields.values()) {
-            errors.put(field, "");
-        }
 
         if (csvParser.getValue() == null) {
             errors.put(TransactionImportErrorFields.FILE_SOURCE, ImportMessages.IMPORT_PARSER_MISSING.getMessage());
