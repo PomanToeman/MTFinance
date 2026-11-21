@@ -2,9 +2,12 @@ package com.example.mtfinance.screens
 
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -60,15 +63,37 @@ fun SetScaffolding(content: @Composable () -> Unit, nav: NavHostController) {
                 )
             },
             bottomBar = {
-                BottomAppBar(modifier = Modifier.padding(11.dp)) {
-                    Button(onClick = { nav.navigate("category") }, modifier = Modifier.padding(11.dp)) {
-                        Text("Category")
-                    }
-                    Button(onClick = { nav.navigate("transaction") }) {
-                        Text("Transaction")
-                    }
-                    Button(onClick = { nav.navigate("home") }) {
-                        Text("Home")
+                BottomAppBar {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { nav.navigate("category") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        ) {
+                            Text("Category")
+                        }
+                        Button(
+                            onClick = { nav.navigate("transaction") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        ) {
+                            Text("Transaction")
+                        }
+                        Button(
+                            onClick = { nav.navigate("home") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        ) {
+                            Text("Home")
+                        }
                     }
                 }
             }
