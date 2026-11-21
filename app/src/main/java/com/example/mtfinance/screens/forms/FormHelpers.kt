@@ -1,7 +1,9 @@
 package com.example.mtfinance.screens.forms
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -330,11 +332,12 @@ fun CategorySelectionBox(
 }
 
 /**
- * Allows the user to enter a date manually via a text field (supporting ISO yyyy-MM-dd and dd/MM/yyyy formats)
- * or choose a date from a DatePickerDialog backup option.
- *
- * Provides live error validation as the user types, raw input retention on focus loss,
- * numeric keypad with character filtering, a trailing clear ('X') button, and system preference format display when unfocused.
+ * Hybrid Date Picker Field:
+ * - On the form surface: Renders a TextField showing the date formatted according to systemPreferences
+ *   (or placeholder "Select Date" when empty), a trailing 'X' clear button (when date is selected and enabled),
+ *   calendar icon, and red error message below when invalid or cleared.
+ * - Clicking on the field surface or calendar icon opens Material 3 DatePickerDialog starting in DisplayMode.Input,
+ *   allowing text entry inside the dialogue as well as a header toggle button to switch to the calendar picker.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -349,7 +352,6 @@ fun DatePickerField(
     errorMessage: String? = null
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    var isFocused by remember { mutableStateOf(false) }
 
     val formattedSystemText = remember(value, systemDateFormat) {
         if (value != null) {
@@ -363,106 +365,81 @@ fun DatePickerField(
         }
     }
 
-    var rawInputText by remember(formattedSystemText) { mutableStateOf(formattedSystemText) }
-
-    val displayValue = if (isFocused) {
-        rawInputText
-    } else {
-        if (!isError && value != null) {
-            formattedSystemText
-        } else {
-            rawInputText
-        }
-    }
-
     val initialMillis = remember(value) {
         value?.toLocalDate()?.atStartOfDay(ZoneId.of("UTC"))?.toInstant()?.toEpochMilli()
     }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+    val datePickerState = rememberDatePickerState(
+        initialDisplayMode = DisplayMode.Input,
+        initialSelectedDateMillis = initialMillis
+    )
 
-    TextField(
-        value = displayValue,
-        onValueChange = { newText ->
-            if (newText.all { it.isDigit() || it == '/' || it == '-' }) {
-                rawInputText = newText
-                if (onTextChange != null) {
-                    onTextChange(newText)
-                } else {
-                    val parsed = DateFormat.parseSimple(newText)
-                    onValueChange(parsed)
+    Box(modifier = Modifier.fillMaxWidth()) {
+        TextField(
+            value = formattedSystemText,
+            onValueChange = {},
+            label = { Text(label) },
+            placeholder = { Text("Select Date") },
+            readOnly = true,
+            enabled = enabled,
+            isError = isError,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            supportingText = {
+                if (isError && !errorMessage.isNullOrBlank()) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-            }
-        },
-        label = { Text(label) },
-        enabled = enabled,
-        isError = isError,
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Phone,
-            imeAction = ImeAction.Done
-        ),
-        keyboardActions = KeyboardActions(
-            onDone = {
-                if (onTextChange != null) {
-                    onTextChange(rawInputText)
-                } else {
-                    val parsed = DateFormat.parseSimple(rawInputText)
-                    onValueChange(parsed)
-                }
-            }
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .onFocusChanged { focusState ->
-                isFocused = focusState.isFocused
             },
-        supportingText = {
-            if (isError && !errorMessage.isNullOrBlank()) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        trailingIcon = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (enabled && rawInputText.isNotEmpty()) {
-                    IconButton(
-                        onClick = {
-                            rawInputText = ""
-                            if (onTextChange != null) {
-                                onTextChange("")
-                            } else {
-                                onValueChange(null)
+            trailingIcon = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (enabled && value != null) {
+                        IconButton(
+                            onClick = {
+                                if (onTextChange != null) {
+                                    onTextChange("")
+                                } else {
+                                    onValueChange(null)
+                                }
                             }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Clear,
+                                contentDescription = "Clear Date"
+                            )
                         }
+                    }
+                    if (isError) {
+                        Icon(
+                            imageVector = Icons.Filled.Error,
+                            contentDescription = "Error",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    IconButton(
+                        onClick = { if (enabled) showDialog = true },
+                        enabled = enabled
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Clear,
-                            contentDescription = "Clear Date Input"
+                            imageVector = Icons.Filled.CalendarToday,
+                            contentDescription = "Select Date from Calendar"
                         )
                     }
                 }
-                if (isError) {
-                    Icon(
-                        imageVector = Icons.Filled.Error,
-                        contentDescription = "Error",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-                IconButton(
-                    onClick = { showDialog = true },
-                    enabled = enabled
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.CalendarToday,
-                        contentDescription = "Select Date from Calendar"
-                    )
-                }
             }
+        )
+
+        if (enabled) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(end = 96.dp)
+                    .clickable { showDialog = true }
+            )
         }
-    )
+    }
 
     if (showDialog) {
         DatePickerDialog(
@@ -477,10 +454,8 @@ fun DatePickerField(
                                 .atZone(ZoneId.of("UTC"))
                                 .toLocalDate()
                             val selectedDateTime = selectedLocalDate.atStartOfDay()
-                            val ddMmYyyyFormatted = selectedLocalDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                            rawInputText = ddMmYyyyFormatted
                             if (onTextChange != null) {
-                                onTextChange(ddMmYyyyFormatted)
+                                onTextChange(selectedLocalDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
                             } else {
                                 onValueChange(selectedDateTime)
                             }
