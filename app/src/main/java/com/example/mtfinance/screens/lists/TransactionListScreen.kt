@@ -71,7 +71,7 @@ fun TransactionListScreen(
                         Text(CategoryMessages.NO_TRANSACTIONS.getMessage(), color = MaterialTheme.colorScheme.primary)
                     }
                 } else {
-                    TransactionDashboardScreen(transactionViewModel = transactionViewModel)
+                    TransactionDashboardScreen(transactionViewModel = transactionViewModel, navHostController = navHostController)
                 }
             }
         }

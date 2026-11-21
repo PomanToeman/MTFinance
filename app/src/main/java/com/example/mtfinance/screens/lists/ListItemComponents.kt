@@ -5,6 +5,7 @@
  */
 package com.example.mtfinance.screens.lists
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,7 +15,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -33,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.mtfinance.screens.displayAmount
 import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.messages.CategoryMessages
+import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.trackingengine.Category
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.Transaction
@@ -267,7 +273,7 @@ fun TransactionListItem(
 }
 
 /**
- * Displays all the details of a given transaction.
+ * Displays all the details of a given transaction inside a high-contrast outlined Card.
  */
 @Composable
 fun TransactionDetails(
@@ -282,8 +288,52 @@ fun TransactionDetails(
         DateFormat.DD_MM_YYYY.toFormatter()
     }
 
-    Text(transaction.name)
-    Text(transaction.description)
-    Text(displayAmount(transaction.amount, currencySymbol))
-    Text(transaction.date.format(dateFormatter).toString())
+    OutlinedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Name:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(transaction.name, color = MaterialTheme.colorScheme.onSurface)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Amount:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(displayAmount(transaction.amount, currencySymbol), color = MaterialTheme.colorScheme.onSurface)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Date:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(transaction.date.format(dateFormatter).toString(), color = MaterialTheme.colorScheme.onSurface)
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text("Description:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = transaction.description.ifBlank { TrackingUtlis.EMPTY_DESCRIPTION },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
 }
