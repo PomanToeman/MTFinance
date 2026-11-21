@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -332,8 +333,8 @@ fun CategorySelectionBox(
  * Allows the user to enter a date manually via a text field (supporting ISO yyyy-MM-dd and dd/MM/yyyy formats)
  * or choose a date from a DatePickerDialog backup option.
  *
- * Date parsing and formatting occur ONLY when the user presses Enter/Done or exits the field (focus loss).
- * When re-focusing, the text reverts to the raw entered format (or dd/MM/yyyy if chosen via calendar dialog).
+ * Provides live error validation as the user types, raw input retention on focus loss,
+ * numeric keypad with character filtering, a trailing clear ('X') button, and system preference format display when unfocused.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -364,17 +365,6 @@ fun DatePickerField(
 
     var rawInputText by remember(formattedSystemText) { mutableStateOf(formattedSystemText) }
 
-    val commitDate = remember(rawInputText) {
-        {
-            if (onTextChange != null) {
-                onTextChange(rawInputText)
-            } else {
-                val parsed = DateFormat.parseSimple(rawInputText)
-                onValueChange(parsed)
-            }
-        }
-    }
-
     val displayValue = if (isFocused) {
         rawInputText
     } else {
@@ -393,25 +383,38 @@ fun DatePickerField(
     TextField(
         value = displayValue,
         onValueChange = { newText ->
-            rawInputText = newText
+            if (newText.all { it.isDigit() || it == '/' || it == '-' }) {
+                rawInputText = newText
+                if (onTextChange != null) {
+                    onTextChange(newText)
+                } else {
+                    val parsed = DateFormat.parseSimple(newText)
+                    onValueChange(parsed)
+                }
+            }
         },
         label = { Text(label) },
         enabled = enabled,
         isError = isError,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Phone,
+            imeAction = ImeAction.Done
+        ),
         keyboardActions = KeyboardActions(
-            onDone = { commitDate() },
-            onNext = { commitDate() }
+            onDone = {
+                if (onTextChange != null) {
+                    onTextChange(rawInputText)
+                } else {
+                    val parsed = DateFormat.parseSimple(rawInputText)
+                    onValueChange(parsed)
+                }
+            }
         ),
         modifier = Modifier
             .fillMaxWidth()
             .onFocusChanged { focusState ->
-                val prevFocused = isFocused
                 isFocused = focusState.isFocused
-                if (prevFocused && !focusState.isFocused) {
-                    commitDate()
-                }
             },
         supportingText = {
             if (isError && !errorMessage.isNullOrBlank()) {
@@ -424,6 +427,23 @@ fun DatePickerField(
         },
         trailingIcon = {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (enabled && rawInputText.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            rawInputText = ""
+                            if (onTextChange != null) {
+                                onTextChange("")
+                            } else {
+                                onValueChange(null)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Clear,
+                            contentDescription = "Clear Date Input"
+                        )
+                    }
+                }
                 if (isError) {
                     Icon(
                         imageVector = Icons.Filled.Error,
