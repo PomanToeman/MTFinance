@@ -579,13 +579,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
-        try {
-            liveData.setValue(value);
-        } catch (Exception e) {
-            liveData.postValue(value);
-        }
-    }
+
 
     public LiveData<String> getName() { return name; }
     public LiveData<String> getDescription() { return description; }

@@ -500,13 +500,7 @@ public class CategoryFormViewModel extends ViewModel implements DeletableFormVie
         }
     }
 
-    private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
-        try {
-            liveData.setValue(value);
-        } catch (Exception e) {
-            liveData.postValue(value);
-        }
-    }
+
 
     private static class CategoryFormFields {
         public Long editCategoryId = null;

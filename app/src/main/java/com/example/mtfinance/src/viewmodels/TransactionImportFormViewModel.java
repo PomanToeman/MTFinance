@@ -459,13 +459,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
         return categoryService.getRootCategoryByType(type).getCategoryId();
     }
 
-    private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
-        try {
-            liveData.setValue(value);
-        } catch (Exception e) {
-            liveData.postValue(value);
-        }
-    }
+
 
     public LiveData<String> getFilePath() { return filePath; }
     public LiveData<Uri> getFileUri() { return fileUri; }
