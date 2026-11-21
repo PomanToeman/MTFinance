@@ -129,7 +129,7 @@ fun TransactionFormScreen(
             onRemove = { transactionFormViewModel.removeCategoryId(it) },
             removeLabel = "Remove",
             dismissOnSelection = false,
-            enabled = editMode == false
+            enabled = true
         )
 
         if (isLoading == true) {
