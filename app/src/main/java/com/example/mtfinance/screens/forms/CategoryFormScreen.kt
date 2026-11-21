@@ -25,14 +25,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.mtfinance.screens.DeleteConfirmationDialog
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
+import com.example.mtfinance.screens.theme.SaveStatusColor
+import com.example.mtfinance.screens.theme.getSaveStatusThemeColor
 import com.example.mtfinance.src.CurrencyFormat
+import com.example.mtfinance.src.messages.ButtonMessages
 import com.example.mtfinance.src.messages.GeneralMessages
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.viewmodels.CategoryFormViewModel
@@ -143,7 +145,7 @@ fun CategoryFormScreen(
         }
 
         if (!successMessage.isNullOrBlank()) {
-            Text(successMessage!!, color = Color(0xFF2E7D32), style = MaterialTheme.typography.bodyMedium)
+            Text(successMessage!!, color = getSaveStatusThemeColor(SaveStatusColor.GREEN), style = MaterialTheme.typography.bodyMedium)
         }
         if (!errorMessage.isNullOrBlank()) {
             Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
@@ -160,11 +162,11 @@ fun CategoryFormScreen(
                 onClick = { categoryFormViewModel.saveCategory() },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2E7D32),
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Text("Save")
+                Text(ButtonMessages.SAVE.getMessage())
             }
 
             if (editMode == true && isRoot == false) {
@@ -172,22 +174,22 @@ fun CategoryFormScreen(
                     onClick = { deleteConfirmation = true },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFC62828),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Text("Delete")
+                    Text(ButtonMessages.DELETE.getMessage())
                 }
             } else if (isRoot == false) {
                 Button(
                     onClick = { categoryFormViewModel.clear() },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFC62828),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Text("Clear")
+                    Text(ButtonMessages.CLEAR.getMessage())
                 }
             }
         }
@@ -218,7 +220,7 @@ fun CategoryFormScreen(
             horizontalArrangement = Arrangement.Start
         ) {
             OutlinedButton(onClick = { navHostController.navigate("category") }) {
-                Text("Back")
+                Text(ButtonMessages.BACK.getMessage())
             }
         }
     }

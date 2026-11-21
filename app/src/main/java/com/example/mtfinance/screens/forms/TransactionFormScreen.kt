@@ -23,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -31,6 +30,8 @@ import com.example.mtfinance.screens.ChooseTypeForm
 import com.example.mtfinance.screens.DeleteConfirmationDialog
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
+import com.example.mtfinance.screens.theme.SaveStatusColor
+import com.example.mtfinance.screens.theme.getSaveStatusThemeColor
 import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.messages.ButtonMessages
@@ -138,7 +139,7 @@ fun TransactionFormScreen(
         }
 
         if (!successMessage.isNullOrBlank()) {
-            Text(successMessage!!, color = Color(0xFF2E7D32), style = MaterialTheme.typography.bodyMedium)
+            Text(successMessage!!, color = getSaveStatusThemeColor(SaveStatusColor.GREEN), style = MaterialTheme.typography.bodyMedium)
         }
         if (!errorMessage.isNullOrBlank()) {
             Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
@@ -155,8 +156,8 @@ fun TransactionFormScreen(
                 onClick = { transactionFormViewModel.saveTransaction() },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2E7D32),
-                    contentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 Text(ButtonMessages.SAVE.getMessage())
@@ -167,8 +168,8 @@ fun TransactionFormScreen(
                     onClick = { deleteConfirmation = true },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFC62828),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
                     Text(ButtonMessages.DELETE.getMessage())
@@ -178,8 +179,8 @@ fun TransactionFormScreen(
                     onClick = { transactionFormViewModel.clear() },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFC62828),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
                     Text(ButtonMessages.CLEAR.getMessage())
