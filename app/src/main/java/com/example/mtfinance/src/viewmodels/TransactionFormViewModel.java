@@ -250,7 +250,7 @@ public class TransactionFormViewModel extends ViewModel {
     }
 
     /**
-     * Sets transaction date from text input, parsing against ISO, system preference, and fallback formats.
+     * Sets transaction date from text input, checking strictly against ISO (yyyy-MM-dd) and dd/MM/yyyy formats.
      * @param dateStr raw date string input
      */
     public void setDateText(String dateStr) {
@@ -262,8 +262,7 @@ public class TransactionFormViewModel extends ViewModel {
                 setFieldError(TransactionErrorFields.DATE, "Date cannot be empty.");
                 return;
             }
-            DateFormat sysFmt = systemDateFormat.getValue() != null ? systemDateFormat.getValue() : DateFormat.DD_MM_YYYY;
-            LocalDateTime parsed = DateFormat.parse(dateStr, sysFmt);
+            LocalDateTime parsed = DateFormat.parseSimple(dateStr);
             if (parsed != null) {
                 fields.date = parsed;
                 updateFields(fields);
@@ -271,7 +270,7 @@ public class TransactionFormViewModel extends ViewModel {
             } else {
                 fields.date = null;
                 updateFields(fields);
-                setFieldError(TransactionErrorFields.DATE, "Invalid date format");
+                setFieldError(TransactionErrorFields.DATE, "Invalid date format. Accepted formats: yyyy-MM-dd or dd/MM/yyyy");
             }
         }
     }
@@ -286,7 +285,7 @@ public class TransactionFormViewModel extends ViewModel {
             fields.date = date;
             updateFields(fields);
             if (date == null) {
-                setFieldError(TransactionErrorFields.DATE, "Invalid date format");
+                setFieldError(TransactionErrorFields.DATE, "Invalid date format. Accepted formats: yyyy-MM-dd or dd/MM/yyyy");
             } else {
                 setFieldError(TransactionErrorFields.DATE, "");
             }

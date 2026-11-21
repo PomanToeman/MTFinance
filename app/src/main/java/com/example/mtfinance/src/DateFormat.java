@@ -3,7 +3,6 @@ package com.example.mtfinance.src;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.Arrays;
 import java.util.Locale;
 
@@ -55,89 +54,50 @@ public enum DateFormat {
     }
 
     /**
-     * Attempts to parse a raw date string input into a {@link LocalDateTime}.
-     * Checks ISO formats, system preference format, dd/MM/yyyy, and remaining enum patterns.
+     * Parses a date string checking strictly against ISO (yyyy-MM-dd) and DD_MM_YYYY (dd/MM/yyyy) formats.
      *
      * @param dateStr raw date string input to parse
-     * @param systemFormat system preference {@link DateFormat}, or null
-     * @return parsed {@link LocalDateTime}, or null if input is unparseable or blank
+     * @return parsed {@link LocalDateTime}, or {@code null} if unparseable or blank
      */
-    public static LocalDateTime parse(String dateStr, DateFormat systemFormat) {
+    public static LocalDateTime parseSimple(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty()) {
             return null;
         }
         String trimmed = dateStr.trim();
-
+        try {
+            return LocalDate.parse(trimmed, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
+        } catch (Exception ignored) {
+        }
+        try {
+            return LocalDate.parse(trimmed, DateTimeFormatter.ofPattern("dd/MM/yyyy")).atStartOfDay();
+        } catch (Exception ignored) {
+        }
         try {
             return LocalDateTime.parse(trimmed);
         } catch (Exception ignored) {
         }
-        try {
-            return LocalDate.parse(trimmed).atStartOfDay();
-        } catch (Exception ignored) {
-        }
-
-        if (systemFormat != null) {
-            LocalDateTime systemParsed = parseWithPattern(trimmed, systemFormat.pattern);
-            if (systemParsed != null) {
-                return systemParsed;
-            }
-        }
-
-        LocalDateTime ddMmYyyyParsed = parseWithPattern(trimmed, DD_MM_YYYY.pattern);
-        if (ddMmYyyyParsed != null) {
-            return ddMmYyyyParsed;
-        }
-
-        for (DateFormat format : values()) {
-            if (format == systemFormat || format == DD_MM_YYYY) {
-                continue;
-            }
-            LocalDateTime parsed = parseWithPattern(trimmed, format.pattern);
-            if (parsed != null) {
-                return parsed;
-            }
-        }
-
         return null;
     }
 
     /**
-     * Convenience method to parse a date string using default system format matching.
+     * Convenience method to parse a date string using ISO or dd/MM/yyyy matching.
      *
      * @param dateStr raw date string input to parse
-     * @return parsed {@link LocalDateTime}, or null if unparseable
+     * @param systemFormat system preference format (unused, kept for compatibility)
+     * @return parsed {@link LocalDateTime}, or {@code null} if unparseable
      */
-    public static LocalDateTime parse(String dateStr) {
-        return parse(dateStr, null);
+    public static LocalDateTime parse(String dateStr, DateFormat systemFormat) {
+        return parseSimple(dateStr);
     }
 
-    private static LocalDateTime parseWithPattern(String text, String pattern) {
-        try {
-            DateTimeFormatter formatter = new DateTimeFormatterBuilder()
-                    .parseCaseInsensitive()
-                    .appendPattern(pattern)
-                    .toFormatter(Locale.ENGLISH);
-            if (pattern.contains("HH:mm")) {
-                return LocalDateTime.parse(text, formatter);
-            } else {
-                return LocalDate.parse(text, formatter).atStartOfDay();
-            }
-        } catch (Exception ignored) {
-        }
-        try {
-            DateTimeFormatter formatter = new DateTimeFormatterBuilder()
-                    .parseCaseInsensitive()
-                    .appendPattern(pattern)
-                    .toFormatter(Locale.getDefault());
-            if (pattern.contains("HH:mm")) {
-                return LocalDateTime.parse(text, formatter);
-            } else {
-                return LocalDate.parse(text, formatter).atStartOfDay();
-            }
-        } catch (Exception ignored) {
-        }
-        return null;
+    /**
+     * Convenience method to parse a date string using ISO or dd/MM/yyyy matching.
+     *
+     * @param dateStr raw date string input to parse
+     * @return parsed {@link LocalDateTime}, or {@code null} if unparseable
+     */
+    public static LocalDateTime parse(String dateStr) {
+        return parseSimple(dateStr);
     }
 
     @Override

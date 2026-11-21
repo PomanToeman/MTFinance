@@ -198,7 +198,7 @@ public class TransactionFormViewModelTest {
         Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
         assertAll(
             () -> assertNotNull(errors),
-            () -> assertEquals("Invalid date format", errors.get(TransactionFormViewModel.TransactionErrorFields.DATE))
+            () -> assertEquals("Invalid date format. Accepted formats: yyyy-MM-dd or dd/MM/yyyy", errors.get(TransactionFormViewModel.TransactionErrorFields.DATE))
         );
     }
 }
