@@ -82,17 +82,30 @@ fun CategoryFormScreen(categoryFormViewModel: CategoryFormViewModel = hiltViewMo
             errorMessage = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.MONTHLY_BUDGET)
         )
         Column(modifier = Modifier.padding(16.dp)) {
-            if (categoryParent != null && isRoot == false) {
-                CategoryListItem(categoryParent!!, backgroundColor = Color.LightGray)
-            }
-            else if (isRoot == false)  {
-                Text("Parent: The root of the category")
-            }
-            else {
-                Text("Parent: None (Root Category)")
-            }
             if (isRoot == false) {
-                ChooseCategoryForm( categorySelection, select = {categoryFormViewModel.setParentId(it)},  selectLabel = "Set Parent", dismissOnSelection = true)
+                val rootCategory = remember(categorySelection) {
+                    categorySelection?.firstOrNull { it?.category?.parentId == null }?.category
+                }
+                val effectiveParent = categoryParent ?: rootCategory
+                val chosenParentList = if (effectiveParent != null) listOf(effectiveParent) else emptyList()
+
+                CategorySelectionBox(
+                    label = "Parent Category",
+                    chosenCategories = chosenParentList,
+                    categorySelection = categorySelection,
+                    buttonLabel = "Set Parent",
+                    emptyMessage = "No parent category selected",
+                    isError = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.PARENT_ID)?.isNotEmpty() == true,
+                    errorMessage = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.PARENT_ID),
+                    onSelect = { categoryFormViewModel.setParentId(it) },
+                    selectLabel = "Set Parent",
+                    onRemove = if (categoryParent != null) { { categoryFormViewModel.setParentId(null) } } else null,
+                    removeLabel = "Reset to Root",
+                    dismissOnSelection = true,
+                    enabled = true
+                )
+            } else {
+                Text("Parent: None (Root Category)")
             }
 
             Text("Type: " + categoryType.toString().lowercase())

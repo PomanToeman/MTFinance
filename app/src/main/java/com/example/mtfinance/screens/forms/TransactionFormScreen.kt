@@ -90,7 +90,21 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         DatePickerField(value = transactionDate?.format(DateTimeFormatter.ISO_LOCAL_DATE).toString(), valuelong = transactionDate?.toLocalDate(),  onValueChange = {transactionFormViewModel.setDate(
             LocalDate.ofEpochDay(it!! / (1000 * 60 * 60 * 24)))}, enabled = editMode == false)
         ChooseTypeForm(transactionType, onTypeSelected = {transactionFormViewModel.setType(it)}, enabled = editMode == false)
-        ChooseCategoryForm(categorySelection, cachedCategories, select = {transactionFormViewModel.addCategoryId(it)}, selectLabel = "Add", remove = {transactionFormViewModel.removeCategoryId(it)}, removeLabel = "Remove")
+        CategorySelectionBox(
+            label = "Categories",
+            chosenCategories = cachedCategories?.map { it.category } ?: emptyList(),
+            categorySelection = categorySelection,
+            buttonLabel = "Choose Category",
+            emptyMessage = "No categories selected",
+            isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.CATEGORY_IDS)?.isNotEmpty() == true,
+            errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.CATEGORY_IDS),
+            onSelect = { transactionFormViewModel.addCategoryId(it) },
+            selectLabel = "Add",
+            onRemove = { transactionFormViewModel.removeCategoryId(it) },
+            removeLabel = "Remove",
+            dismissOnSelection = false,
+            enabled = editMode == false
+        )
 
 
         Button(onClick = { transactionFormViewModel.saveTransaction() }) {
