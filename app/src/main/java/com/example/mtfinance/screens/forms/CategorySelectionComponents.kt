@@ -31,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -90,7 +89,7 @@ fun CategorySelectionDialog(
         Surface(
             shadowElevation = 4.dp,
             shape = RoundedCornerShape(16.dp),
-            color = Color.White
+            color = MaterialTheme.colorScheme.surface
         ) {
             LazyColumn(
                 modifier = Modifier.padding(16.dp)
@@ -99,7 +98,8 @@ fun CategorySelectionDialog(
                     Text(
                         "Select Category",
                         modifier = Modifier.padding(8.dp).fillMaxWidth(),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 if (chosenCategories == null) {
@@ -116,7 +116,7 @@ fun CategorySelectionDialog(
                                 actionOneLabel = selectLabel,
                                 actionTwo = remove,
                                 actionTwoLabel = removeLabel,
-                                backgroundColor = Color.LightGray
+                                backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         }
                     }
@@ -127,7 +127,7 @@ fun CategorySelectionDialog(
                             if (item != null && chosenCategories.contains(item)) {
                                 CategoryListItem(
                                     item,
-                                    backgroundColor = Color.Green,
+                                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
                                     actionOne = {
                                         if (remove != null) {
                                             remove(item.category.categoryId)
@@ -139,7 +139,7 @@ fun CategorySelectionDialog(
                             } else if (item != null) {
                                 CategoryListItem(
                                     item,
-                                    backgroundColor = Color.LightGray,
+                                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                                     actionOne = {
                                         if (select != null) {
                                             select(item.category.categoryId)
@@ -158,7 +158,7 @@ fun CategorySelectionDialog(
                         onClick = onDismissRequest,
                         modifier = Modifier.padding(8.dp).fillMaxWidth()
                     ) {
-                        Text("Close", textAlign = TextAlign.Right)
+                        Text("Close", textAlign = TextAlign.Right, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
