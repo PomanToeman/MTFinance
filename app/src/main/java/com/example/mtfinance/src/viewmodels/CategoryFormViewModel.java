@@ -17,6 +17,8 @@ import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
+import com.example.mtfinance.src.viewmodels.interfaces.DeletableFormViewModel;
+
 import java.math.BigDecimal;
 import java.util.EnumMap;
 import java.util.List;
@@ -31,7 +33,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
  * ViewModel responsible for category creation, editing, parent hierarchy configuration, and deletion forms.
  */
 @HiltViewModel
-public class CategoryFormViewModel extends ViewModel {
+public class CategoryFormViewModel extends ViewModel implements DeletableFormViewModel<CategoryFormViewModel.CategoryErrorFields> {
 
     public enum CategoryErrorFields {
         NAME, DESCRIPTION, PARENT_ID, MONTHLY_BUDGET, MINIMUM_BUDGET, TYPE
@@ -99,6 +101,32 @@ public class CategoryFormViewModel extends ViewModel {
      */
     public void resetFieldErrors() {
         updateLiveData(this.fieldErrors, new EnumMap<>(CategoryErrorFields.class));
+    }
+
+    @Override
+    public void resetFieldError(CategoryErrorFields field) {
+        Map<CategoryErrorFields, String> currentMap = fieldErrors.getValue();
+        if (currentMap != null && currentMap.containsKey(field)) {
+            Map<CategoryErrorFields, String> newMap = new EnumMap<>(currentMap);
+            newMap.remove(field);
+            updateLiveData(this.fieldErrors, newMap);
+        }
+    }
+
+    @Override
+    public void resetMessages() {
+        setErrorMessage("");
+        setSuccessMessage("");
+    }
+
+    @Override
+    public void save() {
+        saveCategory();
+    }
+
+    @Override
+    public void delete() {
+        deleteCategory(false);
     }
 
     /**

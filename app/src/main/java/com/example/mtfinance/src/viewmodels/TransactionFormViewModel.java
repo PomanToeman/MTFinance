@@ -18,6 +18,8 @@ import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
+import com.example.mtfinance.src.viewmodels.interfaces.DeletableFormViewModel;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,7 +38,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
  * Meant to manually enter transactions, Will also be used for the import feature.
  */
 @HiltViewModel
-public class TransactionFormViewModel extends ViewModel {
+public class TransactionFormViewModel extends ViewModel implements DeletableFormViewModel<TransactionFormViewModel.TransactionErrorFields> {
 
     public enum TransactionErrorFields {
         NAME, DESCRIPTION, CATEGORY_IDS, AMOUNT, TYPE, DATE
@@ -132,6 +134,32 @@ public class TransactionFormViewModel extends ViewModel {
      */
     public void resetFieldErrors() {
         updateLiveData(this.fieldErrors, new EnumMap<>(TransactionErrorFields.class));
+    }
+
+    @Override
+    public void resetFieldError(TransactionErrorFields field) {
+        Map<TransactionErrorFields, String> currentMap = fieldErrors.getValue();
+        if (currentMap != null && currentMap.containsKey(field)) {
+            Map<TransactionErrorFields, String> newMap = new EnumMap<>(currentMap);
+            newMap.remove(field);
+            updateLiveData(this.fieldErrors, newMap);
+        }
+    }
+
+    @Override
+    public void resetMessages() {
+        setErrorMessage("");
+        setSuccessMessage("");
+    }
+
+    @Override
+    public void save() {
+        saveTransaction();
+    }
+
+    @Override
+    public void delete() {
+        deleteTransaction();
     }
 
     /**

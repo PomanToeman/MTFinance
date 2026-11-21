@@ -13,6 +13,8 @@ import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.trackingengine.SettingsPreferenceViolationException;
 import com.example.mtfinance.src.trackingengine.SystemPreferences;
 
+import com.example.mtfinance.src.viewmodels.interfaces.SaveableFormViewModel;
+
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -22,7 +24,7 @@ import javax.inject.Inject;
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
 @HiltViewModel
-public class SettingsViewModel extends ViewModel {
+public class SettingsViewModel extends ViewModel implements SaveableFormViewModel<SettingsViewModel.SystemPreferenceErrorFields> {
 
     public enum SystemPreferenceErrorFields {
         THEME_MODE, DATE_FORMAT, CURRENCY_FORMAT, START_DAY_OF_MONTH
@@ -81,6 +83,36 @@ public class SettingsViewModel extends ViewModel {
     public void resetFieldErrors() {
         updateLiveData(fieldErrors, new EnumMap<>(SystemPreferenceErrorFields.class));
         updateLiveData(genericErrorMessage, "");
+    }
+
+    @Override
+    public void resetFieldError(SystemPreferenceErrorFields field) {
+        Map<SystemPreferenceErrorFields, String> currentMap = fieldErrors.getValue();
+        if (currentMap != null && currentMap.containsKey(field)) {
+            Map<SystemPreferenceErrorFields, String> newMap = new EnumMap<>(currentMap);
+            newMap.remove(field);
+            updateLiveData(fieldErrors, newMap);
+        }
+    }
+
+    @Override
+    public void resetMessages() {
+        updateLiveData(genericErrorMessage, "");
+        updateLiveData(successMessage, "");
+    }
+
+    @Override
+    public void save() {
+        saveChanges();
+    }
+
+    @Override
+    public void clear() {
+        resetToDefaults();
+    }
+
+    public LiveData<String> getErrorMessage() {
+        return genericErrorMessage;
     }
 
     public boolean hasFieldErrors() {

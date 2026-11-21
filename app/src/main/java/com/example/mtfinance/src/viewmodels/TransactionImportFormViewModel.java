@@ -17,6 +17,8 @@ import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.trackingengine.TrackingUtlis;
 
+import com.example.mtfinance.src.viewmodels.interfaces.SaveableFormViewModel;
+
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -45,7 +47,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
  * This will import Transactions from a CSV file (exported from Bank).
  */
 @HiltViewModel
-public class TransactionImportFormViewModel extends ViewModel {
+public class TransactionImportFormViewModel extends ViewModel implements SaveableFormViewModel<TransactionImportFormViewModel.TransactionImportErrorFields> {
 
     public enum TransactionImportErrorFields {
         FILE_SOURCE, NAME_HEADER, AMOUNT_HEADER, DATE_HEADER, TYPE_HEADER, DATE_FORMATTER
@@ -100,6 +102,27 @@ public class TransactionImportFormViewModel extends ViewModel {
      */
     public void resetFieldErrors() {
         updateLiveData(this.fieldErrors, new EnumMap<>(TransactionImportErrorFields.class));
+    }
+
+    @Override
+    public void resetFieldError(TransactionImportErrorFields field) {
+        Map<TransactionImportErrorFields, String> currentMap = fieldErrors.getValue();
+        if (currentMap != null && currentMap.containsKey(field)) {
+            Map<TransactionImportErrorFields, String> newMap = new EnumMap<>(currentMap);
+            newMap.remove(field);
+            updateLiveData(this.fieldErrors, newMap);
+        }
+    }
+
+    @Override
+    public void resetMessages() {
+        setErrorMessage("");
+        setSuccessMessage("");
+    }
+
+    @Override
+    public void save() {
+        importTransaction();
     }
 
     /**
