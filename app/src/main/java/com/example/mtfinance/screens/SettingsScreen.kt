@@ -46,8 +46,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.mtfinance.screens.forms.SelectForm
+import com.example.mtfinance.screens.theme.SaveStatusColor
 import com.example.mtfinance.screens.theme.ThemeMode
 import com.example.mtfinance.screens.theme.getSaveButtonColors
+import com.example.mtfinance.screens.theme.getSaveStatusThemeColor
 import com.example.mtfinance.screens.theme.ThemeState
 import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
@@ -105,12 +107,12 @@ fun SettingsScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(2.dp, Color(0xFFFF9800), RectangleShape),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+                    .border(2.dp, getSaveStatusThemeColor(SaveStatusColor.ORANGE), RectangleShape),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
             ) {
                 Text(
                     text = "Provisional changes active — please save changes before exiting.",
-                    color = Color(0xFFE65100),
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(12.dp)
                 )
@@ -121,7 +123,7 @@ fun SettingsScreen(
             Text(text = genericErrorMessage, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
         }
         if (successMessage.isNotBlank()) {
-            Text(text = successMessage, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+            Text(text = successMessage, color = getSaveStatusThemeColor(SaveStatusColor.GREEN), fontWeight = FontWeight.Bold)
         }
 
         // 1. Theme Configuration Card
