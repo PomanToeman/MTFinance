@@ -1,13 +1,18 @@
 package com.example.mtfinance.screens.forms
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,32 +21,38 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.mtfinance.screens.DefaultColumn
+import com.example.mtfinance.screens.ChooseTypeForm
 import com.example.mtfinance.screens.DeleteConfirmationDialog
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
-import com.example.mtfinance.screens.ChooseTypeForm
+import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
 import com.example.mtfinance.src.MessageCli
 import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.viewmodels.TransactionFormViewModel
-import java.time.LocalDate
 
 /**
  * The UI screen that allows the user to create and edit transactions in the database.
  */
 @Composable
-fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = hiltViewModel(), navHostController: NavHostController, transactionId: Long? = null) {
+fun TransactionFormScreen(
+    transactionFormViewModel: TransactionFormViewModel = hiltViewModel(),
+    navHostController: NavHostController,
+    transactionId: Long? = null
+) {
     val transactionName by transactionFormViewModel.name.observeAsState()
     val transactionAmount by transactionFormViewModel.amount.observeAsState()
     val transactionDate by transactionFormViewModel.date.observeAsState()
     val transactionType by transactionFormViewModel.type.observeAsState()
     val systemDateFormat by transactionFormViewModel.systemDateFormat.observeAsState(DateFormat.DD_MM_YYYY)
+    val currencyFormat by transactionFormViewModel.currencyFormat.observeAsState(CurrencyFormat.NZD)
+    val currencySymbol = currencyFormat?.symbol ?: "$"
 
     val transactionNotes by transactionFormViewModel.description.observeAsState()
     val errorMap by transactionFormViewModel.fieldErrors.observeAsState()
@@ -50,19 +61,22 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
     val errorMessage by transactionFormViewModel.errorMessage.observeAsState()
     val isLoading by transactionFormViewModel.isLoading.observeAsState()
     val cachedCategories by transactionFormViewModel.cachedCategories.observeAsState()
-    var expanded: Boolean by remember { mutableStateOf(false) }
     val categorySelection by transactionFormViewModel.categorySelection.observeAsState()
     var deleteConfirmation by remember { mutableStateOf(false) }
 
-
-    // edit mode if transactionId is not null
     LaunchedEffect(transactionId) {
         transactionFormViewModel.setTransactionId(transactionId)
     }
 
-    DefaultColumn(modifier = Modifier.verticalScroll(rememberScrollState())) {
-        Header(MessageCli.TRANSACTION_FORM_HEADER.getMessage())
-        Text("Edit Mode: $editMode")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(FORM_SPACING_UNIT)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(FORM_SPACING_UNIT)
+    ) {
+        Header(if (editMode == true) "Edit Transaction" else "New Transaction")
+
         TextFieldForm(
             "Name", transactionName,
             onValueChange = { transactionFormViewModel.setName(it) },
@@ -82,12 +96,11 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
         NumberFieldForm(
             "Amount", transactionAmount,
             setter = { transactionFormViewModel.setAmount(it) },
+            currencySymbol = currencySymbol,
             enabled = editMode == false,
             isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.AMOUNT)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.AMOUNT)
         )
-
-
         DatePickerField(
             label = "Date",
             value = transactionDate,
@@ -98,7 +111,11 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
             isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DATE)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DATE)
         )
-        ChooseTypeForm(transactionType, onTypeSelected = {transactionFormViewModel.setType(it)}, enabled = editMode == false)
+        ChooseTypeForm(
+            transactionType,
+            onTypeSelected = { transactionFormViewModel.setType(it) },
+            enabled = editMode == false
+        )
         CategorySelectionBox(
             label = "Categories",
             chosenCategories = cachedCategories?.map { it.category } ?: emptyList(),
@@ -115,42 +132,73 @@ fun TransactionFormScreen(transactionFormViewModel: TransactionFormViewModel = h
             enabled = editMode == false
         )
 
-
-        Button(onClick = { transactionFormViewModel.saveTransaction() }) {
-            Text(MessageCli.SAVE_BUTTON.getMessage())
-        }
         if (isLoading == true) {
             LoadingDialog()
         }
 
-        if (successMessage != null) {
-            Text(successMessage!!, color = Color.Green)
+        if (!successMessage.isNullOrBlank()) {
+            Text(successMessage!!, color = Color(0xFF2E7D32), style = MaterialTheme.typography.bodyMedium)
         }
-        if (errorMessage != null) {
-            Text(errorMessage!!, color = Color.Red)
+        if (!errorMessage.isNullOrBlank()) {
+            Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
 
-        if (editMode == true) {
-            Button(onClick = { deleteConfirmation = true }) {
-                Text("Delete")
-            }
-            if (deleteConfirmation) {
-                DeleteConfirmationDialog(
-                    onDismiss = { deleteConfirmation = false },
-                    onConfirm = { transactionFormViewModel.deleteTransaction() },
-                    onCancel = { deleteConfirmation = false },
-                    message = MessageCli.DELETE_BUTTON_CONFIRMATION.getMessage(transactionName)
+        Spacer(modifier = Modifier.height(FORM_SPACING_UNIT))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = { transactionFormViewModel.saveTransaction() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF2E7D32),
+                    contentColor = Color.White
                 )
+            ) {
+                Text(MessageCli.SAVE_BUTTON.getMessage())
             }
-        }
-        else {
-            Button(onClick = { transactionFormViewModel.clear() }) {
-                Text("Clear")
+
+            if (editMode == true) {
+                Button(
+                    onClick = { deleteConfirmation = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFC62828),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Delete")
+                }
+            } else {
+                Button(
+                    onClick = { transactionFormViewModel.clear() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFC62828),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Clear")
+                }
             }
         }
 
-        Button(onClick = { navHostController.navigate("transaction") }) {
-            Text("Back")
+        if (deleteConfirmation) {
+            DeleteConfirmationDialog(
+                onDismiss = { deleteConfirmation = false },
+                onConfirm = { transactionFormViewModel.deleteTransaction() },
+                onCancel = { deleteConfirmation = false },
+                message = MessageCli.DELETE_BUTTON_CONFIRMATION.getMessage(transactionName)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            OutlinedButton(onClick = { navHostController.navigate("transaction") }) {
+                Text("Back")
+            }
         }
     }
 }
