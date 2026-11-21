@@ -242,20 +242,17 @@ public class TransactionFormViewModel extends ViewModel {
         }
     }
 
-    /**
-     * Sets the tracking type filter.
-     * @param type - tracking type
-     */
     public void setType(TrackingType type) {
         TransactionFormFields fields = formFields.getValue();
-        if (fields == null || type == null || Boolean.TRUE.equals(fields.editMode) || fields.type == type) {
-            return;
+        if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
+            fields.type = type;
+            updateFields(fields);
+            if (type == null) {
+                setFieldError(TransactionErrorFields.TYPE, "Type cannot be empty.");
+            } else {
+                setFieldError(TransactionErrorFields.TYPE, "");
+            }
         }
-
-        fields.type = type;
-        fields.categoryIds = new HashSet<>();
-        updateFields(fields);
-        setFieldError(TransactionErrorFields.TYPE, "");
     }
 
     /**
@@ -514,6 +511,10 @@ public class TransactionFormViewModel extends ViewModel {
 
         if (fields.date == null) {
             errors.put(TransactionErrorFields.DATE, "Date cannot be empty or invalid.");
+        }
+
+        if (fields.type == null) {
+            errors.put(TransactionErrorFields.TYPE, "Type cannot be empty.");
         }
 
         updateLiveData(this.fieldErrors, errors);

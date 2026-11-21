@@ -203,6 +203,21 @@ public class CategoryFormViewModel extends ViewModel {
     }
 
     /**
+     * Sets the tracking type for the category.
+     * @param type - tracking type
+     */
+    public void setType(TrackingType type) {
+        CategoryFormFields fields = getFields();
+        fields.type = type;
+        updateFields(fields);
+        if (type == null) {
+            setFieldError(CategoryErrorFields.TYPE, "Type cannot be empty.");
+        } else {
+            setFieldError(CategoryErrorFields.TYPE, "");
+        }
+    }
+
+    /**
      * Sets the parent category ID asynchronously.
      * @param parentId - parent category ID
      */
@@ -412,6 +427,10 @@ public class CategoryFormViewModel extends ViewModel {
             } else if (!categoryService.categoryExists(fields.parentId)) {
                 errors.put(CategoryErrorFields.PARENT_ID, MessageCli.CATEGORY_PARENT_NOT_FOUND.getMessage());
             }
+        }
+
+        if (fields.type == null) {
+            errors.put(CategoryErrorFields.TYPE, "Type cannot be empty.");
         }
 
         updateLiveData(this.fieldErrors, errors);
