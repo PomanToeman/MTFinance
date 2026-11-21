@@ -383,3 +383,56 @@ fun SelectForm(
         }
     }
 }
+
+/**
+ * Form helper component for non-editable dropdown selection (read-only text field, selection only, no input filtering).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SelectFormNonEditable(
+    label: String,
+    options: List<String?>?,
+    selectedOption: String?,
+    onOptionSelected: (String) -> Unit
+) {
+    var isMenuExpanded by remember { mutableStateOf(false) }
+    val displayText = selectedOption ?: ""
+    val nonNullOptions = options?.filterNotNull() ?: emptyList()
+
+    ExposedDropdownMenuBox(
+        expanded = isMenuExpanded,
+        onExpandedChange = { isMenuExpanded = !isMenuExpanded },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = displayText,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = isMenuExpanded)
+            }
+        )
+
+        if (nonNullOptions.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = isMenuExpanded,
+                onDismissRequest = { isMenuExpanded = false }
+            ) {
+                nonNullOptions.forEach { selectionOption ->
+                    DropdownMenuItem(
+                        text = { Text(selectionOption) },
+                        onClick = {
+                            onOptionSelected(selectionOption)
+                            isMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}

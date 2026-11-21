@@ -63,7 +63,7 @@ fun TransactionDashboardScreen(
                 Header(ScreenMessages.TRANSACTION_DASHBOARD_HEADER.getMessage())
             }
             item {
-                TransactionDetails(selectedTransaction!!)
+                TransactionDetails(selectedTransaction!!, categoriesUnderSelectedTransaction)
             }
             item {
                 Button(

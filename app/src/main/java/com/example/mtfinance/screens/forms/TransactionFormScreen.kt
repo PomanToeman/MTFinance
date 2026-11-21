@@ -115,7 +115,7 @@ fun TransactionFormScreen(
             isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DATE)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DATE)
         )
-        SelectForm(
+        SelectFormNonEditable(
             label = "Type",
             options = TrackingType.entries.map { it.name },
             selectedOption = transactionType?.name,

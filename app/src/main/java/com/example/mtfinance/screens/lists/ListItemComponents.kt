@@ -277,6 +277,7 @@ fun TransactionListItem(
 @Composable
 fun TransactionDetails(
     transaction: Transaction,
+    categories: List<Category>? = null,
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
@@ -319,8 +320,25 @@ fun TransactionDetails(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                Text("Type:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(transaction.type.toString(), color = MaterialTheme.colorScheme.onSurface)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text("Date:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Text(transaction.date.format(dateFormatter).toString(), color = MaterialTheme.colorScheme.onSurface)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Categories:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = if (categories.isNullOrEmpty()) "None" else categories.joinToString { it.name },
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
             Column(
                 modifier = Modifier.fillMaxWidth(),
