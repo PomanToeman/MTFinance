@@ -6,16 +6,25 @@
 package com.example.mtfinance.screens.lists
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -23,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.Category
 import com.example.mtfinance.src.trackingengine.Transaction
+import com.example.mtfinance.src.trackingengine.TrackingType
 
 /**
  * Renders a search input field for filtering lists.
@@ -39,6 +49,59 @@ fun Search(search: String?, setSearch: ((String) -> Unit)?) {
             .fillMaxWidth()
             .padding(8.dp)
     )
+}
+
+/**
+ * Renders a square-styled type selection button for list screen filters.
+ * @param typeValue The current tracking type filter.
+ * @param onTypeSelected Callback when type filter changes.
+ * @param includeNone Whether to include "None" option.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChooseTypeButton(
+    typeValue: TrackingType?,
+    onTypeSelected: (TrackingType?) -> Unit,
+    includeNone: Boolean = false
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.padding(8.dp)) {
+        Button(
+            onClick = { expanded = !expanded },
+            shape = RectangleShape,
+            modifier = Modifier
+                .height(48.dp)
+                .fillMaxWidth()
+        ) {
+            val text = if (typeValue != null) "Type: ${typeValue.toString().lowercase()}" else "Type: All"
+            Text(text)
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            for (type in TrackingType.entries) {
+                DropdownMenuItem(
+                    text = { Text(type.toString().lowercase()) },
+                    onClick = {
+                        onTypeSelected(type)
+                        expanded = false
+                    }
+                )
+            }
+            if (includeNone) {
+                DropdownMenuItem(
+                    text = { Text("All / None") },
+                    onClick = {
+                        onTypeSelected(null)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }
 
 /**

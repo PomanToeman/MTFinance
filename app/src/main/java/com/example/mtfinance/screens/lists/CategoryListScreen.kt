@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.mtfinance.screens.ChooseTypeForm
 import com.example.mtfinance.screens.DefaultColumn
 import com.example.mtfinance.screens.FabRightBottomCorner
 import com.example.mtfinance.screens.Header
@@ -47,7 +46,7 @@ fun CategoryListScreen(
                 if (selectedCategory == null) {
                     Header("Category List")
                     Search(searchQuery, { categoryViewModel.setSearchQuery(it) })
-                    ChooseTypeForm(typeFilter, { type -> categoryViewModel.setTypeFilter(type) }, includeNone = true)
+                    ChooseTypeButton(typeFilter, { type -> categoryViewModel.setTypeFilter(type) }, includeNone = true)
 
                     if (categories != null && categories!!.isNotEmpty()) {
                         CategoryList(

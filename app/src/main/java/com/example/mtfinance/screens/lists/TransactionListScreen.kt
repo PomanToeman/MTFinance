@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.mtfinance.screens.ChooseTypeForm
 import com.example.mtfinance.screens.DefaultColumn
 import com.example.mtfinance.screens.FabRightBottomCorner
 import com.example.mtfinance.screens.Header
@@ -56,7 +55,7 @@ fun TransactionListScreen(
                 if (selectedTransaction == null) {
                     Header(MessageCli.TRANSACTION_LIST_HEADER.getMessage())
                     Search(searchQuery) { transactionViewModel.setSearchQuery(it) }
-                    ChooseTypeForm(typeFilter, onTypeSelected = { transactionViewModel.setTypeFilter(it) }, includeNone = true, enabled = true)
+                    ChooseTypeButton(typeFilter, onTypeSelected = { transactionViewModel.setTypeFilter(it) }, includeNone = true)
 
                     if (filteredTransactions != null && filteredTransactions!!.isNotEmpty()) {
                         TransactionList(
