@@ -285,7 +285,7 @@ fun SettingsScreen(
             }
         }
 
-        // Action Buttons: Save Changes & Reset to Defaults
+        // Action Buttons: Save Changes, Discard Changes & Restore Defaults
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -300,8 +300,21 @@ fun SettingsScreen(
             }
 
             OutlinedButton(
-                onClick = { settingsViewModel.resetToDefaults() },
+                onClick = { settingsViewModel.discardProvisionalChanges() },
+                enabled = changesMade,
                 modifier = Modifier.weight(1f)
+            ) {
+                Text("Discard Changes")
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            OutlinedButton(
+                onClick = { settingsViewModel.resetToDefaults() },
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Restore Defaults")
             }
