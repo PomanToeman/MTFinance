@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -323,39 +324,41 @@ fun CategoryStackedBar(
 
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(budgetFraction)
                     .height(30.dp)
             ) {
                 if (!isOverBudget) {
                     val spentRatio = if (budget > BigDecimal.ZERO) {
-                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
+                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
                     } else 0f
 
-                    val remainingRatio = 1f - spentRatio
+                    val remainingRatio = (1f - spentRatio).coerceIn(0f, 1f)
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(spentRatio * budgetFraction)
-                            .height(30.dp)
-                            .background(MaterialTheme.colorScheme.primary)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(remainingRatio * budgetFraction)
-                            .height(30.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    )
+                    if (spentRatio > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(spentRatio)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    }
+                    if (remainingRatio > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(remainingRatio)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        )
+                    }
                 } else {
                     val overflowRatio = if (budget > BigDecimal.ZERO) {
                         cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
                     } else 1f
 
-                    val visualWidth = (overflowRatio * budgetFraction).coerceAtMost(1f)
-
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(visualWidth)
-                            .height(30.dp)
+                            .weight(overflowRatio.coerceAtLeast(1f))
+                            .fillMaxHeight()
                             .background(Color.Red)
                     )
                 }
@@ -420,39 +423,41 @@ fun CategoryStackedBarPure(
 
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(budgetFraction)
                     .height(30.dp)
             ) {
                 if (!isOverBudget) {
                     val spentRatio = if (budget > BigDecimal.ZERO) {
-                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
+                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
                     } else 0f
 
-                    val remainingRatio = 1f - spentRatio
+                    val remainingRatio = (1f - spentRatio).coerceIn(0f, 1f)
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(spentRatio * budgetFraction)
-                            .height(30.dp)
-                            .background(MaterialTheme.colorScheme.primary)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(remainingRatio * budgetFraction)
-                            .height(30.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    )
+                    if (spentRatio > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(spentRatio)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    }
+                    if (remainingRatio > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(remainingRatio)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        )
+                    }
                 } else {
                     val overflowRatio = if (budget > BigDecimal.ZERO) {
                         cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
                     } else 1f
 
-                    val visualWidth = (overflowRatio * budgetFraction).coerceAtMost(1f)
-
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(visualWidth)
-                            .height(30.dp)
+                            .weight(overflowRatio.coerceAtLeast(1f))
+                            .fillMaxHeight()
                             .background(Color.Red)
                     )
                 }

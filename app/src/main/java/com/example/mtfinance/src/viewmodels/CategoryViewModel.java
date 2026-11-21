@@ -81,7 +81,7 @@ public class CategoryViewModel extends ViewModel {
 
         CategoryWithTransactions selected = selectedCategory.getValue();
         if (selected != null) {
-            executor.execute(() -> loadTotals(selected));
+            executor.execute(() -> loadTotals(selected, dates[0], dates[1]));
         }
     }
 
@@ -229,7 +229,7 @@ public class CategoryViewModel extends ViewModel {
             if (selected != null) {
                 selected.category = categoryService.getCategoryByIdRestored(categoryId);
                 updateLiveData(selectedCategory, selected);
-                loadTotals(selected);
+                loadTotals(selected, startDate.getValue(), endDate.getValue());
             }
         });
     }
@@ -242,13 +242,15 @@ public class CategoryViewModel extends ViewModel {
         childrenTotals.setValue(null);
     }
 
-    private void loadTotals(CategoryWithTransactions selectedCategory) {
+    private void loadTotals(CategoryWithTransactions selectedCategory, LocalDate start, LocalDate end) {
         if (selectedCategory != null) {
-            BigDecimal selectedTotal = trackingService.getTotalInCategory(selectedCategory.category, true, startDate.getValue(), endDate.getValue());
+            LocalDate effectiveStart = start != null ? start : LocalDate.now().withDayOfMonth(1);
+            LocalDate effectiveEnd = end != null ? end : LocalDate.now();
+            BigDecimal selectedTotal = trackingService.getTotalInCategory(selectedCategory.category, true, effectiveStart, effectiveEnd);
             updateLiveData(totalIncludingSub, selectedTotal);
             updateLiveData(remaining, selectedCategory.category.getMonthlyBudget().subtract(selectedTotal));
-            updateLiveData(totalExcludingSub, trackingService.getTotalInCategory(selectedCategory.category, false, startDate.getValue(), endDate.getValue()));
-            updateLiveData(childrenTotals, trackingService.getChildrenTotals(selectedCategory, startDate.getValue(), endDate.getValue()));
+            updateLiveData(totalExcludingSub, trackingService.getTotalInCategory(selectedCategory.category, false, effectiveStart, effectiveEnd));
+            updateLiveData(childrenTotals, trackingService.getChildrenTotals(selectedCategory, effectiveStart, effectiveEnd));
         }
     }
 
