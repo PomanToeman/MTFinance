@@ -358,11 +358,13 @@ public class TransactionFormViewModel extends ViewModel {
             fields.date = transaction.getDate();
             fields.editMode = true;
             formFields.postValue(fields);
+            updateFields(fields);
         } else {
             setErrorMessage(TransactionMessages.TRANSACTION_NOT_FOUND.getMessage());
             fields.transactionId = null;
             fields.editMode = false;
             formFields.postValue(fields);
+            updateFields(fields);
         }
     }
 
