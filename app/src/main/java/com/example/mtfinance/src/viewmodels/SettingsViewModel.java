@@ -10,6 +10,8 @@ import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.DateFormat;
 import com.example.mtfinance.src.repositories.SystemRepository;
 import com.example.mtfinance.src.repositories.SystemService;
+import com.example.mtfinance.src.messages.GeneralMessages;
+import com.example.mtfinance.src.trackingengine.DefaultSettings;
 import com.example.mtfinance.src.trackingengine.SettingsPreferenceViolationException;
 import com.example.mtfinance.src.trackingengine.SystemPreferences;
 
@@ -120,6 +122,10 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         return current != null && !current.isEmpty();
     }
 
+    public boolean hasFieldErrors(Map<SystemPreferenceErrorFields, String> errors) {
+        return errors != null && !errors.isEmpty();
+    }
+
     private void setFieldError(SystemPreferenceErrorFields field, String message) {
         Map<SystemPreferenceErrorFields, String> currentMap = fieldErrors.getValue();
         Map<SystemPreferenceErrorFields, String> newMap = currentMap != null ? new EnumMap<>(currentMap) : new EnumMap<>(SystemPreferenceErrorFields.class);
@@ -141,7 +147,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     }
 
     public void setProvisionalDateFormat(DateFormat format) {
-        if (format != null) {
+        if (format != null ) {
             updateLiveData(provisionalDateFormat, format);
             setFieldError(SystemPreferenceErrorFields.DATE_FORMAT, "");
             reevaluateState();
@@ -165,16 +171,53 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         } else {
             try {
                 int day = Integer.parseInt(val);
-                if (day < 1 || day > 31) {
-                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be between 1 and 31");
+                if (day < DefaultSettings.MIN_START_DAY || day > DefaultSettings.MAX_START_DAY) {
+                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be between " + DefaultSettings.MIN_START_DAY + " and " + DefaultSettings.MAX_START_DAY);
                 } else {
                     setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "");
                 }
             } catch (Exception e) {
-                setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be a valid number between 1 and 31");
+                setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be a valid number between " + DefaultSettings.MIN_START_DAY + " and " + DefaultSettings.MAX_START_DAY);
             }
         }
         reevaluateState();
+    }
+
+    public Map<SystemPreferenceErrorFields, String> validateSettingsConfigurations() {
+        Map<SystemPreferenceErrorFields, String> errors = new EnumMap<>(SystemPreferenceErrorFields.class);
+
+        String themeMode = provisionalThemeMode.getValue();
+        if (themeMode == null || themeMode.trim().isEmpty()) {
+            errors.put(SystemPreferenceErrorFields.THEME_MODE, "Theme mode cannot be empty");
+        }
+
+        DateFormat dateFormat = provisionalDateFormat.getValue();
+        if (dateFormat == null) {
+            errors.put(SystemPreferenceErrorFields.DATE_FORMAT, "Date format cannot be empty");
+        }
+
+        CurrencyFormat currencyFormat = provisionalCurrencyFormat.getValue();
+        if (currencyFormat == null) {
+            errors.put(SystemPreferenceErrorFields.CURRENCY_FORMAT, "Currency format cannot be empty");
+        }
+
+        String dayStr = provisionalStartDayOfMonthInput.getValue();
+        if (dayStr == null || dayStr.trim().isEmpty()) {
+            errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day of month cannot be empty");
+        } else {
+            try {
+                int day = Integer.parseInt(dayStr.trim());
+                if (day < DefaultSettings.MIN_START_DAY || day > DefaultSettings.MAX_START_DAY) {
+                    errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be between " + DefaultSettings.MIN_START_DAY + " and " + DefaultSettings.MAX_START_DAY);
+                }
+            } catch (Exception e) {
+                errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be a valid number between " + DefaultSettings.MIN_START_DAY + " and " + DefaultSettings.MAX_START_DAY);
+            }
+        }
+
+        updateLiveData(fieldErrors, errors);
+        reevaluateState();
+        return errors;
     }
 
     public void setProvisionalIncludeProvisional(boolean include) {
@@ -226,7 +269,8 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         updateLiveData(isLoading, true);
         executor.execute(() -> {
             try {
-                if (hasFieldErrors()) {
+                Map<SystemPreferenceErrorFields, String> errors = validateSettingsConfigurations();
+                if (hasFieldErrors(errors) || hasFieldErrors()) {
                     updateLiveData(saveStatusColor, "RED");
                     updateLiveData(isLoading, false);
                     return;
@@ -288,17 +332,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         initializeFromPersisted();
     }
 
-    private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
-        try {
-            if (Looper.myLooper() == Looper.getMainLooper()) {
-                liveData.setValue(value);
-            } else {
-                liveData.postValue(value);
-            }
-        } catch (Exception e) {
-            liveData.postValue(value);
-        }
-    }
+
 
     public LiveData<SystemPreferences> getSystemPreferences() {
         return systemService.getPreferencesLive();
