@@ -93,28 +93,26 @@ fun PaginationBar(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (totalPages > 1) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = { if (currentPage > 1) onPageChanged(currentPage - 1) },
+                    enabled = currentPage > 1
                 ) {
-                    OutlinedButton(
-                        onClick = { if (currentPage > 1) onPageChanged(currentPage - 1) },
-                        enabled = currentPage > 1
-                    ) {
-                        Text("< Prev")
-                    }
-                    Text(
-                        text = "Page $currentPage of $totalPages",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    OutlinedButton(
-                        onClick = { if (currentPage < totalPages) onPageChanged(currentPage + 1) },
-                        enabled = currentPage < totalPages
-                    ) {
-                        Text("Next >")
-                    }
+                    Text("< Prev")
+                }
+                Text(
+                    text = "Page $currentPage of ${Math.max(1, totalPages)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold
+                )
+                OutlinedButton(
+                    onClick = { if (currentPage < totalPages) onPageChanged(currentPage + 1) },
+                    enabled = currentPage < totalPages
+                ) {
+                    Text("Next >")
                 }
             }
         }

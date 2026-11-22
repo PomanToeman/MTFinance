@@ -250,6 +250,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             fields.categoryIds.add(categoryId);
             updateFields(fields);
             resetFieldError(TransactionErrorFields.CATEGORY_IDS);
+            updateLiveData(cachedCategories, new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(fields.categoryIds)));
         }
     }
 

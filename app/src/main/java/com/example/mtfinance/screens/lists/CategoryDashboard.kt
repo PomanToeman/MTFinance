@@ -5,6 +5,7 @@
  */
 package com.example.mtfinance.screens.lists
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -39,7 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -390,22 +395,97 @@ fun CategoryPieChart(
 }
 
 /**
- * Renders a spending summary over time for the active period.
+ * Renders a custom built-in Canvas spending trend chart showing daily cumulative spending growth and a horizontal budget reference line.
  */
 @Composable
 fun CategoryOverTimeChart(
-    categoryDashboardViewModel: CategoryDashboardViewModel = hiltViewModel()
+    categoryDashboardViewModel: CategoryDashboardViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
+    val currencySymbol = systemPreferences?.currencySymbol ?: "$"
+
     val selectedCategory by categoryDashboardViewModel.getSelectedCategory().observeAsState()
     val startDate by categoryDashboardViewModel.getStartDate().observeAsState()
     val endDate by categoryDashboardViewModel.getEndDate().observeAsState()
+    val budget = selectedCategory?.category?.monthlyBudget ?: BigDecimal.ZERO
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val errorColor = MaterialTheme.colorScheme.error
 
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Spending Trend", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        val txCount = selectedCategory?.transactions?.count { tx ->
-            startDate != null && endDate != null && !tx.getDate().toLocalDate().isBefore(startDate) && !tx.getDate().toLocalDate().isAfter(endDate)
-        } ?: 0
-        Text("Active Period Transactions: $txCount", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Daily Cumulative Spending Trend", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+
+        if (startDate != null && endDate != null && selectedCategory != null) {
+            val transactions = selectedCategory!!.transactions.filter { tx ->
+                val txDate = tx.getDate().toLocalDate()
+                !txDate.isBefore(startDate) && !txDate.isAfter(endDate)
+            }
+
+            val daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate).toInt().coerceAtLeast(0)
+            val dailyTotals = mutableMapOf<LocalDate, BigDecimal>()
+            for (i in 0..daysBetween) {
+                dailyTotals[startDate!!.plusDays(i.toLong())] = BigDecimal.ZERO
+            }
+            for (tx in transactions) {
+                val txDate = tx.getDate().toLocalDate()
+                if (dailyTotals.containsKey(txDate)) {
+                    dailyTotals[txDate] = dailyTotals[txDate]!!.add(tx.getAmount())
+                }
+            }
+
+            val cumulativePoints = mutableListOf<Pair<LocalDate, BigDecimal>>()
+            var runningTotal = BigDecimal.ZERO
+            for ((date, amt) in dailyTotals) {
+                runningTotal = runningTotal.add(amt)
+                cumulativePoints.add(Pair(date, runningTotal))
+            }
+
+            val maxSpend = cumulativePoints.maxOfOrNull { it.second } ?: BigDecimal.ONE
+            val maxY = maxOf(maxSpend.toFloat(), budget.toFloat(), 1f) * 1.1f
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .padding(8.dp)
+            ) {
+                val width = size.width
+                val height = size.height
+                val padding = 24f
+
+                val chartWidth = width - padding * 2
+                val chartHeight = height - padding * 2
+
+                val budgetY = height - padding - (budget.toFloat() / maxY).coerceIn(0f, 1f) * chartHeight
+                drawLine(
+                    color = errorColor,
+                    start = Offset(padding, budgetY),
+                    end = Offset(width - padding, budgetY),
+                    strokeWidth = 3f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                )
+
+                if (cumulativePoints.isNotEmpty()) {
+                    val path = Path()
+                    val pointCount = cumulativePoints.size
+                    for (i in cumulativePoints.indices) {
+                        val x = padding + (if (pointCount > 1) i.toFloat() / (pointCount - 1) * chartWidth else 0f)
+                        val y = height - padding - (cumulativePoints[i].second.toFloat() / maxY).coerceIn(0f, 1f) * chartHeight
+                        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+
+                        drawCircle(color = primaryColor, radius = 4f, center = Offset(x, y))
+                    }
+                    drawPath(path = path, color = primaryColor, style = Stroke(width = 4f))
+                }
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Start: $startDate", style = MaterialTheme.typography.labelSmall)
+                Text("Budget Line: ${displayAmount(budget, currencySymbol)}", style = MaterialTheme.typography.labelSmall, color = errorColor, fontWeight = FontWeight.Bold)
+                Text("End: $endDate", style = MaterialTheme.typography.labelSmall)
+            }
+        }
     }
 }
 

@@ -7,6 +7,8 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
+import com.example.mtfinance.src.repositories.CategoryService;
+import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.repositories.TransactionService;
 import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.TrackingType;
@@ -23,6 +25,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 @HiltViewModel
 public class TransactionViewModel extends ViewModel {
     private final TransactionService transactionService;
+    private final TrackingService trackingService;
+    private final CategoryService categoryService;
     private final Executor executor;
     private final LiveData<List<Transaction>> allTransactions;
     private final LiveData<List<Transaction>> filteredTransactions;
@@ -32,8 +36,10 @@ public class TransactionViewModel extends ViewModel {
     private final MutableLiveData<List<Category>> categoriesUnderSelectedTransaction = new MutableLiveData<>();
 
     @Inject
-    public TransactionViewModel(TransactionService transactionService, Executor executor) {
+    public TransactionViewModel(TransactionService transactionService, TrackingService trackingService, CategoryService categoryService, Executor executor) {
         this.transactionService = transactionService;
+        this.trackingService = trackingService;
+        this.categoryService = categoryService;
         this.executor = executor;
         this.allTransactions = transactionService.getAllLive();
 
@@ -46,7 +52,7 @@ public class TransactionViewModel extends ViewModel {
     }
 
     public TransactionViewModel(TransactionService transactionService) {
-        this(transactionService, Runnable::run);
+        this(transactionService, null, null, Runnable::run);
     }
 
     public void setSelectedTransaction(Long id) {
@@ -61,6 +67,11 @@ public class TransactionViewModel extends ViewModel {
         Transaction transaction = transactionService.getById(id);
         if (transaction != null) {
             updateLiveData(selectedTransaction, transaction);
+            if (trackingService != null && categoryService != null) {
+                List<Long> catIds = trackingService.getCategoryIdsByTransactionId(id);
+                List<Category> cats = categoryService.getCategoriesByIds(catIds);
+                updateLiveData(categoriesUnderSelectedTransaction, cats);
+            }
         }
     }
 
