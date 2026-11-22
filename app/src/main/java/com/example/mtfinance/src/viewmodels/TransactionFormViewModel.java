@@ -306,29 +306,10 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
     }
 
     public void setType(TrackingType type) {
-        executor.execute(() -> {
-            setTypeSync(type);
-        });
-    }
-
-    public void setTypeText(String typeStr) {
-        if (typeStr == null || typeStr.trim().isEmpty()) {
-            setFieldError(TransactionErrorFields.TYPE, ErrorMessages.TYPE_CANNOT_BE_EMPTY.getMessage());
-            return;
-        }
-        TrackingType parsed = TrackingType.fromString(typeStr);
-        if (parsed == TrackingType.OTHER && !typeStr.trim().equalsIgnoreCase("other")) {
-            setFieldError(TransactionErrorFields.TYPE, ErrorMessages.INVALID_TRANSACTION_TYPE.getMessage());
-            TransactionFormFields fields = formFields.getValue();
-            if (fields != null) {
-                fields.type = TrackingType.OTHER;
-                fields.categoryIds.clear();
-                updateLiveData(cachedCategories, new HashSet<>());
-                updateFields(fields);
-            }
+        if (executor != null) {
+            executor.execute(() -> setTypeSync(type));
         } else {
-            resetFieldError(TransactionErrorFields.TYPE);
-            setTypeSync(parsed);
+            setTypeSync(type);
         }
     }
 

@@ -119,7 +119,10 @@ fun TransactionFormScreen(
             label = "Type",
             options = TrackingType.entries.map { it.name },
             selectedOption = transactionType?.name,
-            onOptionSelected = { transactionFormViewModel.setTypeText(it) },
+            onOptionSelected = { selectedName ->
+                val matched = TrackingType.entries.firstOrNull { it.name == selectedName } ?: TrackingType.EXPENSE
+                transactionFormViewModel.setType(matched)
+            },
             enabled = editMode == false
         )
         val typeErr = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.TYPE)

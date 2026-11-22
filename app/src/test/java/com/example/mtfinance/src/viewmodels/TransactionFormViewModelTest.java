@@ -237,8 +237,8 @@ public class TransactionFormViewModelTest {
     }
 
     @Test
-    public void setTypeText_invalidTypeInput_populatesFieldError() {
-        viewModel.setTypeText("INVALID_TYPE");
+    public void setType_nullType_populatesFieldError() {
+        viewModel.setTypeSync(null);
         Map<TransactionFormViewModel.TransactionErrorFields, String> errors = viewModel.getFieldErrors().getValue();
         assertAll(
             () -> assertNotNull(errors),
