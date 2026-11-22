@@ -250,7 +250,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             fields.categoryIds.add(categoryId);
             updateFields(fields);
             resetFieldError(TransactionErrorFields.CATEGORY_IDS);
-            updateLiveData(cachedCategories, new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(fields.categoryIds)));
+            updateCachedCategories(fields.categoryIds);
         }
     }
 
@@ -259,10 +259,22 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         if (fields != null) {
             fields.categoryIds.remove(categoryId);
             updateFields(fields);
-            updateLiveData(cachedCategories, new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(fields.categoryIds)));
+            updateCachedCategories(fields.categoryIds);
             if (fields.categoryIds.isEmpty()) {
                 setFieldError(TransactionErrorFields.CATEGORY_IDS, TransactionMessages.TRANSACTION_CATEGORY_EMPTY.getMessage());
             }
+        }
+    }
+
+    private void updateCachedCategories(Set<Long> categoryIds) {
+        Runnable task = () -> {
+            Set<CategoryWithTransactions> cats = new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(categoryIds));
+            updateLiveData(cachedCategories, cats);
+        };
+        if (executor != null) {
+            executor.execute(task);
+        } else {
+            task.run();
         }
     }
 
