@@ -69,10 +69,10 @@ fun CategoryListScreen(
                     }
                 }
             }
-            Search(searchQuery, { categoryViewModel.setSearchQuery(it) })
+            Search(searchQuery) { categoryViewModel.setSearchQuery(it) }
             ChooseTypeButton(typeFilter, { type -> categoryViewModel.setTypeFilter(type) }, includeNone = true)
 
-            if (categories != null && categories!!.isNotEmpty()) {
+            if (!categories.isNullOrEmpty()) {
                 CategoryList(
                     categories!!,
                     actionOne = { categoryId: Long -> categoryDashboardViewModel.setSelectedCategory(categoryId) },
