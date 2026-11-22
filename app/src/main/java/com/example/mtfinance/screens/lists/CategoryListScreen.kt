@@ -24,6 +24,7 @@ import com.example.mtfinance.screens.FabRightBottomCorner
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.Routes
 import com.example.mtfinance.src.viewmodels.CategoryViewModel
+import com.example.mtfinance.src.viewmodels.CategoryDashboardViewModel
 
 /**
  * Main screen composable displaying categories, dashboard toggle, and actions.
@@ -31,10 +32,11 @@ import com.example.mtfinance.src.viewmodels.CategoryViewModel
 @Composable
 fun CategoryListScreen(
     navHostController: NavHostController,
-    categoryViewModel: CategoryViewModel = hiltViewModel()
+    categoryViewModel: CategoryViewModel = hiltViewModel(),
+    categoryDashboardViewModel: CategoryDashboardViewModel = hiltViewModel()
 ) {
     val categories by categoryViewModel.filteredCategories.observeAsState()
-    val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
+    val selectedCategory by categoryDashboardViewModel.getSelectedCategory().observeAsState()
     val searchQuery by categoryViewModel.searchQuery.observeAsState()
     val typeFilter by categoryViewModel.typeFilter.observeAsState()
     val updateTrigger by categoryViewModel.updateTrigger.observeAsState()
@@ -51,7 +53,7 @@ fun CategoryListScreen(
                     if (categories != null && categories!!.isNotEmpty()) {
                         CategoryList(
                             categories!!,
-                            actionOne = { categoryId: Long -> categoryViewModel.setSelectedCategory(categoryId) },
+                            actionOne = { categoryId: Long -> categoryDashboardViewModel.setSelectedCategory(categoryId) },
                             actionOneLabel = "Show More",
                             actionTwo = { categoryId: Long -> navHostController.navigate(Routes.CATEGORY_FORM.route + "/" + categoryId) },
                             actionTwoLabel = "Edit",
@@ -61,7 +63,7 @@ fun CategoryListScreen(
                         Text(text = "No categories found", color = MaterialTheme.colorScheme.primary)
                     }
                 } else {
-                    FullCategoryDashBoard(categoryViewModel = categoryViewModel)
+                    FullCategoryDashBoard(categoryDashboardViewModel = categoryDashboardViewModel)
                 }
             }
         },

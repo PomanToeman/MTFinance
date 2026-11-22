@@ -29,13 +29,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.Category
 import com.example.mtfinance.src.trackingengine.Transaction
 import com.example.mtfinance.src.trackingengine.TrackingType
 
 /**
- * Renders a search input field for filtering lists.
+ * Renders a search input field for filtering lists with a clear button.
  * @param search The current search query string.
  * @param setSearch Callback invoked when the search query changes.
  */
@@ -45,6 +49,14 @@ fun Search(search: String?, setSearch: ((String) -> Unit)?) {
         value = search ?: "",
         onValueChange = { setSearch?.invoke(it) },
         label = { Text("Search") },
+        trailingIcon = {
+            if (!search.isNullOrEmpty()) {
+                IconButton(onClick = { setSearch?.invoke("") }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                }
+            }
+        },
+        singleLine = true,
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)

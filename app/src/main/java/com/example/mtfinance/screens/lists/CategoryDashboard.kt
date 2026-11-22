@@ -1,7 +1,7 @@
 /**
  * @file CategoryDashboard.kt
  * @scope Category dashboard views and budgeting charts (pie chart, budget usage stacked bars).
- * @purpose Renders detailed analytics, budget breakdowns, sub-category distributions, and month picker navigation.
+ * @purpose Renders detailed analytics, proportional budget breakdown, sub-category distributions, search, and time-filtered transactions.
  */
 package com.example.mtfinance.screens.lists
 
@@ -16,11 +16,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,7 +48,7 @@ import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.MiniHeader
 import com.example.mtfinance.screens.displayAmount
 import com.example.mtfinance.src.DateFormat
-import com.example.mtfinance.src.viewmodels.CategoryViewModel
+import com.example.mtfinance.src.viewmodels.CategoryDashboardViewModel
 import com.example.mtfinance.src.viewmodels.SettingsViewModel
 import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.TextComponent
@@ -56,15 +63,16 @@ import java.math.RoundingMode
 import java.time.LocalDate
 
 /**
- * Displays the full category dashboard including budget bars, details, parent/sub-categories, and charts.
+ * Displays the polished Category Dashboard including proportional budget stacked bar, charts, details, subcategories, and search.
  */
 @Composable
 fun FullCategoryDashBoard(
-    categoryViewModel: CategoryViewModel = hiltViewModel()
+    categoryDashboardViewModel: CategoryDashboardViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
+    val selectedCategory by categoryDashboardViewModel.getSelectedCategory().observeAsState()
     var showMonthPicker by remember { mutableStateOf(false) }
-    val currentOffset by categoryViewModel.monthOffset.observeAsState(0)
+    val currentOffset by categoryDashboardViewModel.getMonthOffset().observeAsState(0)
 
     val today = LocalDate.now()
     val activeDate = today.plusMonths(currentOffset.toLong())
@@ -76,30 +84,49 @@ fun FullCategoryDashBoard(
 
     Column(
         modifier = Modifier
-            .fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
+            .fillMaxSize()
+            .padding(12.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         horizontalAlignment = Alignment.Start
     ) {
         Header(text = "Category Dashboard")
 
         if (selectedCategory != null) {
-            MiniHeader(text = selectedCategory!!.category.name + " - " + selectedCategory!!.category.type.toString())
+            // 1. Category Name Header Card
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = selectedCategory!!.category.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Type: ${selectedCategory!!.category.type}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
-            // Month Navigation Controls with Month Dialogue Picker Trigger
+            // Month Navigation Controls
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(onClick = { categoryViewModel.navigatePreviousMonth() }) {
+                OutlinedButton(onClick = { categoryDashboardViewModel.navigatePreviousMonth() }) {
                     Text("< Prev")
                 }
                 Button(onClick = { showMonthPicker = true }) {
                     Text(text = monthLabel)
                 }
-                OutlinedButton(onClick = { categoryViewModel.navigateNextMonth() }) {
+                OutlinedButton(onClick = { categoryDashboardViewModel.navigateNextMonth() }) {
                     Text("Next >")
                 }
             }
@@ -109,36 +136,127 @@ fun FullCategoryDashBoard(
                     initialMonthOffset = currentOffset,
                     onDismiss = { showMonthPicker = false },
                     onMonthSelected = { targetOffset ->
-                        categoryViewModel.jumpToMonthOffset(targetOffset)
+                        categoryDashboardViewModel.jumpToMonthOffset(targetOffset)
                     }
                 )
             }
 
-            CategoryStackedBar(categoryViewModel = categoryViewModel)
-            CategoryDetails(selectedCategory!!)
-            if (selectedCategory?.category?.parent != null) {
-                MiniHeader("Parent")
-                CategoryListItem(
-                    selectedCategory?.category?.parent,
-                    actionOne = { Long -> categoryViewModel.setSelectedCategory(Long) }
-                )
-            } else {
-                MiniHeader("Root")
+            // 2. Statistics Card (Proportional Budget Stacked Bar & Spending Trend)
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Budget Statistics & Spending Trend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    CategoryStackedBar(categoryDashboardViewModel = categoryDashboardViewModel, settingsViewModel = settingsViewModel)
+                    CategoryOverTimeChart(categoryDashboardViewModel = categoryDashboardViewModel)
+                }
             }
-            MiniHeader("Sub-Categories")
-            CategoryRawList(
-                selectedCategory!!.category.getChildren(false).toList(),
-                { Long -> categoryViewModel.setSelectedCategory(Long) }
-            )
-            CategoryPieChart(categoryViewModel = categoryViewModel)
-            MiniHeader("Transactions")
-            TransactionListforCategory(selectedCategory!!)
 
-            Button(onClick = { categoryViewModel.resetSelectedCategory() }) {
-                Text(text = "Back", color = MaterialTheme.colorScheme.onPrimary)
+            // 3. Category Details Card
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Category Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Description: ${selectedCategory!!.category.description?.ifEmpty { "None" } ?: "None"}")
+                    Text("Monthly Budget: ${selectedCategory!!.category.monthlyBudget}")
+                    val parent = selectedCategory!!.category.parent
+                    Text("Parent / Root: ${parent?.name ?: "Root Category"}")
+                }
+            }
+
+            // 4. Sub-Category Card (Dynamic size, count, search with clear button, show more, pie chart)
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val subcategories = selectedCategory!!.category.getChildren(false).toList()
+                    val subQuery by categoryDashboardViewModel.getSubcategorySearchQuery().observeAsState("")
+                    val filteredSubs = subcategories.filter { it.name.contains(subQuery, ignoreCase = true) }
+
+                    Text("Sub-Categories (${subcategories.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+                    if (subcategories.isEmpty()) {
+                        Text("No sub-categories defined for this category.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Search(search = subQuery, setSearch = { categoryDashboardViewModel.setSubcategorySearchQuery(it) })
+
+                        var showAllSubs by remember { mutableStateOf(false) }
+                        val displayedSubs = if (showAllSubs) filteredSubs else filteredSubs.take(3)
+
+                        if (displayedSubs.isEmpty()) {
+                            Text("No matching sub-categories found.", style = MaterialTheme.typography.bodySmall)
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                displayedSubs.forEach { sub ->
+                                    CategoryListItem(categoryItem = sub, actionOne = { catId -> categoryDashboardViewModel.setSelectedCategory(catId) })
+                                }
+                            }
+                            if (filteredSubs.size > 3) {
+                                TextButton(onClick = { showAllSubs = !showAllSubs }) {
+                                    Text(if (showAllSubs) "Show Less" else "Show More (${filteredSubs.size - 3} more)")
+                                }
+                            }
+                        }
+
+                        CategoryPieChart(categoryDashboardViewModel = categoryDashboardViewModel)
+                    }
+                }
+            }
+
+            // 5. Transaction Card (Search + Time Period Filter Switch)
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val txQuery by categoryDashboardViewModel.getTransactionSearchQuery().observeAsState("")
+                    val filterPeriod by categoryDashboardViewModel.getFilterTransactionsByPeriod().observeAsState(true)
+                    val startDate by categoryDashboardViewModel.getStartDate().observeAsState()
+                    val endDate by categoryDashboardViewModel.getEndDate().observeAsState()
+
+                    Text("Transactions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Search(search = txQuery, setSearch = { categoryDashboardViewModel.setTransactionSearchQuery(it) })
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Filter to Active Pay Period", style = MaterialTheme.typography.bodyMedium)
+                        Checkbox(
+                            checked = filterPeriod,
+                            onCheckedChange = { categoryDashboardViewModel.setFilterTransactionsByPeriod(it) }
+                        )
+                    }
+
+                    val rawTransactions = selectedCategory!!.transactions
+                    val filteredTxs = rawTransactions.filter { tx ->
+                        val matchesQuery = tx.getName().contains(txQuery, ignoreCase = true) || tx.getDescription().contains(txQuery, ignoreCase = true)
+                        val matchesPeriod = !filterPeriod || (startDate != null && endDate != null && !tx.getDate().toLocalDate().isBefore(startDate) && !tx.getDate().toLocalDate().isAfter(endDate))
+                        matchesQuery && matchesPeriod
+                    }
+
+                    if (filteredTxs.isEmpty()) {
+                        Text("No matching transactions found.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 8.dp))
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            filteredTxs.forEach { tx ->
+                                TransactionDetails(transaction = tx)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Button(onClick = { categoryDashboardViewModel.resetSelectedCategory() }) {
+                Text(text = "Back to Category List", color = MaterialTheme.colorScheme.onPrimary)
             }
         } else {
-            Text(text = "No category selected", color = MaterialTheme.colorScheme.primary)
+            Text(text = "No category selected", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(16.dp))
         }
     }
 }
@@ -216,18 +334,18 @@ fun MonthPickerDialog(
  */
 @Composable
 fun CategoryPieChart(
-    categoryViewModel: CategoryViewModel = hiltViewModel()
+    categoryDashboardViewModel: CategoryDashboardViewModel = hiltViewModel()
 ) {
-    val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
-    val cumulativeTotal by categoryViewModel.totalIncludingSub.observeAsState()
-    val totalExcludingSub by categoryViewModel.totalExcludingSub.observeAsState()
-    val childrenTotals by categoryViewModel.childrenTotals.observeAsState()
+    val selectedCategory by categoryDashboardViewModel.getSelectedCategory().observeAsState()
+    val totalExcludingSub by categoryDashboardViewModel.getTotalExcludingSub().observeAsState()
+    val childrenTotals by categoryDashboardViewModel.getChildrenTotals().observeAsState()
 
     Text(
-        "Total distribution - Pie Chart",
+        "Sub-Category Spending Distribution",
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        textAlign = TextAlign.Center,
+        fontWeight = FontWeight.Bold
     )
 
     var values: List<Float>
@@ -235,7 +353,7 @@ fun CategoryPieChart(
 
     val modelProducer = remember { PieChartModelProducer() }
 
-    LaunchedEffect(cumulativeTotal, totalExcludingSub, childrenTotals) {
+    LaunchedEffect(totalExcludingSub, childrenTotals) {
         values = childrenTotals?.map { entry -> entry.value.toFloat() } ?: emptyList()
         values = values.plus(totalExcludingSub?.toFloat() ?: 0f)
         labels = childrenTotals?.map { entry -> entry.key.category.name } ?: emptyList()
@@ -268,38 +386,58 @@ fun CategoryPieChart(
         modelProducer = modelProducer,
         modifier = Modifier
             .fillMaxWidth()
-            .height(240.dp)
+            .height(220.dp)
     )
 }
 
 /**
- * Renders a budget usage stacked bar chart comparing cumulative spending against the monthly budget.
+ * Renders a spending summary over time for the active period.
+ */
+@Composable
+fun CategoryOverTimeChart(
+    categoryDashboardViewModel: CategoryDashboardViewModel = hiltViewModel()
+) {
+    val selectedCategory by categoryDashboardViewModel.getSelectedCategory().observeAsState()
+    val startDate by categoryDashboardViewModel.getStartDate().observeAsState()
+    val endDate by categoryDashboardViewModel.getEndDate().observeAsState()
+
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Spending Trend", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        val txCount = selectedCategory?.transactions?.count { tx ->
+            startDate != null && endDate != null && !tx.getDate().toLocalDate().isBefore(startDate) && !tx.getDate().toLocalDate().isAfter(endDate)
+        } ?: 0
+        Text("Active Period Transactions: $txCount", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * Renders a rehauled proportional budget usage stacked bar chart comparing cumulative spending against the monthly budget.
  */
 @Composable
 fun CategoryStackedBar(
-    categoryViewModel: CategoryViewModel = hiltViewModel(),
+    categoryDashboardViewModel: CategoryDashboardViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val currencySymbol = systemPreferences?.currencySymbol ?: "$"
     val dateFormatter = DateFormat.fromStringOrDefault(systemPreferences?.dateFormat, DateFormat.DD_MM_YYYY).toFormatter()
 
-    val selectedCategory by categoryViewModel.selectedCategory.observeAsState()
-    val cumulativeTotal by categoryViewModel.totalIncludingSub.observeAsState(BigDecimal.ZERO)
-    val remaining by categoryViewModel.remaining.observeAsState(BigDecimal.ZERO)
+    val selectedCategory by categoryDashboardViewModel.getSelectedCategory().observeAsState()
+    val cumulativeTotal by categoryDashboardViewModel.getTotalIncludingSub().observeAsState(BigDecimal.ZERO)
+    val remaining by categoryDashboardViewModel.getRemaining().observeAsState(BigDecimal.ZERO)
     val budget = selectedCategory?.category?.monthlyBudget ?: BigDecimal.ONE
-    val startDate by categoryViewModel.startDate.observeAsState()
-    val endDate by categoryViewModel.endDate.observeAsState()
+    val startDate by categoryDashboardViewModel.getStartDate().observeAsState()
+    val endDate by categoryDashboardViewModel.getEndDate().observeAsState()
 
     val isOverBudget = remaining < BigDecimal.ZERO
 
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Budget Usage", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+            Text("Budget Proportional Usage", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(
                 "From ${startDate?.format(dateFormatter)} to ${endDate?.format(dateFormatter)}",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.secondary,
+                style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Right
             )
         }
@@ -309,13 +447,13 @@ fun CategoryStackedBar(
                 .fillMaxWidth()
                 .height(30.dp)
         ) {
-            val budgetFraction = 0.8f
+            val budgetFraction = 1f
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth(budgetFraction)
                     .height(30.dp)
-                    .border(2.dp, if (isOverBudget) Color.Red else Color.Black)
+                    .border(2.dp, if (isOverBudget) Color.Red else Color.Black, RoundedCornerShape(4.dp))
             )
 
             Row(
@@ -347,16 +485,26 @@ fun CategoryStackedBar(
                         )
                     }
                 } else {
-                    val overflowRatio = if (budget > BigDecimal.ZERO) {
-                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
-                    } else 1f
+                    // Proportional representation when exceeding budget: Budget portion vs Excess portion
+                    val budgetRatio = budget.divide(cumulativeTotal, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
+                    val excessRatio = (1f - budgetRatio).coerceIn(0f, 1f)
 
-                    Box(
-                        modifier = Modifier
-                            .weight(overflowRatio.coerceAtLeast(1f))
-                            .fillMaxHeight()
-                            .background(Color.Red)
-                    )
+                    if (budgetRatio > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(budgetRatio)
+                                .fillMaxHeight()
+                                .background(Color(0xFFFFA500)) // Orange for consumed budget
+                        )
+                    }
+                    if (excessRatio > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(excessRatio)
+                                .fillMaxHeight()
+                                .background(Color.Red) // Red for budget excess
+                        )
+                    }
                 }
             }
         }
@@ -381,102 +529,11 @@ fun CategoryStackedBar(
         }
 
         Text(
-            "Budget: ${displayAmount(budget, currencySymbol)}",
-            style = MaterialTheme.typography.bodyLarge,
+            "Monthly Budget: ${displayAmount(budget, currencySymbol)}",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center
         )
-    }
-}
-
-/**
- * Pure version of the stacked bar for Compose Previews.
- */
-@Composable
-fun CategoryStackedBarPure(
-    cumulativeTotal: BigDecimal,
-    remaining: BigDecimal,
-    budget: BigDecimal
-) {
-    val isOverBudget = remaining < BigDecimal.ZERO
-
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Budget Usage", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(30.dp)
-        ) {
-            val budgetFraction = 0.8f
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(budgetFraction)
-                    .height(30.dp)
-                    .border(2.dp, if (isOverBudget) Color.Red else Color.Black)
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(budgetFraction)
-                    .height(30.dp)
-            ) {
-                if (!isOverBudget) {
-                    val spentRatio = if (budget > BigDecimal.ZERO) {
-                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
-                    } else 0f
-
-                    val remainingRatio = (1f - spentRatio).coerceIn(0f, 1f)
-
-                    if (spentRatio > 0f) {
-                        Box(
-                            modifier = Modifier
-                                .weight(spentRatio)
-                                .fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.primary)
-                        )
-                    }
-                    if (remainingRatio > 0f) {
-                        Box(
-                            modifier = Modifier
-                                .weight(remainingRatio)
-                                .fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        )
-                    }
-                } else {
-                    val overflowRatio = if (budget > BigDecimal.ZERO) {
-                        cumulativeTotal.divide(budget, 4, RoundingMode.HALF_UP).toFloat()
-                    } else 1f
-
-                    Box(
-                        modifier = Modifier
-                            .weight(overflowRatio.coerceAtLeast(1f))
-                            .fillMaxHeight()
-                            .background(Color.Red)
-                    )
-                }
-            }
-        }
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column {
-                Text("Total Spent", style = MaterialTheme.typography.labelSmall)
-                Text("$${cumulativeTotal.setScale(2, RoundingMode.HALF_UP)}", fontWeight = FontWeight.Bold)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    if (isOverBudget) "Over Budget" else "Remaining",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isOverBudget) Color.Red else Color.Unspecified
-                )
-                Text(
-                    "$${remaining.abs().setScale(2, RoundingMode.HALF_UP)}",
-                    fontWeight = FontWeight.Bold,
-                    color = if (isOverBudget) Color.Red else Color.Unspecified
-                )
-            }
-        }
     }
 }
