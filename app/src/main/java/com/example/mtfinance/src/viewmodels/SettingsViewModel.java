@@ -38,6 +38,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     private final TrackingRepository trackingRepository;
     private final Executor executor;
     private final Logger logger;
+    private SystemPreferences persistedPreferences = null;
 
     private final MutableLiveData<Map<SystemPreferenceErrorFields, String>> fieldErrors = new MutableLiveData<>(new EnumMap<>(SystemPreferenceErrorFields.class));
     private final MutableLiveData<Boolean> changesMade = new MutableLiveData<>(false);
@@ -105,6 +106,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     private void initializeFromPersistedSync() {
         if (systemService != null) {
             SystemPreferences prefs = systemService.getPreferencesSync();
+            this.persistedPreferences = prefs;
             if (prefs != null) {
                 updateLiveData(provisionalThemeMode, prefs.getThemeMode());
                 updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
@@ -112,6 +114,8 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
                 updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
             }
+        } else {
+            this.persistedPreferences = null;
         }
         updateLiveData(changesMade, false);
         updateLiveData(saveStatusColor, "GRAY");
@@ -267,7 +271,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     }
 
     private void reevaluateStateSync() {
-        SystemPreferences persisted = systemService != null ? systemService.getPreferencesSync() : null;
+        SystemPreferences persisted = this.persistedPreferences;
         if (persisted == null) {
             updateLiveData(changesMade, false);
             updateLiveData(saveStatusColor, hasFieldErrors() ? "RED" : "GRAY");
