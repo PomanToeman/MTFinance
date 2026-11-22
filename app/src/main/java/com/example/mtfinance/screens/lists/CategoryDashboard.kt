@@ -188,7 +188,7 @@ fun FullCategoryDashBoard(
                 }
             }
 
-            // 4. Sub-Category Card (Dynamic size, count, search with clear button, show more, pagination, pie chart)
+            // 4. Sub-Category Card (Dynamic size, count, search with clear button, helper list, pie chart)
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
@@ -197,13 +197,6 @@ fun FullCategoryDashBoard(
                     val subcategories = selectedCategory!!.category.getChildren(false).toList()
                     val subQuery by categoryDashboardViewModel.getSubcategorySearchQuery().observeAsState("")
                     val filteredSubs = subcategories.filter { it.name.contains(subQuery, ignoreCase = true) }
-                    val systemPrefs by settingsViewModel.systemPreferences.observeAsState()
-                    val pageSize = systemPrefs?.pageSize ?: DefaultSettings.DEFAULT_PAGE_COUNT
-                    var subPage by remember { mutableStateOf(1) }
-
-                    val totalSubs = filteredSubs.size
-                    val totalSubPages = (totalSubs + pageSize - 1) / pageSize
-                    val paginatedSubs = filteredSubs.drop((subPage - 1) * pageSize).take(pageSize)
 
                     Text("Sub-Categories (${subcategories.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
@@ -212,26 +205,15 @@ fun FullCategoryDashBoard(
                     } else {
                         Search(search = subQuery, setSearch = { categoryDashboardViewModel.setSubcategorySearchQuery(it) })
 
-                        if (paginatedSubs.isEmpty()) {
+                        if (filteredSubs.isEmpty()) {
                             Text("No matching sub-categories found.", style = MaterialTheme.typography.bodySmall)
                         } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                paginatedSubs.forEach { sub ->
-                                    CategoryListItem(
-                                        categoryItem = sub,
-                                        actionOne = { catId -> categoryDashboardViewModel.setSelectedCategory(catId) },
-                                        actionOneLabel = "Show More",
-                                        actionTwo = { catId -> navHostController.navigate(Routes.CATEGORY_FORM.route + "/$catId") },
-                                        actionTwoLabel = "Edit"
-                                    )
-                                }
-                            }
-                            PaginationBar(
-                                currentPage = subPage,
-                                totalPages = totalSubPages,
-                                totalItems = totalSubs,
-                                shownCount = paginatedSubs.size,
-                                onPageChanged = { subPage = it }
+                            CategoryListBasic(
+                                categories = filteredSubs,
+                                actionOne = { catId -> categoryDashboardViewModel.setSelectedCategory(catId) },
+                                actionOneLabel = "Show More",
+                                actionTwo = { catId -> navHostController.navigate(Routes.CATEGORY_FORM.route + "/$catId") },
+                                actionTwoLabel = "Edit"
                             )
                         }
 
