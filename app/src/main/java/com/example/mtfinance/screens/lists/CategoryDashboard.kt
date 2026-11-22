@@ -240,7 +240,7 @@ fun FullCategoryDashBoard(
                 }
             }
 
-            // 5. Transaction Card (Search + Time Period Filter Switch + Pagination + Compact Items)
+            // 5. Transaction Card (Search + Time Period Filter Switch + Transaction List Helper)
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
@@ -250,9 +250,6 @@ fun FullCategoryDashBoard(
                     val filterPeriod by categoryDashboardViewModel.getFilterTransactionsByPeriod().observeAsState(true)
                     val startDate by categoryDashboardViewModel.getStartDate().observeAsState()
                     val endDate by categoryDashboardViewModel.getEndDate().observeAsState()
-                    val systemPrefs by settingsViewModel.systemPreferences.observeAsState()
-                    val pageSize = systemPrefs?.pageSize ?: DefaultSettings.DEFAULT_PAGE_COUNT
-                    var txPage by remember { mutableStateOf(1) }
 
                     Text("Transactions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Search(search = txQuery, setSearch = { categoryDashboardViewModel.setTransactionSearchQuery(it) })
@@ -276,27 +273,13 @@ fun FullCategoryDashBoard(
                         matchesQuery && matchesPeriod
                     }
 
-                    val totalTxs = filteredTxs.size
-                    val totalTxPages = (totalTxs + pageSize - 1) / pageSize
-                    val paginatedTxs = filteredTxs.drop((txPage - 1) * pageSize).take(pageSize)
-
                     if (filteredTxs.isEmpty()) {
                         Text("No matching transactions found.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 8.dp))
                     } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            paginatedTxs.forEach { tx ->
-                                TransactionCompactListItem(
-                                    transaction = tx,
-                                    onEdit = { navHostController.navigate(Routes.TRANSACTION_FORM_EDIT.route + "/${tx.transactionId}") }
-                                )
-                            }
-                        }
-                        PaginationBar(
-                            currentPage = txPage,
-                            totalPages = totalTxPages,
-                            totalItems = totalTxs,
-                            shownCount = paginatedTxs.size,
-                            onPageChanged = { txPage = it }
+                        TransactionList(
+                            transactions = filteredTxs,
+                            actionOne = null,
+                            actionTwo = null
                         )
                     }
                 }
