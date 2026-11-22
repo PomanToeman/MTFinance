@@ -365,16 +365,13 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     }
 
     public void rollbackProvisionalChanges() {
-        if (systemService != null) {
-            SystemPreferences prefs = systemService.getPreferencesSync();
-            this.persistedPreferences = prefs;
-            if (prefs != null) {
-                updateLiveData(provisionalThemeMode, prefs.getThemeMode());
-                updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
-                updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
-                updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
-                updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
-            }
+        SystemPreferences prefs = this.persistedPreferences;
+        if (prefs != null) {
+            updateLiveData(provisionalThemeMode, prefs.getThemeMode());
+            updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
+            updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
+            updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
+            updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
         }
         updateLiveData(saveStatusColor, "GRAY");
         updateLiveData(saveState, SettingsSaveState.UNCHANGED);
