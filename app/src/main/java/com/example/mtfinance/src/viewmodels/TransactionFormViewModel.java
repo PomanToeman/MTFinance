@@ -284,7 +284,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             fields.type = type;
             if (oldType != type) {
                 fields.categoryIds.clear();
-                if (type != null && type != TrackingType.EXPENSE && type != TrackingType.OTHER) {
+                if (type != null) {
                     try {
                         Category rootCat = categoryService.getRootCategoryByType(type);
                         if (rootCat != null) {

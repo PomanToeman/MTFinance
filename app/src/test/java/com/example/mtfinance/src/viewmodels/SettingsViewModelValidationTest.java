@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.mtfinance.InstantExecutorExtension;
+import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.repositories.SystemRepository;
 import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingRepository;
@@ -94,6 +95,21 @@ public class SettingsViewModelValidationTest {
             () -> assertFalse(viewModel.hasFieldErrors()),
             () -> assertTrue(viewModel.getChangesMade().getValue()),
             () -> assertEquals(STATUS_ORANGE, viewModel.getSaveStatusColor().getValue())
+        );
+    }
+
+    @Test
+    public void multipleUpdates_sequentialChanges_evaluatesStateCorrectly() {
+        viewModel.setProvisionalThemeMode("DARK");
+        viewModel.setProvisionalCurrencyFormat(CurrencyFormat.USD);
+        viewModel.setProvisionalStartDayOfMonth("10");
+
+        assertAll(
+            () -> assertFalse(viewModel.hasFieldErrors()),
+            () -> assertEquals(SettingsSaveState.PROVISIONAL, viewModel.getSaveState().getValue()),
+            () -> assertEquals("DARK", viewModel.getProvisionalThemeMode().getValue()),
+            () -> assertEquals(CurrencyFormat.USD, viewModel.getProvisionalCurrencyFormat().getValue()),
+            () -> assertEquals("10", viewModel.getProvisionalStartDayOfMonthInput().getValue())
         );
     }
 

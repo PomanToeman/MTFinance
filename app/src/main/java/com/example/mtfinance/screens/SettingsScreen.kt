@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.mtfinance.screens.forms.SelectForm
+import com.example.mtfinance.screens.forms.SelectFormNonEditable
 import com.example.mtfinance.screens.theme.SaveStatusColor
 import com.example.mtfinance.screens.theme.ThemeMode
 import com.example.mtfinance.screens.theme.getSaveButtonColors
@@ -65,7 +66,6 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
-    val changesMade by settingsViewModel.changesMade.observeAsState(false)
     val saveState by settingsViewModel.saveState.observeAsState(SettingsSaveState.UNCHANGED)
     val isLoading by settingsViewModel.isLoading.observeAsState(false)
     val genericErrorMessage by settingsViewModel.genericErrorMessage.observeAsState("")
@@ -103,7 +103,7 @@ fun SettingsScreen(
         Header("Settings & Configurations")
 
         // Top Provisional Warning Banner
-        if (saveState == SettingsSaveState.PROVISIONAL || changesMade) {
+        if (saveState == SettingsSaveState.PROVISIONAL) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -206,7 +206,7 @@ fun SettingsScreen(
                 )
 
                 // Currency Selector
-                SelectForm(
+                SelectFormNonEditable(
                     label = "Currency Format",
                     options = CurrencyFormat.entries.map { it.getDisplayName() },
                     selectedOption = provCurrencyFormat.getDisplayName(),
@@ -219,7 +219,7 @@ fun SettingsScreen(
                 )
 
                 // Date Format Selector (Displays pattern string instead of enum name)
-                SelectForm(
+                SelectFormNonEditable(
                     label = "Date Display Format",
                     options = DateFormat.entries.map { it.getString() },
                     selectedOption = provDateFormat.getString(),
@@ -289,7 +289,7 @@ fun SettingsScreen(
         ) {
             Button(
                 onClick = { settingsViewModel.saveChanges() },
-                enabled = changesMade && !settingsViewModel.hasFieldErrors(),
+                enabled = saveState == SettingsSaveState.PROVISIONAL && !settingsViewModel.hasFieldErrors(),
                 modifier = Modifier.weight(1f),
                 colors = getSaveButtonColors()
             ) {
@@ -298,7 +298,7 @@ fun SettingsScreen(
 
             OutlinedButton(
                 onClick = { settingsViewModel.discardProvisionalChanges() },
-                enabled = changesMade,
+                enabled = saveState == SettingsSaveState.PROVISIONAL || saveState == SettingsSaveState.ERROR,
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Discard Changes")

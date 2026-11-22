@@ -263,11 +263,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     }
 
     public void reevaluateState() {
-        if (executor != null) {
-            executor.execute(this::reevaluateStateSync);
-        } else {
-            reevaluateStateSync();
-        }
+        reevaluateStateSync();
     }
 
     private void reevaluateStateSync() {
