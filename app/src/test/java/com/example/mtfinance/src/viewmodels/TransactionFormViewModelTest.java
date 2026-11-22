@@ -30,6 +30,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -244,5 +245,21 @@ public class TransactionFormViewModelTest {
             () -> assertNotNull(errors),
             () -> assertFalse(errors.get(TransactionFormViewModel.TransactionErrorFields.TYPE).isEmpty())
         );
+    }
+
+    @Test
+    public void setTransactionId_validId_initializesCachedCategories() {
+        long transId = 15L;
+        Transaction t = new Transaction.Builder("Grocery", BigDecimal.TEN).build();
+        t.setTransactionId(transId);
+
+        when(transactionService.transactionExists(transId)).thenReturn(true);
+        when(transactionService.getById(transId)).thenReturn(t);
+        when(trackingService.getCategoryIdsByTransactionId(transId)).thenReturn(Arrays.asList(1L, 2L));
+        when(trackingService.getCategoriesWithTransactionsByIds(any())).thenReturn(Collections.emptyList());
+
+        viewModel.setTransactionIdSync(transId);
+
+        verify(trackingService).getCategoriesWithTransactionsByIds(any());
     }
 }

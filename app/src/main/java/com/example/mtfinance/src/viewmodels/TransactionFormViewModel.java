@@ -394,6 +394,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             fields.editMode = true;
             formFields.postValue(fields);
             updateFields(fields);
+            updateCachedCategories(fields.categoryIds);
         } else {
             setErrorMessage(TransactionMessages.TRANSACTION_NOT_FOUND.getMessage());
             fields.transactionId = null;
