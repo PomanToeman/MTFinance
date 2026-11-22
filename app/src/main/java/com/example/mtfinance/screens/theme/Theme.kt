@@ -21,7 +21,14 @@ import androidx.compose.ui.graphics.Color
 enum class ThemeMode {
     SYSTEM,
     LIGHT,
-    DARK
+    DARK;
+
+    companion object {
+        fun fromNameOrDefault(name: String?, default: ThemeMode = SYSTEM): ThemeMode {
+            if (name.isNullOrBlank()) return default
+            return entries.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) } ?: default
+        }
+    }
 }
 
 /**
@@ -58,6 +65,16 @@ fun getSaveStatusThemeColor(status: SaveStatusColor): Color {
         SaveStatusColor.GRAY -> MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
     }
 }
+
+/**
+ * Returns centralized button colors for all save and submission buttons app-wide.
+ * Allows quick theme-level changes to save button coloring.
+ */
+@Composable
+fun getSaveButtonColors() = androidx.compose.material3.ButtonDefaults.buttonColors(
+    containerColor = Color(0xFF2E7D32),
+    contentColor = Color.White
+)
 
 private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF64B5F6),

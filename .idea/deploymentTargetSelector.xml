@@ -6,10 +6,6 @@
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="insert_DuplicateCategory_ThrowsCategoryViolationException()">
-        <option name="selectionMode" value="DROPDOWN" />
-        <DialogSelection />
-      </SelectionState>
       <SelectionState runConfigName="Tests in 'com.example.mtfinance.src.repositories'">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />

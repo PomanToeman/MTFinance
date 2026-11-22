@@ -11,8 +11,10 @@ import static org.mockito.Mockito.when;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.mtfinance.InstantExecutorExtension;
+import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.repositories.SystemRepository;
 import com.example.mtfinance.src.repositories.SystemService;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.SettingsPreferenceViolationException;
 import com.example.mtfinance.src.trackingengine.SystemPreferences;
 
@@ -40,6 +42,12 @@ public class SettingsViewModelValidationTest {
     @Mock
     private SystemRepository systemRepository;
 
+    @Mock
+    private TrackingRepository trackingRepository;
+
+    @Mock
+    private java.util.logging.Logger logger;
+
     private SettingsViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
@@ -50,9 +58,8 @@ public class SettingsViewModelValidationTest {
         when(systemService.getPreferencesLive()).thenReturn(new MutableLiveData<>(prefs));
         when(systemService.getPreferencesSync()).thenReturn(prefs);
 
-        viewModel = new SettingsViewModel(systemService, systemRepository, synchronousExecutor);
+        viewModel = new SettingsViewModel(systemService, systemRepository, trackingRepository, synchronousExecutor, logger);
         viewModel.getFieldErrors().observeForever(e -> {});
-        viewModel.getChangesMade().observeForever(c -> {});
         viewModel.getSaveStatusColor().observeForever(s -> {});
         viewModel.getGenericErrorMessage().observeForever(g -> {});
     }
@@ -85,8 +92,23 @@ public class SettingsViewModelValidationTest {
 
         assertAll(
             () -> assertFalse(viewModel.hasFieldErrors()),
-            () -> assertTrue(viewModel.getChangesMade().getValue()),
+            () -> assertEquals(SettingsSaveState.PROVISIONAL, viewModel.getSaveState().getValue()),
             () -> assertEquals(STATUS_ORANGE, viewModel.getSaveStatusColor().getValue())
+        );
+    }
+
+    @Test
+    public void multipleUpdates_sequentialChanges_evaluatesStateCorrectly() {
+        viewModel.setProvisionalThemeMode("DARK");
+        viewModel.setProvisionalCurrencyFormat(CurrencyFormat.USD);
+        viewModel.setProvisionalStartDayOfMonth("10");
+
+        assertAll(
+            () -> assertFalse(viewModel.hasFieldErrors()),
+            () -> assertEquals(SettingsSaveState.PROVISIONAL, viewModel.getSaveState().getValue()),
+            () -> assertEquals("DARK", viewModel.getProvisionalThemeMode().getValue()),
+            () -> assertEquals(CurrencyFormat.USD, viewModel.getProvisionalCurrencyFormat().getValue()),
+            () -> assertEquals("10", viewModel.getProvisionalStartDayOfMonthInput().getValue())
         );
     }
 

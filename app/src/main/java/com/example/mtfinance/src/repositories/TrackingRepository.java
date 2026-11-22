@@ -2,7 +2,9 @@ package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
 
-import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.messages.CategoryMessages;
+import com.example.mtfinance.src.messages.ErrorMessages;
+import com.example.mtfinance.src.messages.TransactionMessages;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCrossRef;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionDao;
@@ -13,6 +15,8 @@ import com.example.mtfinance.src.trackingengine.Transaction;
 import com.example.mtfinance.src.trackingengine.TransactionViolationException;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
@@ -27,15 +31,17 @@ public class TrackingRepository {
     private final CategoryDao categoryDao;
     private final TransactionDao transactionDao;
     private final CategoryTreeHelper helper;
+    private final Logger logger;
 
     /**
-     * Constructs a TrackingRepository with required repositories, DAOs, and helper.
+     * Constructs a TrackingRepository with required repositories, DAOs, helper, and Logger.
      * @param categoryRepository the category write repository
      * @param transactionRepository the transaction write repository
      * @param categoryWithTransactionsDao the cross-ref DAO
      * @param categoryDao the category DAO
      * @param transactionDao the transaction DAO
      * @param helper the category tree helper
+     * @param logger injected logger instance
      */
     @Inject
     public TrackingRepository(CategoryRepository categoryRepository,
@@ -43,13 +49,15 @@ public class TrackingRepository {
                               CategoryTransactionDao categoryWithTransactionsDao,
                               CategoryDao categoryDao,
                               TransactionDao transactionDao,
-                              CategoryTreeHelper helper) {
+                              CategoryTreeHelper helper,
+                              Logger logger) {
         this.categoryRepository = categoryRepository;
         this.transactionRepository = transactionRepository;
         this.categoryWithTransactionsDao = categoryWithTransactionsDao;
         this.categoryDao = categoryDao;
         this.transactionDao = transactionDao;
         this.helper = helper;
+        this.logger = logger;
     }
 
     /**
@@ -71,10 +79,10 @@ public class TrackingRepository {
     public void insertTransaction(@NonNull Transaction transaction, @NonNull Long categoryId) throws CategoryViolationException, TransactionViolationException {
         Category category = categoryDao.getById(categoryId);
         if (category == null) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_NOT_FOUND.getMessage());
         }
         if (!category.isSameType(transaction.getType())) {
-            throw new TransactionViolationException(MessageCli.TRANSACTION_TYPE_MISMATCH.getMessage());
+            throw new TransactionViolationException(TransactionMessages.TRANSACTION_TYPE_MISMATCH.getMessage());
         }
 
         transactionRepository.insert(transaction);
@@ -102,16 +110,16 @@ public class TrackingRepository {
      */
     public void insertRelationship(@NonNull Long transactionId, @NonNull Long categoryId) throws TransactionViolationException, CategoryViolationException {
         if (!transactionDao.exists(transactionId)) {
-            throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
+            throw new TransactionViolationException(TransactionMessages.TRANSACTION_NOT_FOUND.getMessage());
         }
         if (categoryId == null || !categoryDao.exists(categoryId)) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_NOT_FOUND.getMessage());
         }
 
         Category category = categoryDao.getById(categoryId);
         Transaction transaction = transactionDao.getById(transactionId);
         if (category == null || transaction == null || !category.isSameType(transaction.getType())) {
-            throw new TransactionViolationException(MessageCli.TRANSACTION_TYPE_MISMATCH.getMessage());
+            throw new TransactionViolationException(TransactionMessages.TRANSACTION_TYPE_MISMATCH.getMessage());
         }
 
         CategoryTransactionCrossRef crossRef = new CategoryTransactionCrossRef(categoryId, transactionId);
@@ -127,13 +135,13 @@ public class TrackingRepository {
      */
     public void deleteRelationship(@NonNull Long transactionId, @NonNull Long categoryId) throws TransactionViolationException, CategoryViolationException {
         if (!transactionDao.exists(transactionId)) {
-            throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
+            throw new TransactionViolationException(TransactionMessages.TRANSACTION_NOT_FOUND.getMessage());
         }
         if (categoryId == null || !categoryDao.exists(categoryId)) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_NOT_FOUND.getMessage());
         }
         if (categoryWithTransactionsDao.getCategoryIdsForTransaction(transactionId).size() <= 1) {
-            throw new TransactionViolationException(MessageCli.TRANSACTION_MIN_CATEGORY.getMessage());
+            throw new TransactionViolationException(TransactionMessages.TRANSACTION_MIN_CATEGORY.getMessage());
         }
         categoryWithTransactionsDao.deleteCrossRef(categoryId, transactionId);
     }
@@ -145,10 +153,35 @@ public class TrackingRepository {
      */
     public void deleteTransaction(@NonNull Long transactionId) throws TransactionViolationException {
         if (transactionId == null || !transactionDao.exists(transactionId)) {
-            throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
+            throw new TransactionViolationException(TransactionMessages.TRANSACTION_NOT_FOUND.getMessage());
         }
         categoryWithTransactionsDao.deleteCrossRefsForTransaction(transactionId);
         transactionRepository.delete(transactionId);
+    }
+
+    /**
+     * Deletes all transactions and category cross-references while retaining all categories.
+     */
+    public void deleteAllTransactions() {
+        categoryWithTransactionsDao.deleteAllCrossRefs();
+        transactionDao.deleteAll();
+    }
+
+    /**
+     * Permanently deletes all transactions and non-root categories.
+     */
+    public void deleteAllAppData() {
+        deleteAllTransactions();
+        List<Category> allCategories = categoryDao.getAll();
+        for (Category cat : allCategories) {
+            if (!helper.isRoot(cat)) {
+                try {
+                    categoryRepository.deleteCategory(cat);
+                } catch (CategoryViolationException e) {
+                    logger.log(Level.WARNING, ErrorMessages.CATEGORY_DELETION_WIPE_NOTICE.getMessage(e.getMessage()), e);
+                }
+            }
+        }
     }
 
     /**
@@ -159,10 +192,10 @@ public class TrackingRepository {
      */
     public void deleteCategory(@NonNull Long categoryId, boolean deleteTransactions) throws CategoryViolationException {
         if (categoryId == null || !categoryDao.exists(categoryId)) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_NOT_FOUND.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_NOT_FOUND.getMessage());
         }
         if (helper.isRoot(categoryId)) {
-            throw new CategoryViolationException(MessageCli.CATEGORY_ROOT_EDIT_DENIED.getMessage());
+            throw new CategoryViolationException(CategoryMessages.CATEGORY_ROOT_EDIT_DENIED.getMessage());
         }
 
         List<Long> transactionIds = categoryWithTransactionsDao.getTransactionIdsForCategory(categoryId);

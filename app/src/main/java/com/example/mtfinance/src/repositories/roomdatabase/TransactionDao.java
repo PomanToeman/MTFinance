@@ -49,5 +49,8 @@ public interface TransactionDao {
     @Query("DELETE FROM transactions WHERE transactionId = :id")
     void delete(Long id);
 
+    @Query("DELETE FROM transactions")
+    void deleteAll();
+
 
 }

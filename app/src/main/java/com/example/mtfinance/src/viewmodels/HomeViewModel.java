@@ -16,7 +16,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 
 /**
  * Will mainly hold all the main in memory data for the home screen specifically.
- * Methods will be implemented when needed when implementing JetPack Compose.
  */
 @HiltViewModel
 public class HomeViewModel extends ViewModel {
@@ -26,10 +25,7 @@ public class HomeViewModel extends ViewModel {
     private final SystemService systemService;
     private final Executor executor;
 
-    private final MutableLiveData<String> title = new MutableLiveData<>();
-    private final MutableLiveData<String> subtitle = new MutableLiveData<>();
-    private final MutableLiveData<String> description = new MutableLiveData<>();
-    private final MutableLiveData<CategoryViewModel> pinnedCategory = new MutableLiveData<>();
+    private final MutableLiveData<CategoryDashboardViewModel> pinnedCategory = new MutableLiveData<>();
 
     @Inject
     public HomeViewModel(CategoryService categoryService, TrackingService trackingService, SystemService systemService, Executor executor) {
@@ -37,12 +33,12 @@ public class HomeViewModel extends ViewModel {
         this.trackingService = trackingService;
         this.systemService = systemService;
         this.executor = executor;
-        CategoryViewModel categoryViewModel = new CategoryViewModel(categoryService, trackingService, systemService, executor);
-        categoryViewModel.setSelectedCategory(1L);
-        this.pinnedCategory.setValue(categoryViewModel);
+        CategoryDashboardViewModel dashboardViewModel = new CategoryDashboardViewModel(categoryService, trackingService, systemService, executor);
+        dashboardViewModel.setSelectedCategory(1L);
+        this.pinnedCategory.setValue(dashboardViewModel);
     }
 
-    public LiveData<CategoryViewModel> getPinnedCategory() {
+    public LiveData<CategoryDashboardViewModel> getPinnedCategory() {
         return pinnedCategory;
     }
 }

@@ -1,6 +1,10 @@
 package com.example.mtfinance.src.repositories;
 
+import com.example.mtfinance.src.messages.ErrorMessages;
+
 import java.util.concurrent.Executor;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -13,16 +17,19 @@ public class CategoryInitializer {
 
     private final CategoryTreeHelper categoryTreeHelper;
     private final Executor executor;
+    private final Logger logger;
 
     /**
-     * Constructs a CategoryInitializer with required CategoryTreeHelper and background Executor.
+     * Constructs a CategoryInitializer with required CategoryTreeHelper, background Executor, and Logger.
      * @param categoryTreeHelper helper managing category tree seeding
      * @param executor background executor for offloading Room database writes
+     * @param logger injected logger instance
      */
     @Inject
-    public CategoryInitializer(CategoryTreeHelper categoryTreeHelper, Executor executor) {
+    public CategoryInitializer(CategoryTreeHelper categoryTreeHelper, Executor executor, Logger logger) {
         this.categoryTreeHelper = categoryTreeHelper;
         this.executor = executor;
+        this.logger = logger;
         populateDefaultCategoriesAsync();
     }
 
@@ -33,7 +40,8 @@ public class CategoryInitializer {
         executor.execute(() -> {
             try {
                 categoryTreeHelper.populateDefaultCategories();
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                logger.log(Level.WARNING, ErrorMessages.DEFAULT_CATEGORY_INIT_NOTICE.getMessage(e.getMessage()), e);
             }
         });
     }

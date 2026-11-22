@@ -13,6 +13,7 @@ import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 
 import dagger.Module;
 import dagger.Provides;
@@ -60,8 +61,8 @@ public abstract class DatabaseModule {
 
     @Provides
     @Singleton
-    public static CategoryInitializer provideCategoryInitializer(CategoryTreeHelper categoryTreeHelper, Executor executor) {
-        return new CategoryInitializer(categoryTreeHelper, executor);
+    public static CategoryInitializer provideCategoryInitializer(CategoryTreeHelper categoryTreeHelper, Executor executor, Logger logger) {
+        return new CategoryInitializer(categoryTreeHelper, executor, logger);
     }
 
     @Provides
@@ -92,14 +93,15 @@ public abstract class DatabaseModule {
                                                        CategoryTransactionDao categoryWithTransactionsDao,
                                                        CategoryDao categoryDao,
                                                        TransactionDao transactionDao,
-                                                       CategoryTreeHelper categoryTreeHelper) {
-        return new TrackingRepository(categoryRepository, transactionRepository, categoryWithTransactionsDao, categoryDao, transactionDao, categoryTreeHelper);
+                                                       CategoryTreeHelper categoryTreeHelper,
+                                                       Logger logger) {
+        return new TrackingRepository(categoryRepository, transactionRepository, categoryWithTransactionsDao, categoryDao, transactionDao, categoryTreeHelper, logger);
     }
 
     @Provides
     @Singleton
-    static SystemService provideSystemService(SystemPreferencesDao systemPreferencesDao, Executor executor) {
-        return new SystemService(systemPreferencesDao, executor);
+    static SystemService provideSystemService(SystemPreferencesDao systemPreferencesDao, Executor executor, Logger logger) {
+        return new SystemService(systemPreferencesDao, executor, logger);
     }
 
     @Provides

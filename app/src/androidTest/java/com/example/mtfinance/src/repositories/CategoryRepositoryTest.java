@@ -52,7 +52,7 @@ public class CategoryRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         categoryDao = database.categoryDao();
         CategoryTreeHelper helper = new CategoryTreeHelper(categoryDao);
-        CategoryInitializer initializer = new CategoryInitializer(helper, java.util.concurrent.Executors.newSingleThreadExecutor());
+        CategoryInitializer initializer = new CategoryInitializer(helper, java.util.concurrent.Executors.newSingleThreadExecutor(), java.util.logging.Logger.getLogger("TestLogger"));
         repository = new CategoryRepository(database, categoryDao, helper, initializer);
         categoryService = new CategoryService(categoryDao, helper);
         initializer.populateDefaultCategoriesSync();

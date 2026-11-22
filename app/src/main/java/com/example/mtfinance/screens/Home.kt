@@ -27,7 +27,7 @@ fun HomeScreen(NavHostController: NavHostController, homeViewModel: HomeViewMode
     ) {
         MiniHeader("General Category")
         if (pinnedCategoryViewModel != null) {
-            CategoryStackedBar(categoryViewModel = pinnedCategoryViewModel!!)
+            CategoryStackedBar(categoryDashboardViewModel = pinnedCategoryViewModel!!)
         }
         Text("Home Screen")
         Button(

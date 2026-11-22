@@ -5,6 +5,8 @@
  */
 package com.example.mtfinance.screens.lists
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,8 +15,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,21 +33,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.mtfinance.screens.displayAmount
 import com.example.mtfinance.src.DateFormat
-import com.example.mtfinance.src.MessageCli
+import com.example.mtfinance.src.messages.CategoryMessages
+import com.example.mtfinance.src.trackingengine.TrackingUtlis
 import com.example.mtfinance.src.trackingengine.Category
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions
 import com.example.mtfinance.src.trackingengine.Transaction
 import com.example.mtfinance.src.viewmodels.SettingsViewModel
-import java.math.RoundingMode
 
 /**
- * Displays essential information of a category in a compact box. Can be expanded to show description and action buttons.
+ * Displays essential information of a category in a clean compact card style.
  */
 @Composable
 fun CategoryListItem(
@@ -60,6 +68,7 @@ fun CategoryListItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .animateContentSize()
                 .clickable { expanded.value = !expanded.value }
                 .background(color = backgroundColor, shape = RectangleShape)
         ) {
@@ -88,7 +97,7 @@ fun CategoryListItem(
 
                     if (expanded.value) {
                         Text(
-                            MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.description),
+                            CategoryMessages.CATEGORY_DESCRIPTION.getMessage(categoryItem.description),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             minLines = 1,
                             maxLines = 3,
@@ -173,7 +182,7 @@ fun CategoryDetails(categoryItem: CategoryWithTransactions) {
         horizontalAlignment = Alignment.Start
     ) {
         Text(
-            MessageCli.CATEGORY_DESCRIPTION.getMessage(categoryItem.category.description),
+            CategoryMessages.CATEGORY_DESCRIPTION.getMessage(categoryItem.category.description),
             color = MaterialTheme.colorScheme.primary,
             minLines = 1,
             maxLines = 10,
@@ -201,16 +210,13 @@ fun TransactionListItem(
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val currencySymbol = systemPreferences?.currencySymbol ?: "$"
-    val dateFormatter = try {
-        DateFormat.valueOf(systemPreferences?.dateFormat ?: "DD_MM_YYYY").toFormatter()
-    } catch (_: Exception) {
-        DateFormat.DD_MM_YYYY.toFormatter()
-    }
+    val dateFormatter = DateFormat.fromStringOrDefault(systemPreferences?.dateFormat, DateFormat.DD_MM_YYYY).toFormatter()
 
     val expandedState = remember { mutableStateOf(expanded) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .animateContentSize()
             .clickable { expandedState.value = !expandedState.value }
             .background(color = backgroundColor, shape = RectangleShape),
         content = {
@@ -267,23 +273,167 @@ fun TransactionListItem(
 }
 
 /**
- * Displays all the details of a given transaction.
+ * Displays all the details of a given transaction inside a high-contrast outlined Card (for Transaction Dashboard).
  */
 @Composable
 fun TransactionDetails(
     transaction: Transaction,
+    categories: List<Category>? = null,
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val currencySymbol = systemPreferences?.currencySymbol ?: "$"
-    val dateFormatter = try {
-        DateFormat.valueOf(systemPreferences?.dateFormat ?: "DD_MM_YYYY").toFormatter()
-    } catch (_: Exception) {
-        DateFormat.DD_MM_YYYY.toFormatter()
-    }
+    val dateFormatter = DateFormat.fromStringOrDefault(systemPreferences?.dateFormat, DateFormat.DD_MM_YYYY).toFormatter()
 
-    Text(transaction.name)
-    Text(transaction.description)
-    Text(displayAmount(transaction.amount, currencySymbol))
-    Text(transaction.date.format(dateFormatter).toString())
+    OutlinedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Name:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(transaction.name, color = MaterialTheme.colorScheme.onSurface)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Amount:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(displayAmount(transaction.amount, currencySymbol), color = MaterialTheme.colorScheme.onSurface)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Type:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(transaction.type.toString(), color = MaterialTheme.colorScheme.onSurface)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Date:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(transaction.date.format(dateFormatter).toString(), color = MaterialTheme.colorScheme.onSurface)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Categories:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = if (categories.isNullOrEmpty()) "Root / General" else categories.joinToString { it.name },
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text("Description:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = transaction.description.ifBlank { "No description" },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Displays a compact transaction listing item with name, amount, date, and an Edit button (omitting categories to avoid clutter).
+ */
+@Composable
+fun TransactionCompactListItem(
+    transaction: Transaction,
+    onEdit: (() -> Unit)? = null,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
+) {
+    val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
+    val currencySymbol = systemPreferences?.currencySymbol ?: "$"
+    val dateFormatter = DateFormat.fromStringOrDefault(systemPreferences?.dateFormat, DateFormat.DD_MM_YYYY).toFormatter()
+
+    OutlinedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(transaction.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text("Date: ${transaction.date.format(dateFormatter)} | Type: ${transaction.type}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(displayAmount(transaction.amount, currencySymbol), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                if (onEdit != null) {
+                    OutlinedButton(onClick = onEdit, modifier = Modifier.height(32.dp)) {
+                        Text("Edit", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Displays a compact category card with essential category details.
+ */
+@Composable
+fun CategoryCompactCard(
+    category: Category,
+    onClick: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
+) {
+    val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
+    val currencySymbol = systemPreferences?.currencySymbol ?: "$"
+
+    OutlinedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onClick?.invoke() },
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(category.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text("Type: ${category.type} | Budget: ${displayAmount(category.monthlyBudget, currencySymbol)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (onEdit != null) {
+                OutlinedButton(onClick = onEdit, modifier = Modifier.height(32.dp)) {
+                    Text("Edit", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
 }

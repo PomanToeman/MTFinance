@@ -2,7 +2,7 @@ package com.example.mtfinance.src.repositories;
 
 import androidx.annotation.NonNull;
 
-import com.example.mtfinance.src.MessageCli;
+import com.example.mtfinance.src.messages.TransactionMessages;
 import com.example.mtfinance.src.repositories.roomdatabase.TransactionDao;
 import com.example.mtfinance.src.trackingengine.Transaction;
 import com.example.mtfinance.src.trackingengine.TransactionViolationException;
@@ -33,7 +33,7 @@ public class TransactionRepository {
     public Long insert(@NonNull Transaction transaction) {
         Long result = transactionDao.insert(transaction);
         if (result == null || result <= 0) {
-            throw new TransactionViolationException(MessageCli.TRANSACTION_SAVE_FAILED.getMessage("Database insert failed"));
+            throw new TransactionViolationException(TransactionMessages.TRANSACTION_SAVE_FAILED.getMessage("Database insert failed"));
         }
         return result;
     }
@@ -45,7 +45,7 @@ public class TransactionRepository {
      */
     public void update(@NonNull Transaction transaction) {
         if (transaction.getTransactionId() == null || !transactionDao.exists(transaction.getTransactionId())) {
-            throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
+            throw new TransactionViolationException(TransactionMessages.TRANSACTION_NOT_FOUND.getMessage());
         }
         transactionDao.update(transaction);
     }
@@ -57,7 +57,7 @@ public class TransactionRepository {
      */
     public void delete(@NonNull Long id) {
         if (id == null || !transactionDao.exists(id)) {
-            throw new TransactionViolationException(MessageCli.TRANSACTION_NOT_FOUND.getMessage());
+            throw new TransactionViolationException(TransactionMessages.TRANSACTION_NOT_FOUND.getMessage());
         }
         transactionDao.delete(id);
     }

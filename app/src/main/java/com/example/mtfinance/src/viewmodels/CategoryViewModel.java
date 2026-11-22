@@ -12,14 +12,11 @@ import com.example.mtfinance.src.repositories.CategoryService;
 import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingService;
 import com.example.mtfinance.src.trackingengine.CategoryWithTransactions;
-import com.example.mtfinance.src.trackingengine.SystemPreferences;
 import com.example.mtfinance.src.trackingengine.TrackingType;
 import com.example.mtfinance.src.viewmodels.utlis.SearchCriteria;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
@@ -39,14 +36,6 @@ public class CategoryViewModel extends ViewModel {
     @NonNull
     private final MutableLiveData<SearchCriteria> searchCriteria = new MutableLiveData<>(new SearchCriteria("", null));
     private final LiveData<List<CategoryWithTransactions>> filteredCategories;
-    private final MutableLiveData<CategoryWithTransactions> selectedCategory = new MutableLiveData<>();
-    private final MutableLiveData<BigDecimal> totalIncludingSub = new MutableLiveData<>(BigDecimal.ZERO);
-    private final MutableLiveData<BigDecimal> totalExcludingSub = new MutableLiveData<>(BigDecimal.ZERO);
-    private final MutableLiveData<BigDecimal> remaining = new MutableLiveData<>(BigDecimal.ZERO);
-    private final MutableLiveData<Map<CategoryWithTransactions, BigDecimal>> childrenTotals = new MutableLiveData<>();
-    private final MutableLiveData<LocalDate> startDate = new MutableLiveData<>(LocalDate.now().withDayOfMonth(1));
-    private final MutableLiveData<LocalDate> endDate = new MutableLiveData<>(LocalDate.now());
-    private final MutableLiveData<Integer> monthOffset = new MutableLiveData<>(0);
     private final LiveData<Long> updateTrigger;
 
     @Inject
@@ -64,25 +53,6 @@ public class CategoryViewModel extends ViewModel {
             return trackingService.searchCategoriesWithType(criteria.getTrimmedQuery(), criteria.getTypeFilter());
         });
         this.updateTrigger = Transformations.map(filteredCategories, categories -> System.currentTimeMillis());
-
-        if (systemService != null && systemService.getPreferencesLive() != null) {
-            systemService.getPreferencesLive().observeForever(prefs -> updatePayPeriodDates(prefs, getMonthOffsetValue()));
-        }
-    }
-
-    public void updatePayPeriodDates(SystemPreferences prefs, int offset) {
-        int startDay = prefs != null ? prefs.getStartDayOfMonth() : 1;
-        boolean includeProvisional = prefs == null || prefs.isIncludeProvisional();
-        LocalDate today = LocalDate.now();
-
-        LocalDate[] dates = calculatePayPeriodDates(startDay, offset, includeProvisional, today);
-        updateLiveData(startDate, dates[0]);
-        updateLiveData(endDate, dates[1]);
-
-        CategoryWithTransactions selected = selectedCategory.getValue();
-        if (selected != null) {
-            executor.execute(() -> loadTotals(selected));
-        }
     }
 
     public static LocalDate[] calculatePayPeriodDates(int startDay, int monthOffset, boolean includeProvisional, LocalDate today) {
@@ -111,71 +81,6 @@ public class CategoryViewModel extends ViewModel {
         }
 
         return new LocalDate[]{periodStart, periodEnd};
-    }
-
-    public int getMonthOffsetValue() {
-        Integer offset = monthOffset.getValue();
-        return offset != null ? offset : 0;
-    }
-
-    public LiveData<Integer> getMonthOffset() {
-        return monthOffset;
-    }
-
-    public void navigatePreviousMonth() {
-        int current = getMonthOffsetValue();
-        int newOffset = current - 1;
-        monthOffset.setValue(newOffset);
-        if (executor != null) {
-            executor.execute(() -> {
-                SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-                updatePayPeriodDates(prefs, newOffset);
-            });
-        } else {
-            SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-            updatePayPeriodDates(prefs, newOffset);
-        }
-    }
-
-    public void navigateNextMonth() {
-        int current = getMonthOffsetValue();
-        int newOffset = current + 1;
-        monthOffset.setValue(newOffset);
-        if (executor != null) {
-            executor.execute(() -> {
-                SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-                updatePayPeriodDates(prefs, newOffset);
-            });
-        } else {
-            SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-            updatePayPeriodDates(prefs, newOffset);
-        }
-    }
-
-    public void resetToCurrentMonth() {
-        monthOffset.setValue(0);
-        if (executor != null) {
-            executor.execute(() -> {
-                SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-                updatePayPeriodDates(prefs, 0);
-            });
-        } else {
-            SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-            updatePayPeriodDates(prefs, 0);
-        }
-    }
-
-    public void jumpToMonthOffset(int targetOffset) {
-        monthOffset.setValue(targetOffset);
-        if (executor != null) {
-            executor.execute(() -> {
-                SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-                updatePayPeriodDates(prefs, targetOffset);
-            });
-        } else {
-            SystemPreferences prefs = systemService != null ? systemService.getPreferencesSync() : null;
-            updatePayPeriodDates(prefs, targetOffset);
-        }
     }
 
     public LiveData<List<CategoryWithTransactions>> getAllCategories() {
@@ -223,33 +128,8 @@ public class CategoryViewModel extends ViewModel {
         return filteredCategories;
     }
 
-    public void setSelectedCategory(Long categoryId) {
-        executor.execute(() -> {
-            CategoryWithTransactions selected = trackingService.getCategoryWithTransactionsByCategoryId(categoryId);
-            if (selected != null) {
-                selected.category = categoryService.getCategoryByIdRestored(categoryId);
-                updateLiveData(selectedCategory, selected);
-                loadTotals(selected);
-            }
-        });
-    }
-
-    public void resetSelectedCategory() {
-        selectedCategory.setValue(null);
-        totalIncludingSub.setValue(BigDecimal.ZERO);
-        totalExcludingSub.setValue(BigDecimal.ZERO);
-        remaining.setValue(BigDecimal.ZERO);
-        childrenTotals.setValue(null);
-    }
-
-    private void loadTotals(CategoryWithTransactions selectedCategory) {
-        if (selectedCategory != null) {
-            BigDecimal selectedTotal = trackingService.getTotalInCategory(selectedCategory.category, true, startDate.getValue(), endDate.getValue());
-            updateLiveData(totalIncludingSub, selectedTotal);
-            updateLiveData(remaining, selectedCategory.category.getMonthlyBudget().subtract(selectedTotal));
-            updateLiveData(totalExcludingSub, trackingService.getTotalInCategory(selectedCategory.category, false, startDate.getValue(), endDate.getValue()));
-            updateLiveData(childrenTotals, trackingService.getChildrenTotals(selectedCategory, startDate.getValue(), endDate.getValue()));
-        }
+    public LiveData<Long> getUpdateTrigger() {
+        return updateTrigger;
     }
 
     private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
@@ -262,33 +142,5 @@ public class CategoryViewModel extends ViewModel {
         } catch (Exception e) {
             liveData.postValue(value);
         }
-    }
-
-    public LiveData<CategoryWithTransactions> getSelectedCategory() {
-        return selectedCategory;
-    }
-
-    public LiveData<Long> getUpdateTrigger() {
-        return updateTrigger;
-    }
-
-    public LiveData<BigDecimal> getTotalIncludingSub() {
-        return totalIncludingSub;
-    }
-    public LiveData<BigDecimal> getRemaining() {
-        return remaining;
-    }
-    public LiveData<Map<CategoryWithTransactions, BigDecimal>> getChildrenTotals() {
-        return childrenTotals;
-    }
-
-    public LiveData<BigDecimal> getTotalExcludingSub() {
-        return totalExcludingSub;
-    }
-    public LiveData<LocalDate> getStartDate() {
-        return startDate;
-    }
-    public LiveData<LocalDate> getEndDate() {
-        return endDate;
     }
 }

@@ -46,6 +46,9 @@ public class TransactionImportFormViewModelTest {
     @Mock
     private ContentResolver contentResolver;
 
+    @Mock
+    private java.util.logging.Logger logger;
+
     private TransactionImportFormViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
@@ -53,7 +56,7 @@ public class TransactionImportFormViewModelTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
         when(application.getContentResolver()).thenReturn(contentResolver);
-        viewModel = new TransactionImportFormViewModel(categoryService, trackingService, transactionService, trackingWriteRepository, synchronousExecutor, application);
+        viewModel = new TransactionImportFormViewModel(categoryService, trackingService, transactionService, trackingWriteRepository, synchronousExecutor, application, logger);
         viewModel.getFieldErrors().observeForever(m -> {});
     }
 

@@ -45,10 +45,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.screens.forms.SelectForm
+import com.example.mtfinance.screens.forms.SelectFormNonEditable
+import com.example.mtfinance.screens.theme.SaveStatusColor
 import com.example.mtfinance.screens.theme.ThemeMode
+import com.example.mtfinance.screens.theme.getSaveButtonColors
+import com.example.mtfinance.screens.theme.getSaveStatusThemeColor
 import com.example.mtfinance.screens.theme.ThemeState
 import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
+import com.example.mtfinance.src.viewmodels.SettingsSaveState
 import com.example.mtfinance.src.viewmodels.SettingsViewModel
 
 /**
@@ -60,7 +66,7 @@ fun SettingsScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
-    val changesMade by settingsViewModel.changesMade.observeAsState(false)
+    val saveState by settingsViewModel.saveState.observeAsState(SettingsSaveState.UNCHANGED)
     val isLoading by settingsViewModel.isLoading.observeAsState(false)
     val genericErrorMessage by settingsViewModel.genericErrorMessage.observeAsState("")
     val successMessage by settingsViewModel.successMessage.observeAsState("")
@@ -70,19 +76,16 @@ fun SettingsScreen(
     val provDateFormat by settingsViewModel.provisionalDateFormat.observeAsState(DateFormat.DD_MM_YYYY)
     val provCurrencyFormat by settingsViewModel.provisionalCurrencyFormat.observeAsState(CurrencyFormat.NZD)
     val provStartDayInput by settingsViewModel.provisionalStartDayOfMonthInput.observeAsState("1")
+    val provPageSizeInput by settingsViewModel.provisionalPageSizeInput.observeAsState("10")
     val provIncludeProvisional by settingsViewModel.provisionalIncludeProvisional.observeAsState(true)
 
     var deleteConfirmDialog by remember { mutableStateOf(false) }
-    var currencyMenu by remember { mutableStateOf(false) }
-    var dateFormatMenu by remember { mutableStateOf(false) }
+    var deleteTransactionsDialog by remember { mutableStateOf(false) }
 
     // Sync Room persisted theme to Compose ThemeState
     LaunchedEffect(systemPreferences) {
         systemPreferences?.let { prefs ->
-            try {
-                ThemeState.currentThemeMode = ThemeMode.valueOf(prefs.themeMode)
-            } catch (_: Exception) {
-            }
+            ThemeState.currentThemeMode = ThemeMode.fromNameOrDefault(prefs.themeMode, ThemeMode.SYSTEM)
         }
     }
 
@@ -101,16 +104,16 @@ fun SettingsScreen(
         Header("Settings & Configurations")
 
         // Top Provisional Warning Banner
-        if (changesMade) {
+        if (saveState == SettingsSaveState.PROVISIONAL) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(2.dp, Color(0xFFFF9800), RectangleShape),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+                    .border(2.dp, getSaveStatusThemeColor(SaveStatusColor.ORANGE), RectangleShape),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
             ) {
                 Text(
                     text = "Provisional changes active — please save changes before exiting.",
-                    color = Color(0xFFE65100),
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(12.dp)
                 )
@@ -121,7 +124,7 @@ fun SettingsScreen(
             Text(text = genericErrorMessage, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
         }
         if (successMessage.isNotBlank()) {
-            Text(text = successMessage, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+            Text(text = successMessage, color = getSaveStatusThemeColor(SaveStatusColor.GREEN), fontWeight = FontWeight.Bold)
         }
 
         // 1. Theme Configuration Card
@@ -204,54 +207,28 @@ fun SettingsScreen(
                 )
 
                 // Currency Selector
-                TextField(
-                    label = { Text("Currency Format") },
-                    value = provCurrencyFormat.getDisplayName(),
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = {
-                        IconButton(onClick = { currencyMenu = !currencyMenu }) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "Currency List")
+                SelectFormNonEditable(
+                    label = "Currency Format",
+                    options = CurrencyFormat.entries.map { it.getDisplayName() },
+                    selectedOption = provCurrencyFormat.getDisplayName(),
+                    onOptionSelected = { selectedName ->
+                        val matched = CurrencyFormat.entries.firstOrNull { it.getDisplayName() == selectedName }
+                        if (matched != null) {
+                            settingsViewModel.setProvisionalCurrencyFormat(matched)
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (currencyMenu) {
-                    CurrencyFormat.entries.forEach { cur ->
-                        DropdownMenuItem(
-                            text = { Text(cur.getDisplayName()) },
-                            onClick = {
-                                settingsViewModel.setProvisionalCurrencyFormat(cur)
-                                currencyMenu = false
-                            }
-                        )
                     }
-                }
+                )
 
                 // Date Format Selector (Displays pattern string instead of enum name)
-                TextField(
-                    label = { Text("Date Display Format") },
-                    value = provDateFormat.getString(),
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = {
-                        IconButton(onClick = { dateFormatMenu = !dateFormatMenu }) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "Date Format List")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (dateFormatMenu) {
-                    DateFormat.entries.forEach { fmt ->
-                        DropdownMenuItem(
-                            text = { Text(fmt.getString()) },
-                            onClick = {
-                                settingsViewModel.setProvisionalDateFormat(fmt)
-                                dateFormatMenu = false
-                            }
-                        )
+                SelectFormNonEditable(
+                    label = "Date Display Format",
+                    options = DateFormat.entries.map { it.getString() },
+                    selectedOption = provDateFormat.getString(),
+                    onOptionSelected = { selectedPattern ->
+                        val matched = DateFormat.fromStringOrDefault(selectedPattern, DateFormat.DD_MM_YYYY)
+                        settingsViewModel.setProvisionalDateFormat(matched)
                     }
-                }
+                )
             }
         }
 
@@ -286,6 +263,22 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                val pageSizeError = fieldErrors?.get(SettingsViewModel.SystemPreferenceErrorFields.PAGE_SIZE)
+                val isPageSizeError = !pageSizeError.isNullOrBlank()
+
+                TextField(
+                    label = { Text("Page Size (1-100)") },
+                    value = provPageSizeInput,
+                    onValueChange = { input -> settingsViewModel.setProvisionalPageSize(input) },
+                    isError = isPageSizeError,
+                    supportingText = {
+                        if (isPageSizeError && pageSizeError != null) {
+                            Text(text = pageSizeError, color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -306,22 +299,36 @@ fun SettingsScreen(
             }
         }
 
-        // Action Buttons: Save Changes & Reset to Defaults
+        // Action Buttons: Save Changes, Discard Changes & Restore Defaults
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Button(
                 onClick = { settingsViewModel.saveChanges() },
-                enabled = changesMade && !settingsViewModel.hasFieldErrors(),
-                modifier = Modifier.weight(1f)
+                enabled = saveState == SettingsSaveState.PROVISIONAL && !settingsViewModel.hasFieldErrors(),
+                modifier = Modifier.weight(1f),
+                colors = getSaveButtonColors()
             ) {
                 Text("Save Changes")
             }
 
             OutlinedButton(
-                onClick = { settingsViewModel.resetToDefaults() },
+                onClick = { settingsViewModel.discardProvisionalChanges() },
+                enabled = saveState == SettingsSaveState.PROVISIONAL || saveState == SettingsSaveState.ERROR,
                 modifier = Modifier.weight(1f)
+            ) {
+                Text("Discard Changes")
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start
+        ) {
+            OutlinedButton(
+                onClick = { settingsViewModel.resetToDefaults() },
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Restore Defaults")
             }
@@ -336,12 +343,20 @@ fun SettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Danger Zone", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                Text("Permanently wipe all transaction and category records.", style = MaterialTheme.typography.bodySmall)
+                Text("Permanently wipe records or delete all transactions.", style = MaterialTheme.typography.bodySmall)
                 Button(
                     onClick = { deleteConfirmDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Delete All App Data")
+                }
+                Button(
+                    onClick = { deleteTransactionsDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Delete All Transactions (Retain Categories)")
                 }
             }
         }
@@ -349,9 +364,24 @@ fun SettingsScreen(
         if (deleteConfirmDialog) {
             DeleteConfirmationDialog(
                 onDismiss = { deleteConfirmDialog = false },
-                onConfirm = { deleteConfirmDialog = false },
+                onConfirm = {
+                    deleteConfirmDialog = false
+                    settingsViewModel.deleteAllAppData()
+                },
                 onCancel = { deleteConfirmDialog = false },
                 message = "Are you sure you want to permanently delete ALL categories and transactions? This action cannot be undone."
+            )
+        }
+
+        if (deleteTransactionsDialog) {
+            DeleteConfirmationDialog(
+                onDismiss = { deleteTransactionsDialog = false },
+                onConfirm = {
+                    deleteTransactionsDialog = false
+                    settingsViewModel.deleteTransactionsOnly()
+                },
+                onCancel = { deleteTransactionsDialog = false },
+                message = "Are you sure you want to permanently delete ALL transactions while retaining categories? This action cannot be undone."
             )
         }
 

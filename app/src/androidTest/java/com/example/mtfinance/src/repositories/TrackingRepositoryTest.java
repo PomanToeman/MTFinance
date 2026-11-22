@@ -60,7 +60,7 @@ public class TrackingRepositoryTest {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         CategoryTreeHelper helper = new CategoryTreeHelper(database.categoryDao());
-        CategoryInitializer initializer = new CategoryInitializer(helper, java.util.concurrent.Executors.newSingleThreadExecutor());
+        CategoryInitializer initializer = new CategoryInitializer(helper, java.util.concurrent.Executors.newSingleThreadExecutor(), java.util.logging.Logger.getLogger("TestLogger"));
         initializer.populateDefaultCategoriesSync();
         categoryService = new CategoryService(database.categoryDao(), helper);
         transactionService = new TransactionService(database.transactionDao());
@@ -68,7 +68,7 @@ public class TrackingRepositoryTest {
 
         categoryRepository = new CategoryRepository(database, database.categoryDao(), helper, initializer);
         transactionRepository = new TransactionRepository(database.transactionDao());
-        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao(), database.categoryDao(), database.transactionDao(), helper);
+        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao(), database.categoryDao(), database.transactionDao(), helper, java.util.logging.Logger.getLogger("TestLogger"));
     }
 
     @After
@@ -672,6 +672,34 @@ public class TrackingRepositoryTest {
         Transaction trans = new Transaction.Builder("ValidTrans", BigDecimal.TEN).build();
         trackingRepository.insertTransaction(trans, cat.getCategoryId());
         trackingRepository.deleteRelationship(trans.getTransactionId(), 99999L);
+    }
+
+    @Test
+    public void deleteAllTransactions_existingTransactionsAndCategories_deletesTransactionsRetainsCategories() {
+        Category customCat = new Category("CustomCat", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        categoryRepository.insert(customCat);
+        Transaction trans = new Transaction.Builder("TestTrans", BigDecimal.TEN).build();
+        trackingRepository.insertTransaction(trans, customCat.getCategoryId());
+
+        assertFalse(database.transactionDao().getAll().isEmpty());
+
+        trackingRepository.deleteAllTransactions();
+
+        assertTrue(database.transactionDao().getAll().isEmpty());
+        assertTrue(database.categoryDao().exists(customCat.getCategoryId()));
+    }
+
+    @Test
+    public void deleteAllAppData_existingTransactionsAndCustomCategories_wipesTransactionsAndNonRootCategories() {
+        Category customCat = new Category("CustomCatWipe", "", BUDGET_HUNDRED, TrackingType.EXPENSE);
+        categoryRepository.insert(customCat);
+        Transaction trans = new Transaction.Builder("TestTransWipe", BigDecimal.TEN).build();
+        trackingRepository.insertTransaction(trans, customCat.getCategoryId());
+
+        trackingRepository.deleteAllAppData();
+
+        assertTrue(database.transactionDao().getAll().isEmpty());
+        assertFalse(database.categoryDao().exists(customCat.getCategoryId()));
     }
 
     private <T> T getValue(LiveData<T> liveData) throws InterruptedException {

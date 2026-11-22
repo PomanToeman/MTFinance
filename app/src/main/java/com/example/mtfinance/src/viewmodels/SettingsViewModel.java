@@ -1,41 +1,52 @@
 package com.example.mtfinance.src.viewmodels;
 
-import android.os.Looper;
-
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.DateFormat;
+import com.example.mtfinance.src.messages.ErrorMessages;
 import com.example.mtfinance.src.repositories.SystemRepository;
 import com.example.mtfinance.src.repositories.SystemService;
+import com.example.mtfinance.src.repositories.TrackingRepository;
+import com.example.mtfinance.src.trackingengine.DefaultSettings;
 import com.example.mtfinance.src.trackingengine.SettingsPreferenceViolationException;
 import com.example.mtfinance.src.trackingengine.SystemPreferences;
+
+import com.example.mtfinance.src.viewmodels.interfaces.SaveableFormViewModel;
 
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
+/**
+ * Modernized Form ViewModel managing persistent system configurations and provisional settings state.
+ */
 @HiltViewModel
-public class SettingsViewModel extends ViewModel {
+public class SettingsViewModel extends ViewModel implements SaveableFormViewModel<SettingsViewModel.SystemPreferenceErrorFields> {
 
     public enum SystemPreferenceErrorFields {
-        THEME_MODE, DATE_FORMAT, CURRENCY_FORMAT, START_DAY_OF_MONTH
+        THEME_MODE, DATE_FORMAT, CURRENCY_FORMAT, START_DAY_OF_MONTH, PAGE_SIZE
     }
 
     private final SystemService systemService;
     private final SystemRepository systemRepository;
+    private final TrackingRepository trackingRepository;
     private final Executor executor;
+    private final Logger logger;
+    private SystemPreferences persistedPreferences = null;
 
     private final MutableLiveData<Map<SystemPreferenceErrorFields, String>> fieldErrors = new MutableLiveData<>(new EnumMap<>(SystemPreferenceErrorFields.class));
-    private final MutableLiveData<Boolean> changesMade = new MutableLiveData<>(false);
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> saveStatusColor = new MutableLiveData<>("GRAY");
+    private final MutableLiveData<SettingsSaveState> saveState = new MutableLiveData<>(SettingsSaveState.UNCHANGED);
     private final MutableLiveData<String> genericErrorMessage = new MutableLiveData<>("");
     private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
 
@@ -43,15 +54,48 @@ public class SettingsViewModel extends ViewModel {
     private final MutableLiveData<DateFormat> provisionalDateFormat = new MutableLiveData<>(DateFormat.DD_MM_YYYY);
     private final MutableLiveData<CurrencyFormat> provisionalCurrencyFormat = new MutableLiveData<>(CurrencyFormat.NZD);
     private final MutableLiveData<String> provisionalStartDayOfMonthInput = new MutableLiveData<>("1");
+    private final MutableLiveData<String> provisionalPageSizeInput = new MutableLiveData<>("10");
     private final MutableLiveData<Boolean> provisionalIncludeProvisional = new MutableLiveData<>(true);
 
     @Inject
-    public SettingsViewModel(SystemService systemService, SystemRepository systemRepository, Executor executor) {
+    public SettingsViewModel(SystemService systemService, SystemRepository systemRepository, TrackingRepository trackingRepository, Executor executor, Logger logger) {
         this.systemService = systemService;
         this.systemRepository = systemRepository;
+        this.trackingRepository = trackingRepository;
         this.executor = executor;
+        this.logger = logger;
         resetFieldErrors();
         initializeFromPersisted();
+    }
+
+    public void deleteAllAppData() {
+        executor.execute(() -> {
+            try {
+                updateLiveData(isLoading, true);
+                trackingRepository.deleteAllAppData();
+                updateLiveData(successMessage, "All app data deleted successfully.");
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, ErrorMessages.FAILED_DELETE_APP_DATA.getMessage(e.getMessage()), e);
+                updateLiveData(genericErrorMessage, ErrorMessages.FAILED_DELETE_APP_DATA.getMessage(e.getMessage()));
+            } finally {
+                updateLiveData(isLoading, false);
+            }
+        });
+    }
+
+    public void deleteTransactionsOnly() {
+        executor.execute(() -> {
+            try {
+                updateLiveData(isLoading, true);
+                trackingRepository.deleteAllTransactions();
+                updateLiveData(successMessage, "All transactions deleted successfully (categories retained).");
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, ErrorMessages.FAILED_DELETE_TRANSACTIONS.getMessage(e.getMessage()), e);
+                updateLiveData(genericErrorMessage, ErrorMessages.FAILED_DELETE_TRANSACTIONS.getMessage(e.getMessage()));
+            } finally {
+                updateLiveData(isLoading, false);
+            }
+        });
     }
 
     public void initializeFromPersisted() {
@@ -65,43 +109,79 @@ public class SettingsViewModel extends ViewModel {
     private void initializeFromPersistedSync() {
         if (systemService != null) {
             SystemPreferences prefs = systemService.getPreferencesSync();
+            this.persistedPreferences = prefs;
             if (prefs != null) {
-                updateLiveData(provisionalThemeMode, prefs.getThemeMode());
-                updateLiveData(provisionalDateFormat, DateFormat.valueOf(prefs.getDateFormat()));
-                updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
-                updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
-                updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
+                if (saveState.getValue() == SettingsSaveState.UNCHANGED || saveState.getValue() == null) {
+                    updateLiveData(provisionalThemeMode, prefs.getThemeMode());
+                    updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
+                    updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
+                    updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
+                    updateLiveData(provisionalPageSizeInput, String.valueOf(prefs.getPageSize()));
+                    updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
+                }
             }
+        } else {
+            this.persistedPreferences = null;
         }
-        updateLiveData(changesMade, false);
-        updateLiveData(saveStatusColor, "GRAY");
-        resetFieldErrors();
+        if (saveState.getValue() == SettingsSaveState.UNCHANGED || saveState.getValue() == null) {
+            updateLiveData(saveStatusColor, "GRAY");
+            updateLiveData(saveState, SettingsSaveState.UNCHANGED);
+            resetFieldErrors();
+        }
     }
 
     public void resetFieldErrors() {
-        Map<SystemPreferenceErrorFields, String> errors = new EnumMap<>(SystemPreferenceErrorFields.class);
-        for (SystemPreferenceErrorFields field : SystemPreferenceErrorFields.values()) {
-            errors.put(field, "");
-        }
-        updateLiveData(fieldErrors, errors);
+        updateLiveData(fieldErrors, new EnumMap<>(SystemPreferenceErrorFields.class));
         updateLiveData(genericErrorMessage, "");
+    }
+
+    @Override
+    public void resetFieldError(SystemPreferenceErrorFields field) {
+        Map<SystemPreferenceErrorFields, String> currentMap = fieldErrors.getValue();
+        if (currentMap != null && currentMap.containsKey(field)) {
+            Map<SystemPreferenceErrorFields, String> newMap = new EnumMap<>(currentMap);
+            newMap.remove(field);
+            updateLiveData(fieldErrors, newMap);
+        }
+    }
+
+    @Override
+    public void resetMessages() {
+        updateLiveData(genericErrorMessage, "");
+        updateLiveData(successMessage, "");
+    }
+
+    @Override
+    public void save() {
+        saveChanges();
+    }
+
+    @Override
+    public void clear() {
+        resetToDefaults();
+    }
+
+    public LiveData<String> getErrorMessage() {
+        return genericErrorMessage;
     }
 
     public boolean hasFieldErrors() {
         Map<SystemPreferenceErrorFields, String> current = fieldErrors.getValue();
-        if (current == null || current.isEmpty()) return false;
-        for (String err : current.values()) {
-            if (err != null && !err.trim().isEmpty()) {
-                return true;
-            }
-        }
-        return false;
+        return current != null && !current.isEmpty();
+    }
+
+    public boolean hasFieldErrors(Map<SystemPreferenceErrorFields, String> errors) {
+        return errors != null && !errors.isEmpty();
     }
 
     private void setFieldError(SystemPreferenceErrorFields field, String message) {
         Map<SystemPreferenceErrorFields, String> currentMap = fieldErrors.getValue();
         Map<SystemPreferenceErrorFields, String> newMap = currentMap != null ? new EnumMap<>(currentMap) : new EnumMap<>(SystemPreferenceErrorFields.class);
-        newMap.put(field, message != null ? message : "");
+        if (message == null || message.trim().isEmpty()) {
+            newMap.remove(field);
+        } else {
+            newMap.put(field, message);
+        }
         updateLiveData(fieldErrors, newMap);
         reevaluateState();
     }
@@ -109,7 +189,7 @@ public class SettingsViewModel extends ViewModel {
     public void setProvisionalThemeMode(String themeMode) {
         if (themeMode != null) {
             updateLiveData(provisionalThemeMode, themeMode);
-            setFieldError(SystemPreferenceErrorFields.THEME_MODE, "");
+            resetFieldError(SystemPreferenceErrorFields.THEME_MODE);
             reevaluateState();
         }
     }
@@ -117,7 +197,7 @@ public class SettingsViewModel extends ViewModel {
     public void setProvisionalDateFormat(DateFormat format) {
         if (format != null) {
             updateLiveData(provisionalDateFormat, format);
-            setFieldError(SystemPreferenceErrorFields.DATE_FORMAT, "");
+            resetFieldError(SystemPreferenceErrorFields.DATE_FORMAT);
             reevaluateState();
         }
     }
@@ -125,7 +205,7 @@ public class SettingsViewModel extends ViewModel {
     public void setProvisionalCurrencyFormat(CurrencyFormat currencyFormat) {
         if (currencyFormat != null) {
             updateLiveData(provisionalCurrencyFormat, currencyFormat);
-            setFieldError(SystemPreferenceErrorFields.CURRENCY_FORMAT, "");
+            resetFieldError(SystemPreferenceErrorFields.CURRENCY_FORMAT);
             reevaluateState();
         }
     }
@@ -135,20 +215,92 @@ public class SettingsViewModel extends ViewModel {
         updateLiveData(provisionalStartDayOfMonthInput, val);
 
         if (val.isEmpty()) {
-            setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day of month cannot be empty");
+            setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_EMPTY.getMessage());
         } else {
             try {
                 int day = Integer.parseInt(val);
-                if (day < 1 || day > 31) {
-                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be between 1 and 31");
+                if (day < DefaultSettings.MIN_START_DAY || day > DefaultSettings.MAX_START_DAY) {
+                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_RANGE.getMessage());
                 } else {
-                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "");
+                    resetFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH);
                 }
-            } catch (Exception e) {
-                setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be a valid number between 1 and 31");
+            } catch (NumberFormatException e) {
+                setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_RANGE.getMessage());
             }
         }
         reevaluateState();
+    }
+
+    public void setProvisionalPageSize(String pageSizeStr) {
+        String val = pageSizeStr != null ? pageSizeStr.trim() : "";
+        updateLiveData(provisionalPageSizeInput, val);
+
+        if (val.isEmpty()) {
+            setFieldError(SystemPreferenceErrorFields.PAGE_SIZE, "Page size cannot be empty.");
+        } else {
+            try {
+                int size = Integer.parseInt(val);
+                if (size < DefaultSettings.MIN_PAGE_COUNT || size > DefaultSettings.MAX_PAGE_COUNT) {
+                    setFieldError(SystemPreferenceErrorFields.PAGE_SIZE, "Page size must be between " + DefaultSettings.MIN_PAGE_COUNT + " and " + DefaultSettings.MAX_PAGE_COUNT + ".");
+                } else {
+                    resetFieldError(SystemPreferenceErrorFields.PAGE_SIZE);
+                }
+            } catch (NumberFormatException e) {
+                setFieldError(SystemPreferenceErrorFields.PAGE_SIZE, "Page size must be a valid integer.");
+            }
+        }
+        reevaluateState();
+    }
+
+    public Map<SystemPreferenceErrorFields, String> validateSettingsConfigurations() {
+        Map<SystemPreferenceErrorFields, String> errors = new EnumMap<>(SystemPreferenceErrorFields.class);
+
+        String themeMode = provisionalThemeMode.getValue();
+        if (themeMode == null || themeMode.trim().isEmpty()) {
+            errors.put(SystemPreferenceErrorFields.THEME_MODE, "Theme mode cannot be empty");
+        }
+
+        DateFormat dateFormat = provisionalDateFormat.getValue();
+        if (dateFormat == null) {
+            errors.put(SystemPreferenceErrorFields.DATE_FORMAT, "Date format cannot be empty");
+        }
+
+        CurrencyFormat currencyFormat = provisionalCurrencyFormat.getValue();
+        if (currencyFormat == null) {
+            errors.put(SystemPreferenceErrorFields.CURRENCY_FORMAT, "Currency format cannot be empty");
+        }
+
+        String dayStr = provisionalStartDayOfMonthInput.getValue();
+        if (dayStr == null || dayStr.trim().isEmpty()) {
+            errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_EMPTY.getMessage());
+        } else {
+            try {
+                int day = Integer.parseInt(dayStr.trim());
+                if (day < DefaultSettings.MIN_START_DAY || day > DefaultSettings.MAX_START_DAY) {
+                    errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_RANGE.getMessage());
+                }
+            } catch (NumberFormatException e) {
+                errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_RANGE.getMessage());
+            }
+        }
+
+        String pageSizeStr = provisionalPageSizeInput.getValue();
+        if (pageSizeStr == null || pageSizeStr.trim().isEmpty()) {
+            errors.put(SystemPreferenceErrorFields.PAGE_SIZE, "Page size cannot be empty.");
+        } else {
+            try {
+                int size = Integer.parseInt(pageSizeStr.trim());
+                if (size < DefaultSettings.MIN_PAGE_COUNT || size > DefaultSettings.MAX_PAGE_COUNT) {
+                    errors.put(SystemPreferenceErrorFields.PAGE_SIZE, "Page size must be between " + DefaultSettings.MIN_PAGE_COUNT + " and " + DefaultSettings.MAX_PAGE_COUNT + ".");
+                }
+            } catch (NumberFormatException e) {
+                errors.put(SystemPreferenceErrorFields.PAGE_SIZE, "Page size must be a valid integer.");
+            }
+        }
+
+        updateLiveData(fieldErrors, errors);
+        reevaluateState();
+        return errors;
     }
 
     public void setProvisionalIncludeProvisional(boolean include) {
@@ -157,18 +309,14 @@ public class SettingsViewModel extends ViewModel {
     }
 
     public void reevaluateState() {
-        if (executor != null) {
-            executor.execute(this::reevaluateStateSync);
-        } else {
-            reevaluateStateSync();
-        }
+        reevaluateStateSync();
     }
 
     private void reevaluateStateSync() {
-        SystemPreferences persisted = systemService != null ? systemService.getPreferencesSync() : null;
+        SystemPreferences persisted = this.persistedPreferences;
         if (persisted == null) {
-            updateLiveData(changesMade, false);
             updateLiveData(saveStatusColor, hasFieldErrors() ? "RED" : "GRAY");
+            updateLiveData(saveState, hasFieldErrors() ? SettingsSaveState.ERROR : SettingsSaveState.UNCHANGED);
             return;
         }
 
@@ -176,23 +324,32 @@ public class SettingsViewModel extends ViewModel {
         int parsedDay = 1;
         try {
             parsedDay = Integer.parseInt(currentDayStr.trim());
-        } catch (Exception e) {
+        } catch (NumberFormatException ignored) {
+        }
+
+        String currentPageSizeStr = provisionalPageSizeInput.getValue() != null ? provisionalPageSizeInput.getValue() : "10";
+        int parsedPageSize = 10;
+        try {
+            parsedPageSize = Integer.parseInt(currentPageSizeStr.trim());
+        } catch (NumberFormatException ignored) {
         }
 
         boolean changed = !persisted.getThemeMode().equalsIgnoreCase(provisionalThemeMode.getValue())
                 || !persisted.getDateFormat().equalsIgnoreCase(provisionalDateFormat.getValue() != null ? provisionalDateFormat.getValue().name() : "")
                 || !persisted.getCurrencyFormat().equalsIgnoreCase(provisionalCurrencyFormat.getValue() != null ? provisionalCurrencyFormat.getValue().name() : "")
                 || persisted.getStartDayOfMonth() != parsedDay
+                || persisted.getPageSize() != parsedPageSize
                 || persisted.isIncludeProvisional() != (provisionalIncludeProvisional.getValue() == null || provisionalIncludeProvisional.getValue());
-
-        updateLiveData(changesMade, changed);
 
         if (hasFieldErrors()) {
             updateLiveData(saveStatusColor, "RED");
+            updateLiveData(saveState, SettingsSaveState.ERROR);
         } else if (changed) {
             updateLiveData(saveStatusColor, "ORANGE");
+            updateLiveData(saveState, SettingsSaveState.PROVISIONAL);
         } else {
             updateLiveData(saveStatusColor, "GRAY");
+            updateLiveData(saveState, SettingsSaveState.UNCHANGED);
         }
     }
 
@@ -200,8 +357,10 @@ public class SettingsViewModel extends ViewModel {
         updateLiveData(isLoading, true);
         executor.execute(() -> {
             try {
-                if (hasFieldErrors()) {
+                Map<SystemPreferenceErrorFields, String> errors = validateSettingsConfigurations();
+                if (hasFieldErrors(errors) || hasFieldErrors()) {
                     updateLiveData(saveStatusColor, "RED");
+                    updateLiveData(saveState, SettingsSaveState.ERROR);
                     updateLiveData(isLoading, false);
                     return;
                 }
@@ -209,8 +368,15 @@ public class SettingsViewModel extends ViewModel {
                 int parsedStartDay = 1;
                 try {
                     parsedStartDay = Integer.parseInt(provisionalStartDayOfMonthInput.getValue());
-                } catch (Exception e) {
-                    throw new SettingsPreferenceViolationException("Invalid start day of month value: " + provisionalStartDayOfMonthInput.getValue());
+                } catch (NumberFormatException e) {
+                    throw new SettingsPreferenceViolationException(ErrorMessages.INVALID_START_DAY.getMessage(provisionalStartDayOfMonthInput.getValue()));
+                }
+
+                int parsedPageSize = 10;
+                try {
+                    parsedPageSize = Integer.parseInt(provisionalPageSizeInput.getValue());
+                } catch (NumberFormatException e) {
+                    throw new SettingsPreferenceViolationException("Invalid page size: " + provisionalPageSizeInput.getValue());
                 }
 
                 SystemPreferences prefs = new SystemPreferences();
@@ -220,24 +386,30 @@ public class SettingsViewModel extends ViewModel {
                 prefs.setCurrencyFormat(cur.name());
                 prefs.setCurrencySymbol(cur.getSymbol());
                 prefs.setStartDayOfMonth(parsedStartDay);
+                prefs.setPageSize(parsedPageSize);
                 prefs.setIncludeProvisional(provisionalIncludeProvisional.getValue() == null || provisionalIncludeProvisional.getValue());
 
                 if (systemRepository != null) {
                     systemRepository.updatePreferences(prefs);
                 }
 
-                updateLiveData(changesMade, false);
+                this.persistedPreferences = prefs;
+                updateLiveData(saveState, SettingsSaveState.SAVED);
                 updateLiveData(saveStatusColor, "GREEN");
                 updateLiveData(successMessage, "Settings saved successfully!");
                 updateLiveData(genericErrorMessage, "");
+                reevaluateState();
             } catch (SettingsPreferenceViolationException e) {
                 rollbackProvisionalChanges();
-                updateLiveData(genericErrorMessage, "Preference configuration violation occurred. Changes rolled back.");
+                updateLiveData(genericErrorMessage, ErrorMessages.PREFERENCE_VIOLATION.getMessage(e.getMessage()));
                 updateLiveData(saveStatusColor, "RED");
+                updateLiveData(saveState, SettingsSaveState.ERROR);
             } catch (Exception e) {
+                logger.log(Level.SEVERE, ErrorMessages.FAILED_SAVE_SETTINGS.getMessage(e.getMessage()), e);
                 rollbackProvisionalChanges();
-                updateLiveData(genericErrorMessage, "Failed to save settings: " + e.getMessage());
+                updateLiveData(genericErrorMessage, ErrorMessages.FAILED_SAVE_SETTINGS.getMessage(e.getMessage()));
                 updateLiveData(saveStatusColor, "RED");
+                updateLiveData(saveState, SettingsSaveState.ERROR);
             } finally {
                 updateLiveData(isLoading, false);
             }
@@ -245,7 +417,18 @@ public class SettingsViewModel extends ViewModel {
     }
 
     public void rollbackProvisionalChanges() {
-        initializeFromPersisted();
+        SystemPreferences prefs = this.persistedPreferences;
+        if (prefs != null) {
+            updateLiveData(provisionalThemeMode, prefs.getThemeMode());
+            updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
+            updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
+            updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
+            updateLiveData(provisionalPageSizeInput, String.valueOf(prefs.getPageSize()));
+            updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
+        }
+        updateLiveData(saveStatusColor, "GRAY");
+        updateLiveData(saveState, SettingsSaveState.UNCHANGED);
+        resetFieldErrors();
     }
 
     public void resetToDefaults() {
@@ -253,25 +436,14 @@ public class SettingsViewModel extends ViewModel {
         updateLiveData(provisionalDateFormat, DateFormat.DD_MM_YYYY);
         updateLiveData(provisionalCurrencyFormat, CurrencyFormat.NZD);
         updateLiveData(provisionalStartDayOfMonthInput, "1");
+        updateLiveData(provisionalPageSizeInput, "10");
         updateLiveData(provisionalIncludeProvisional, true);
         resetFieldErrors();
         reevaluateState();
     }
 
     public void discardProvisionalChanges() {
-        initializeFromPersisted();
-    }
-
-    private <T> void updateLiveData(MutableLiveData<T> liveData, T value) {
-        try {
-            if (Looper.myLooper() == Looper.getMainLooper()) {
-                liveData.setValue(value);
-            } else {
-                liveData.postValue(value);
-            }
-        } catch (Exception e) {
-            liveData.postValue(value);
-        }
+        rollbackProvisionalChanges();
     }
 
     public LiveData<SystemPreferences> getSystemPreferences() {
@@ -282,16 +454,16 @@ public class SettingsViewModel extends ViewModel {
         return fieldErrors;
     }
 
-    public LiveData<Boolean> getChangesMade() {
-        return changesMade;
-    }
-
     public LiveData<Boolean> getIsLoading() {
         return isLoading;
     }
 
     public LiveData<String> getSaveStatusColor() {
         return saveStatusColor;
+    }
+
+    public LiveData<SettingsSaveState> getSaveState() {
+        return saveState;
     }
 
     public LiveData<String> getGenericErrorMessage() {
@@ -316,6 +488,10 @@ public class SettingsViewModel extends ViewModel {
 
     public LiveData<String> getProvisionalStartDayOfMonthInput() {
         return provisionalStartDayOfMonthInput;
+    }
+
+    public LiveData<String> getProvisionalPageSizeInput() {
+        return provisionalPageSizeInput;
     }
 
     public LiveData<Boolean> getProvisionalIncludeProvisional() {

@@ -12,6 +12,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.mtfinance.InstantExecutorExtension;
 import com.example.mtfinance.src.repositories.SystemRepository;
 import com.example.mtfinance.src.repositories.SystemService;
+import com.example.mtfinance.src.repositories.TrackingRepository;
 import com.example.mtfinance.src.trackingengine.SystemPreferences;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,12 @@ public class SettingsViewModelTest {
     @Mock
     private SystemRepository systemRepository;
 
+    @Mock
+    private TrackingRepository trackingRepository;
+
+    @Mock
+    private java.util.logging.Logger logger;
+
     private SettingsViewModel viewModel;
     private MutableLiveData<SystemPreferences> preferencesLiveData;
     private final Executor synchronousExecutor = Runnable::run;
@@ -42,7 +49,7 @@ public class SettingsViewModelTest {
         when(systemService.getPreferencesLive()).thenReturn(preferencesLiveData);
         when(systemService.getPreferencesSync()).thenReturn(new SystemPreferences("SYSTEM"));
 
-        viewModel = new SettingsViewModel(systemService, systemRepository, synchronousExecutor);
+        viewModel = new SettingsViewModel(systemService, systemRepository, trackingRepository, synchronousExecutor, logger);
     }
 
     @Test
@@ -58,5 +65,17 @@ public class SettingsViewModelTest {
         viewModel.setProvisionalThemeMode("DARK");
         viewModel.saveChanges();
         verify(systemRepository).updatePreferences(any());
+    }
+
+    @Test
+    public void deleteAllAppData_validCall_invokesRepositoryDelete() {
+        viewModel.deleteAllAppData();
+        verify(trackingRepository).deleteAllAppData();
+    }
+
+    @Test
+    public void deleteTransactionsOnly_validCall_invokesRepositoryDelete() {
+        viewModel.deleteTransactionsOnly();
+        verify(trackingRepository).deleteAllTransactions();
     }
 }

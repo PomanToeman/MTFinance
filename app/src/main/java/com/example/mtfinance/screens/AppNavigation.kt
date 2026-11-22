@@ -25,10 +25,7 @@ fun AppNavigation(
 
     LaunchedEffect(systemPreferences) {
         systemPreferences?.let { prefs ->
-            try {
-                ThemeState.currentThemeMode = ThemeMode.valueOf(prefs.themeMode)
-            } catch (_: Exception) {
-            }
+            ThemeState.currentThemeMode = ThemeMode.fromNameOrDefault(prefs.themeMode, ThemeMode.SYSTEM)
         }
     }
 

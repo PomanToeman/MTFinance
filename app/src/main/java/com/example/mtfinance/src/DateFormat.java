@@ -1,6 +1,9 @@
 package com.example.mtfinance.src;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 
 public enum DateFormat {
@@ -48,6 +51,72 @@ public enum DateFormat {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Unknown date format pattern: " + pattern));
+    }
+
+    /**
+     * Safely looks up DateFormat by enum name or pattern string, returning default if invalid or null.
+     */
+    public static DateFormat fromStringOrDefault(String nameOrPattern, DateFormat defaultFormat) {
+        if (nameOrPattern == null || nameOrPattern.trim().isEmpty()) {
+            return defaultFormat;
+        }
+        String clean = nameOrPattern.trim();
+        for (DateFormat format : values()) {
+            if (format.name().equalsIgnoreCase(clean) || format.pattern.equalsIgnoreCase(clean)) {
+                return format;
+            }
+        }
+        return defaultFormat;
+    }
+
+    /**
+     * Parses a date string checking strictly against ISO (yyyy-MM-dd) and DD_MM_YYYY (dd/MM/yyyy) formats.
+     * Candidate trial parsing discards failed format candidates explicitly on DateTimeParseException.
+     *
+     * @param dateStr raw date string input to parse
+     * @return parsed {@link LocalDateTime}, or {@code null} if unparseable or blank
+     */
+    public static LocalDateTime parseSimple(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = dateStr.trim();
+        try {
+            return LocalDate.parse(trimmed, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
+        } catch (DateTimeParseException ignored) {
+            // Discard ISO candidate and try dd/MM/yyyy
+        }
+        try {
+            return LocalDate.parse(trimmed, DateTimeFormatter.ofPattern("dd/MM/yyyy")).atStartOfDay();
+        } catch (DateTimeParseException ignored) {
+            // Discard dd/MM/yyyy candidate and try LocalDateTime
+        }
+        try {
+            return LocalDateTime.parse(trimmed);
+        } catch (DateTimeParseException ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Convenience method to parse a date string using ISO or dd/MM/yyyy matching.
+     *
+     * @param dateStr raw date string input to parse
+     * @param systemFormat system preference format (unused, kept for compatibility)
+     * @return parsed {@link LocalDateTime}, or {@code null} if unparseable
+     */
+    public static LocalDateTime parse(String dateStr, DateFormat systemFormat) {
+        return parseSimple(dateStr);
+    }
+
+    /**
+     * Convenience method to parse a date string using ISO or dd/MM/yyyy matching.
+     *
+     * @param dateStr raw date string input to parse
+     * @return parsed {@link LocalDateTime}, or {@code null} if unparseable
+     */
+    public static LocalDateTime parse(String dateStr) {
+        return parseSimple(dateStr);
     }
 
     @Override
