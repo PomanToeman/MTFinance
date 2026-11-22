@@ -33,7 +33,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel;
 public class SettingsViewModel extends ViewModel implements SaveableFormViewModel<SettingsViewModel.SystemPreferenceErrorFields> {
 
     public enum SystemPreferenceErrorFields {
-        THEME_MODE, DATE_FORMAT, CURRENCY_FORMAT, START_DAY_OF_MONTH
+        THEME_MODE, DATE_FORMAT, CURRENCY_FORMAT, START_DAY_OF_MONTH, PAGE_SIZE
     }
 
     private final SystemService systemService;
@@ -54,6 +54,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     private final MutableLiveData<DateFormat> provisionalDateFormat = new MutableLiveData<>(DateFormat.DD_MM_YYYY);
     private final MutableLiveData<CurrencyFormat> provisionalCurrencyFormat = new MutableLiveData<>(CurrencyFormat.NZD);
     private final MutableLiveData<String> provisionalStartDayOfMonthInput = new MutableLiveData<>("1");
+    private final MutableLiveData<String> provisionalPageSizeInput = new MutableLiveData<>("10");
     private final MutableLiveData<Boolean> provisionalIncludeProvisional = new MutableLiveData<>(true);
 
     @Inject
@@ -110,12 +111,12 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
             SystemPreferences prefs = systemService.getPreferencesSync();
             this.persistedPreferences = prefs;
             if (prefs != null) {
-                // Only load persisted preferences into provisional fields if UNCHANGED (no active user edits)
                 if (saveState.getValue() == SettingsSaveState.UNCHANGED || saveState.getValue() == null) {
                     updateLiveData(provisionalThemeMode, prefs.getThemeMode());
                     updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
                     updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
                     updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
+                    updateLiveData(provisionalPageSizeInput, String.valueOf(prefs.getPageSize()));
                     updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
                 }
             }
@@ -230,6 +231,27 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         reevaluateState();
     }
 
+    public void setProvisionalPageSize(String pageSizeStr) {
+        String val = pageSizeStr != null ? pageSizeStr.trim() : "";
+        updateLiveData(provisionalPageSizeInput, val);
+
+        if (val.isEmpty()) {
+            setFieldError(SystemPreferenceErrorFields.PAGE_SIZE, "Page size cannot be empty.");
+        } else {
+            try {
+                int size = Integer.parseInt(val);
+                if (size < DefaultSettings.MIN_PAGE_COUNT || size > DefaultSettings.MAX_PAGE_COUNT) {
+                    setFieldError(SystemPreferenceErrorFields.PAGE_SIZE, "Page size must be between " + DefaultSettings.MIN_PAGE_COUNT + " and " + DefaultSettings.MAX_PAGE_COUNT + ".");
+                } else {
+                    resetFieldError(SystemPreferenceErrorFields.PAGE_SIZE);
+                }
+            } catch (NumberFormatException e) {
+                setFieldError(SystemPreferenceErrorFields.PAGE_SIZE, "Page size must be a valid integer.");
+            }
+        }
+        reevaluateState();
+    }
+
     public Map<SystemPreferenceErrorFields, String> validateSettingsConfigurations() {
         Map<SystemPreferenceErrorFields, String> errors = new EnumMap<>(SystemPreferenceErrorFields.class);
 
@@ -262,6 +284,20 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
             }
         }
 
+        String pageSizeStr = provisionalPageSizeInput.getValue();
+        if (pageSizeStr == null || pageSizeStr.trim().isEmpty()) {
+            errors.put(SystemPreferenceErrorFields.PAGE_SIZE, "Page size cannot be empty.");
+        } else {
+            try {
+                int size = Integer.parseInt(pageSizeStr.trim());
+                if (size < DefaultSettings.MIN_PAGE_COUNT || size > DefaultSettings.MAX_PAGE_COUNT) {
+                    errors.put(SystemPreferenceErrorFields.PAGE_SIZE, "Page size must be between " + DefaultSettings.MIN_PAGE_COUNT + " and " + DefaultSettings.MAX_PAGE_COUNT + ".");
+                }
+            } catch (NumberFormatException e) {
+                errors.put(SystemPreferenceErrorFields.PAGE_SIZE, "Page size must be a valid integer.");
+            }
+        }
+
         updateLiveData(fieldErrors, errors);
         reevaluateState();
         return errors;
@@ -291,10 +327,18 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         } catch (NumberFormatException ignored) {
         }
 
+        String currentPageSizeStr = provisionalPageSizeInput.getValue() != null ? provisionalPageSizeInput.getValue() : "10";
+        int parsedPageSize = 10;
+        try {
+            parsedPageSize = Integer.parseInt(currentPageSizeStr.trim());
+        } catch (NumberFormatException ignored) {
+        }
+
         boolean changed = !persisted.getThemeMode().equalsIgnoreCase(provisionalThemeMode.getValue())
                 || !persisted.getDateFormat().equalsIgnoreCase(provisionalDateFormat.getValue() != null ? provisionalDateFormat.getValue().name() : "")
                 || !persisted.getCurrencyFormat().equalsIgnoreCase(provisionalCurrencyFormat.getValue() != null ? provisionalCurrencyFormat.getValue().name() : "")
                 || persisted.getStartDayOfMonth() != parsedDay
+                || persisted.getPageSize() != parsedPageSize
                 || persisted.isIncludeProvisional() != (provisionalIncludeProvisional.getValue() == null || provisionalIncludeProvisional.getValue());
 
         if (hasFieldErrors()) {
@@ -328,6 +372,13 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                     throw new SettingsPreferenceViolationException(ErrorMessages.INVALID_START_DAY.getMessage(provisionalStartDayOfMonthInput.getValue()));
                 }
 
+                int parsedPageSize = 10;
+                try {
+                    parsedPageSize = Integer.parseInt(provisionalPageSizeInput.getValue());
+                } catch (NumberFormatException e) {
+                    throw new SettingsPreferenceViolationException("Invalid page size: " + provisionalPageSizeInput.getValue());
+                }
+
                 SystemPreferences prefs = new SystemPreferences();
                 prefs.setThemeMode(provisionalThemeMode.getValue());
                 prefs.setDateFormat(provisionalDateFormat.getValue() != null ? provisionalDateFormat.getValue().name() : DateFormat.DD_MM_YYYY.name());
@@ -335,6 +386,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 prefs.setCurrencyFormat(cur.name());
                 prefs.setCurrencySymbol(cur.getSymbol());
                 prefs.setStartDayOfMonth(parsedStartDay);
+                prefs.setPageSize(parsedPageSize);
                 prefs.setIncludeProvisional(provisionalIncludeProvisional.getValue() == null || provisionalIncludeProvisional.getValue());
 
                 if (systemRepository != null) {
@@ -371,6 +423,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
             updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
             updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
             updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
+            updateLiveData(provisionalPageSizeInput, String.valueOf(prefs.getPageSize()));
             updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
         }
         updateLiveData(saveStatusColor, "GRAY");
@@ -378,18 +431,19 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         resetFieldErrors();
     }
 
-    public void discardProvisionalChanges() {
-        rollbackProvisionalChanges();
-    }
-
     public void resetToDefaults() {
         updateLiveData(provisionalThemeMode, "SYSTEM");
         updateLiveData(provisionalDateFormat, DateFormat.DD_MM_YYYY);
         updateLiveData(provisionalCurrencyFormat, CurrencyFormat.NZD);
         updateLiveData(provisionalStartDayOfMonthInput, "1");
+        updateLiveData(provisionalPageSizeInput, "10");
         updateLiveData(provisionalIncludeProvisional, true);
         resetFieldErrors();
         reevaluateState();
+    }
+
+    public void discardProvisionalChanges() {
+        rollbackProvisionalChanges();
     }
 
     public LiveData<SystemPreferences> getSystemPreferences() {
@@ -434,6 +488,10 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
 
     public LiveData<String> getProvisionalStartDayOfMonthInput() {
         return provisionalStartDayOfMonthInput;
+    }
+
+    public LiveData<String> getProvisionalPageSizeInput() {
+        return provisionalPageSizeInput;
     }
 
     public LiveData<Boolean> getProvisionalIncludeProvisional() {

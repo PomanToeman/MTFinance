@@ -76,6 +76,7 @@ fun SettingsScreen(
     val provDateFormat by settingsViewModel.provisionalDateFormat.observeAsState(DateFormat.DD_MM_YYYY)
     val provCurrencyFormat by settingsViewModel.provisionalCurrencyFormat.observeAsState(CurrencyFormat.NZD)
     val provStartDayInput by settingsViewModel.provisionalStartDayOfMonthInput.observeAsState("1")
+    val provPageSizeInput by settingsViewModel.provisionalPageSizeInput.observeAsState("10")
     val provIncludeProvisional by settingsViewModel.provisionalIncludeProvisional.observeAsState(true)
 
     var deleteConfirmDialog by remember { mutableStateOf(false) }
@@ -257,6 +258,22 @@ fun SettingsScreen(
                     supportingText = {
                         if (isDayError && dayError != null) {
                             Text(text = dayError, color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                val pageSizeError = fieldErrors?.get(SettingsViewModel.SystemPreferenceErrorFields.PAGE_SIZE)
+                val isPageSizeError = !pageSizeError.isNullOrBlank()
+
+                TextField(
+                    label = { Text("Page Size (1-100)") },
+                    value = provPageSizeInput,
+                    onValueChange = { input -> settingsViewModel.setProvisionalPageSize(input) },
+                    isError = isPageSizeError,
+                    supportingText = {
+                        if (isPageSizeError && pageSizeError != null) {
+                            Text(text = pageSizeError, color = MaterialTheme.colorScheme.error)
                         }
                     },
                     modifier = Modifier.fillMaxWidth()

@@ -14,6 +14,9 @@ public final class DefaultSettings {
     public static final boolean DEFAULT_INCLUDE_PROVISIONAL = true;
     public static final int MIN_START_DAY = 1;
     public static final int MAX_START_DAY = 31;
+    public static final int DEFAULT_PAGE_COUNT = 10;
+    public static final int MIN_PAGE_COUNT = 1;
+    public static final int MAX_PAGE_COUNT = 100;
 
     private DefaultSettings() {
         // Private constructor to prevent instantiation

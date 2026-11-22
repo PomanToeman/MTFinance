@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -268,12 +270,13 @@ fun TransactionListItem(
 }
 
 /**
- * Displays all the details of a given transaction inside a high-contrast outlined Card.
+ * Displays a compact transaction listing item with name, amount, date, categories, and an Edit button.
  */
 @Composable
 fun TransactionDetails(
     transaction: Transaction,
     categories: List<Category>? = null,
+    onEdit: (() -> Unit)? = null,
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
@@ -283,65 +286,34 @@ fun TransactionDetails(
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Name:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(transaction.name, color = MaterialTheme.colorScheme.onSurface)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Amount:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(displayAmount(transaction.amount, currencySymbol), color = MaterialTheme.colorScheme.onSurface)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Type:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(transaction.type.toString(), color = MaterialTheme.colorScheme.onSurface)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Date:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(transaction.date.format(dateFormatter).toString(), color = MaterialTheme.colorScheme.onSurface)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Categories:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(transaction.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text("Date: ${transaction.date.format(dateFormatter)} | Type: ${transaction.type}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    text = if (categories.isNullOrEmpty()) "None" else categories.joinToString { it.name },
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "Categories: ${if (categories.isNullOrEmpty()) "Root / General" else categories.joinToString { it.name }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text("Description:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    text = transaction.description.ifBlank { TrackingUtlis.EMPTY_DESCRIPTION },
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(displayAmount(transaction.amount, currencySymbol), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                if (onEdit != null) {
+                    OutlinedButton(onClick = onEdit, modifier = Modifier.height(32.dp)) {
+                        Text("Edit", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
         }
     }

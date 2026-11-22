@@ -26,6 +26,8 @@ public class SystemPreferences {
 
     public boolean includeProvisional = true;
 
+    public int pageSize = DefaultSettings.DEFAULT_PAGE_COUNT;
+
     public SystemPreferences() {
     }
 
@@ -37,6 +39,7 @@ public class SystemPreferences {
         this.dateFormat = "DD_MM_YYYY";
         this.startDayOfMonth = 1;
         this.includeProvisional = true;
+        this.pageSize = DefaultSettings.DEFAULT_PAGE_COUNT;
     }
 
     @NonNull
@@ -94,5 +97,13 @@ public class SystemPreferences {
 
     public void setIncludeProvisional(boolean includeProvisional) {
         this.includeProvisional = includeProvisional;
+    }
+
+    public int getPageSize() {
+        return pageSize;
+    }
+
+    public void setPageSize(int pageSize) {
+        this.pageSize = Math.max(DefaultSettings.MIN_PAGE_COUNT, Math.min(DefaultSettings.MAX_PAGE_COUNT, pageSize));
     }
 }
