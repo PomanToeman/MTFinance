@@ -60,7 +60,6 @@ public class SettingsViewModelValidationTest {
 
         viewModel = new SettingsViewModel(systemService, systemRepository, trackingRepository, synchronousExecutor, logger);
         viewModel.getFieldErrors().observeForever(e -> {});
-        viewModel.getChangesMade().observeForever(c -> {});
         viewModel.getSaveStatusColor().observeForever(s -> {});
         viewModel.getGenericErrorMessage().observeForever(g -> {});
     }
@@ -93,7 +92,7 @@ public class SettingsViewModelValidationTest {
 
         assertAll(
             () -> assertFalse(viewModel.hasFieldErrors()),
-            () -> assertTrue(viewModel.getChangesMade().getValue()),
+            () -> assertEquals(SettingsSaveState.PROVISIONAL, viewModel.getSaveState().getValue()),
             () -> assertEquals(STATUS_ORANGE, viewModel.getSaveStatusColor().getValue())
         );
     }

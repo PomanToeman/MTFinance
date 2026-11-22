@@ -26,6 +26,9 @@ import javax.inject.Inject;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
+/**
+ * Modernized Form ViewModel managing persistent system configurations and provisional settings state.
+ */
 @HiltViewModel
 public class SettingsViewModel extends ViewModel implements SaveableFormViewModel<SettingsViewModel.SystemPreferenceErrorFields> {
 
@@ -41,7 +44,6 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     private SystemPreferences persistedPreferences = null;
 
     private final MutableLiveData<Map<SystemPreferenceErrorFields, String>> fieldErrors = new MutableLiveData<>(new EnumMap<>(SystemPreferenceErrorFields.class));
-    private final MutableLiveData<Boolean> changesMade = new MutableLiveData<>(false);
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> saveStatusColor = new MutableLiveData<>("GRAY");
     private final MutableLiveData<SettingsSaveState> saveState = new MutableLiveData<>(SettingsSaveState.UNCHANGED);
@@ -108,19 +110,23 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
             SystemPreferences prefs = systemService.getPreferencesSync();
             this.persistedPreferences = prefs;
             if (prefs != null) {
-                updateLiveData(provisionalThemeMode, prefs.getThemeMode());
-                updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
-                updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
-                updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
-                updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
+                // Only load persisted preferences into provisional fields if UNCHANGED (no active user edits)
+                if (saveState.getValue() == SettingsSaveState.UNCHANGED || saveState.getValue() == null) {
+                    updateLiveData(provisionalThemeMode, prefs.getThemeMode());
+                    updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
+                    updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
+                    updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
+                    updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
+                }
             }
         } else {
             this.persistedPreferences = null;
         }
-        updateLiveData(changesMade, false);
-        updateLiveData(saveStatusColor, "GRAY");
-        updateLiveData(saveState, SettingsSaveState.UNCHANGED);
-        resetFieldErrors();
+        if (saveState.getValue() == SettingsSaveState.UNCHANGED || saveState.getValue() == null) {
+            updateLiveData(saveStatusColor, "GRAY");
+            updateLiveData(saveState, SettingsSaveState.UNCHANGED);
+            resetFieldErrors();
+        }
     }
 
     public void resetFieldErrors() {
@@ -273,7 +279,6 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     private void reevaluateStateSync() {
         SystemPreferences persisted = this.persistedPreferences;
         if (persisted == null) {
-            updateLiveData(changesMade, false);
             updateLiveData(saveStatusColor, hasFieldErrors() ? "RED" : "GRAY");
             updateLiveData(saveState, hasFieldErrors() ? SettingsSaveState.ERROR : SettingsSaveState.UNCHANGED);
             return;
@@ -291,8 +296,6 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 || !persisted.getCurrencyFormat().equalsIgnoreCase(provisionalCurrencyFormat.getValue() != null ? provisionalCurrencyFormat.getValue().name() : "")
                 || persisted.getStartDayOfMonth() != parsedDay
                 || persisted.isIncludeProvisional() != (provisionalIncludeProvisional.getValue() == null || provisionalIncludeProvisional.getValue());
-
-        updateLiveData(changesMade, changed);
 
         if (hasFieldErrors()) {
             updateLiveData(saveStatusColor, "RED");
@@ -338,11 +341,12 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                     systemRepository.updatePreferences(prefs);
                 }
 
-                initializeFromPersistedSync();
+                this.persistedPreferences = prefs;
                 updateLiveData(saveState, SettingsSaveState.SAVED);
                 updateLiveData(saveStatusColor, "GREEN");
                 updateLiveData(successMessage, "Settings saved successfully!");
                 updateLiveData(genericErrorMessage, "");
+                reevaluateState();
             } catch (SettingsPreferenceViolationException e) {
                 rollbackProvisionalChanges();
                 updateLiveData(genericErrorMessage, ErrorMessages.PREFERENCE_VIOLATION.getMessage(e.getMessage()));
@@ -361,7 +365,24 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     }
 
     public void rollbackProvisionalChanges() {
-        initializeFromPersisted();
+        if (systemService != null) {
+            SystemPreferences prefs = systemService.getPreferencesSync();
+            this.persistedPreferences = prefs;
+            if (prefs != null) {
+                updateLiveData(provisionalThemeMode, prefs.getThemeMode());
+                updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
+                updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
+                updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
+                updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
+            }
+        }
+        updateLiveData(saveStatusColor, "GRAY");
+        updateLiveData(saveState, SettingsSaveState.UNCHANGED);
+        resetFieldErrors();
+    }
+
+    public void discardProvisionalChanges() {
+        rollbackProvisionalChanges();
     }
 
     public void resetToDefaults() {
@@ -374,20 +395,12 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         reevaluateState();
     }
 
-    public void discardProvisionalChanges() {
-        initializeFromPersisted();
-    }
-
     public LiveData<SystemPreferences> getSystemPreferences() {
         return systemService.getPreferencesLive();
     }
 
     public LiveData<Map<SystemPreferenceErrorFields, String>> getFieldErrors() {
         return fieldErrors;
-    }
-
-    public LiveData<Boolean> getChangesMade() {
-        return changesMade;
     }
 
     public LiveData<Boolean> getIsLoading() {
