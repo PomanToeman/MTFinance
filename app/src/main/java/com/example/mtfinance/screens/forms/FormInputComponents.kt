@@ -1,7 +1,7 @@
 /**
  * @file FormInputComponents.kt
  * @scope Scoped UI helper components for form text, number, select, and date input fields.
- * @purpose Centralizes form input fields with standardized OutlinedTextField styling and spacing constants.
+ * @purpose Centralizes form input fields with standardized OutlinedTextField styling, spacing constants, IME actions, and focus management.
  */
 package com.example.mtfinance.screens.forms
 
@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
@@ -29,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.mtfinance.src.DateFormat
@@ -54,7 +55,7 @@ val FORM_SPACING_UNIT = 16.dp
 val FORM_SECTION_SPACING = 32.dp
 
 /**
- * Hybrid Date Picker Field matching other form OutlinedTextFields identically.
+ * Hybrid Date Picker Field matching other form OutlinedTextFields identically with smooth focus clearing on calendar open.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -229,8 +230,14 @@ fun TextFieldForm(
     placeholder: String = "",
     enabled: Boolean = true,
     isError: Boolean = false,
-    errorMessage: String? = ""
+    errorMessage: String? = "",
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: (() -> Unit)? = null
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val effectiveImeAction = if (maxLines > 1) ImeAction.Default else imeAction
+
     OutlinedTextField(
         value = value ?: "",
         onValueChange = onValueChange,
@@ -241,6 +248,18 @@ fun TextFieldForm(
         enabled = enabled,
         isError = isError,
         singleLine = maxLines == 1,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = effectiveImeAction),
+        keyboardActions = KeyboardActions(
+            onNext = {
+                if (onImeAction != null) onImeAction() else focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down)
+            },
+            onDone = {
+                if (onImeAction != null) onImeAction() else {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                }
+            }
+        ),
         modifier = Modifier.fillMaxWidth(),
         supportingText = {
             if (isError && !errorMessage.isNullOrBlank()) {
@@ -274,14 +293,30 @@ fun NumberFieldForm(
     currencySymbol: String = "$",
     enabled: Boolean = true,
     isError: Boolean = false,
-    errorMessage: String? = ""
+    errorMessage: String? = "",
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: (() -> Unit)? = null
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     OutlinedTextField(
         label = { Text(label) },
         value = value?.toString() ?: "",
         prefix = { Text("$currencySymbol ") },
         placeholder = { Text("0.00") },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = imeAction),
+        keyboardActions = KeyboardActions(
+            onNext = {
+                if (onImeAction != null) onImeAction() else focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down)
+            },
+            onDone = {
+                if (onImeAction != null) onImeAction() else {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                }
+            }
+        ),
         isError = isError,
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),

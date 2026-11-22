@@ -1,7 +1,6 @@
 package com.example.mtfinance.screens.forms
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,10 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.mtfinance.screens.ChooseTypeForm
+import com.example.mtfinance.screens.DefaultColumn
 import com.example.mtfinance.screens.DeleteConfirmationDialog
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
@@ -72,13 +72,7 @@ fun TransactionFormScreen(
         transactionFormViewModel.setTransactionId(transactionId)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(FORM_SPACING_UNIT)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(FORM_SPACING_UNIT)
-    ) {
+    DefaultColumn(modifier = Modifier.padding(FORM_SPACING_UNIT).verticalScroll(rememberScrollState())) {
         Header(if (editMode == true) "Edit Transaction" else "New Transaction")
 
         TextFieldForm(
@@ -86,6 +80,7 @@ fun TransactionFormScreen(
             onValueChange = { transactionFormViewModel.setName(it) },
             minLines = 1, maxLines = 1,
             enabled = editMode == false,
+            imeAction = ImeAction.Next,
             isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.NAME)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.NAME)
         )
@@ -94,6 +89,7 @@ fun TransactionFormScreen(
             onValueChange = { transactionFormViewModel.setDescription(it) },
             minLines = 3, maxLines = 3,
             placeholder = TrackingUtlis.EMPTY_DESCRIPTION,
+            imeAction = ImeAction.Next,
             isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DESCRIPTION)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.DESCRIPTION)
         )
@@ -102,6 +98,7 @@ fun TransactionFormScreen(
             setter = { transactionFormViewModel.setAmount(it) },
             currencySymbol = currencySymbol,
             enabled = editMode == false,
+            imeAction = ImeAction.Done,
             isError = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.AMOUNT)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(TransactionFormViewModel.TransactionErrorFields.AMOUNT)
         )

@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.screens.DefaultColumn
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
 import com.example.mtfinance.screens.Routes
@@ -82,13 +83,7 @@ fun TransactionImportScreen(
         transactionImportViewModel.setFileUri(uri)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(FORM_SPACING_UNIT)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(FORM_SPACING_UNIT)
-    ) {
+    DefaultColumn(modifier = Modifier.padding(FORM_SPACING_UNIT).verticalScroll(rememberScrollState())) {
         Header("Transaction Import")
 
         OutlinedCard(
@@ -202,11 +197,11 @@ fun TransactionImportScreen(
 
             SelectForm(
                 label = "Date Formatter",
-                options = DateFormat.values().map { it.toString() },
+                options = DateFormat.entries.map { it.toString() },
                 selectedOption = dateFormatterString,
                 onOptionSelected = { selectedFmt ->
                     dateFormatterString = selectedFmt
-                    val matched = DateFormat.values().firstOrNull { it.toString() == selectedFmt }
+                    val matched = DateFormat.entries.firstOrNull { it.toString() == selectedFmt }
                     if (matched != null) {
                         transactionImportViewModel.setDateFormatter(matched)
                     }

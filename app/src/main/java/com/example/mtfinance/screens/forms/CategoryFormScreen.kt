@@ -1,7 +1,6 @@
 package com.example.mtfinance.screens.forms
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,9 +24,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.mtfinance.screens.DefaultColumn
 import com.example.mtfinance.screens.DeleteConfirmationDialog
 import com.example.mtfinance.screens.Header
 import com.example.mtfinance.screens.LoadingDialog
@@ -71,13 +72,7 @@ fun CategoryFormScreen(
         categoryFormViewModel.setEditCategory(categoryId)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(FORM_SPACING_UNIT)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(FORM_SPACING_UNIT)
-    ) {
+    DefaultColumn(modifier = Modifier.padding(FORM_SPACING_UNIT).verticalScroll(rememberScrollState())) {
         Header(if (editMode == true) "Edit Category" else "New Category")
 
         TextFieldForm(
@@ -85,6 +80,7 @@ fun CategoryFormScreen(
             onValueChange = { categoryFormViewModel.setName(it) },
             minLines = 1, maxLines = 1,
             enabled = isRoot == false,
+            imeAction = ImeAction.Next,
             isError = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.NAME)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.NAME)
         )
@@ -94,6 +90,7 @@ fun CategoryFormScreen(
             minLines = 3, maxLines = 3,
             placeholder = TrackingUtlis.EMPTY_DESCRIPTION,
             enabled = isRoot == false,
+            imeAction = ImeAction.Next,
             isError = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.DESCRIPTION)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.DESCRIPTION)
         )
@@ -101,6 +98,7 @@ fun CategoryFormScreen(
             "Monthly Budget", categoryMonthlyBudget,
             setter = { categoryFormViewModel.setMonthlyBudget(it) },
             currencySymbol = currencySymbol,
+            imeAction = ImeAction.Done,
             isError = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.MONTHLY_BUDGET)?.isNotEmpty() == true,
             errorMessage = errorMap?.get(CategoryFormViewModel.CategoryErrorFields.MONTHLY_BUDGET)
         )
