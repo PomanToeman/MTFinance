@@ -206,11 +206,7 @@ fun TransactionListItem(
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val currencySymbol = systemPreferences?.currencySymbol ?: "$"
-    val dateFormatter = try {
-        DateFormat.valueOf(systemPreferences?.dateFormat ?: "DD_MM_YYYY").toFormatter()
-    } catch (_: Exception) {
-        DateFormat.DD_MM_YYYY.toFormatter()
-    }
+    val dateFormatter = DateFormat.fromStringOrDefault(systemPreferences?.dateFormat, DateFormat.DD_MM_YYYY).toFormatter()
 
     val expandedState = remember { mutableStateOf(expanded) }
     Box(
@@ -282,11 +278,7 @@ fun TransactionDetails(
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val currencySymbol = systemPreferences?.currencySymbol ?: "$"
-    val dateFormatter = try {
-        DateFormat.valueOf(systemPreferences?.dateFormat ?: "DD_MM_YYYY").toFormatter()
-    } catch (_: Exception) {
-        DateFormat.DD_MM_YYYY.toFormatter()
-    }
+    val dateFormatter = DateFormat.fromStringOrDefault(systemPreferences?.dateFormat, DateFormat.DD_MM_YYYY).toFormatter()
 
     OutlinedCard(
         modifier = Modifier

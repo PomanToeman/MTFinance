@@ -3,8 +3,8 @@ package com.example.mtfinance.src;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
-import java.util.Locale;
 
 public enum DateFormat {
 
@@ -54,7 +54,24 @@ public enum DateFormat {
     }
 
     /**
+     * Safely looks up DateFormat by enum name or pattern string, returning default if invalid or null.
+     */
+    public static DateFormat fromStringOrDefault(String nameOrPattern, DateFormat defaultFormat) {
+        if (nameOrPattern == null || nameOrPattern.trim().isEmpty()) {
+            return defaultFormat;
+        }
+        String clean = nameOrPattern.trim();
+        for (DateFormat format : values()) {
+            if (format.name().equalsIgnoreCase(clean) || format.pattern.equalsIgnoreCase(clean)) {
+                return format;
+            }
+        }
+        return defaultFormat;
+    }
+
+    /**
      * Parses a date string checking strictly against ISO (yyyy-MM-dd) and DD_MM_YYYY (dd/MM/yyyy) formats.
+     * Candidate trial parsing discards failed format candidates explicitly on DateTimeParseException.
      *
      * @param dateStr raw date string input to parse
      * @return parsed {@link LocalDateTime}, or {@code null} if unparseable or blank
@@ -66,17 +83,19 @@ public enum DateFormat {
         String trimmed = dateStr.trim();
         try {
             return LocalDate.parse(trimmed, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
-        } catch (Exception ignored) {
+        } catch (DateTimeParseException ignored) {
+            // Discard ISO candidate and try dd/MM/yyyy
         }
         try {
             return LocalDate.parse(trimmed, DateTimeFormatter.ofPattern("dd/MM/yyyy")).atStartOfDay();
-        } catch (Exception ignored) {
+        } catch (DateTimeParseException ignored) {
+            // Discard dd/MM/yyyy candidate and try LocalDateTime
         }
         try {
             return LocalDateTime.parse(trimmed);
-        } catch (Exception ignored) {
+        } catch (DateTimeParseException ignored) {
+            return null;
         }
-        return null;
     }
 
     /**

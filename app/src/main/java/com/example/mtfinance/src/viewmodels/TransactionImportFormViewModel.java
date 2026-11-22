@@ -8,6 +8,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.DateFormat;
+import com.example.mtfinance.src.messages.ErrorMessages;
 import com.example.mtfinance.src.messages.ImportMessages;
 import com.example.mtfinance.src.messages.GeneralMessages;
 import com.example.mtfinance.src.repositories.CategoryService;
@@ -181,7 +182,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
             setFieldError(TransactionImportErrorFields.FILE_SOURCE, GeneralMessages.NON_CSV_FILE_READ.getMessage());
             setErrorMessage(GeneralMessages.NON_CSV_FILE_READ.getMessage());
         } else {
-            setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
+            resetFieldError(TransactionImportErrorFields.FILE_SOURCE);
         }
     }
 
@@ -193,7 +194,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
             setFieldError(TransactionImportErrorFields.FILE_SOURCE, GeneralMessages.NON_CSV_FILE_READ.getMessage());
             setErrorMessage(GeneralMessages.NON_CSV_FILE_READ.getMessage());
         } else {
-            setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
+            resetFieldError(TransactionImportErrorFields.FILE_SOURCE);
         }
     }
 
@@ -239,12 +240,12 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
             if (required) {
                 setFieldError(field, missingMessage);
             } else {
-                setFieldError(field, "");
+                resetFieldError(field);
             }
         } else if (headers != null && !headers.isEmpty() && headers.stream().noneMatch(h -> h.equalsIgnoreCase(value.trim()))) {
-            setFieldError(field, "Header '" + value.trim() + "' does not exist in CSV file.");
+            setFieldError(field, ErrorMessages.HEADER_DOES_NOT_EXIST.getMessage(value.trim()));
         } else {
-            setFieldError(field, "");
+            resetFieldError(field);
         }
     }
 

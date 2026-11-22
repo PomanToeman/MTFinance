@@ -210,7 +210,7 @@ public class CategoryFormViewModel extends ViewModel implements DeletableFormVie
         if (fields.name.trim().isEmpty()) {
             setFieldError(CategoryErrorFields.NAME, CategoryMessages.CATEGORY_NAME_EMPTY.getMessage());
         } else {
-            setFieldError(CategoryErrorFields.NAME, "");
+            resetFieldError(CategoryErrorFields.NAME);
         }
     }
 
@@ -222,7 +222,7 @@ public class CategoryFormViewModel extends ViewModel implements DeletableFormVie
         CategoryFormFields fields = getFields();
         fields.description = description;
         updateFields(fields);
-        setFieldError(CategoryErrorFields.DESCRIPTION, "");
+        resetFieldError(CategoryErrorFields.DESCRIPTION);
     }
 
     /**
@@ -234,9 +234,9 @@ public class CategoryFormViewModel extends ViewModel implements DeletableFormVie
         fields.type = type;
         updateFields(fields);
         if (type == null) {
-            setFieldError(CategoryErrorFields.TYPE, "Type cannot be empty.");
+            setFieldError(CategoryErrorFields.TYPE, GeneralMessages.INVALID_TYPE_ERROR_MESSAGE.getMessage());
         } else {
-            setFieldError(CategoryErrorFields.TYPE, "");
+            resetFieldError(CategoryErrorFields.TYPE);
         }
     }
 
@@ -258,7 +258,7 @@ public class CategoryFormViewModel extends ViewModel implements DeletableFormVie
         updateFields(fields);
 
         if (parentId == null) {
-            setFieldError(CategoryErrorFields.PARENT_ID, "");
+            resetFieldError(CategoryErrorFields.PARENT_ID);
             return;
         }
         if (parentId.equals(fields.editCategoryId)) {
@@ -278,7 +278,7 @@ public class CategoryFormViewModel extends ViewModel implements DeletableFormVie
             setErrorMessage(CategoryMessages.CATEGORY_MAX_DEPTH_REACHED.getMessage(Category.MAX_DEPTH));
             return;
         }
-        setFieldError(CategoryErrorFields.PARENT_ID, "");
+        resetFieldError(CategoryErrorFields.PARENT_ID);
     }
 
     /**
@@ -296,7 +296,7 @@ public class CategoryFormViewModel extends ViewModel implements DeletableFormVie
             setErrorMessage(CategoryMessages.BELOW_MINIMUM_BUDGET.getMessage(monthlyBudget.toString(), fields.minimumBudget.toString()));
         } else {
             fields.monthlyBudget = monthlyBudget;
-            setFieldError(CategoryErrorFields.MONTHLY_BUDGET, "");
+            resetFieldError(CategoryErrorFields.MONTHLY_BUDGET);
             setErrorMessage("");
         }
         updateFields(fields);

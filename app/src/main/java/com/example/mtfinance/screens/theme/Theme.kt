@@ -21,7 +21,14 @@ import androidx.compose.ui.graphics.Color
 enum class ThemeMode {
     SYSTEM,
     LIGHT,
-    DARK
+    DARK;
+
+    companion object {
+        fun fromNameOrDefault(name: String?, default: ThemeMode = SYSTEM): ThemeMode {
+            if (name.isNullOrBlank()) return default
+            return entries.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) } ?: default
+        }
+    }
 }
 
 /**

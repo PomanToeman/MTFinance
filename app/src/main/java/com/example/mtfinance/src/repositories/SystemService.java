@@ -36,7 +36,8 @@ public class SystemService {
                 if (existing == null) {
                     systemPreferencesDao.savePreferences(new SystemPreferences("SYSTEM"));
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                System.err.println("Default system preference initialization notice: " + e.getMessage());
             }
         });
     }
@@ -60,11 +61,7 @@ public class SystemService {
 
     public DateFormat getDateFormatSync() {
         SystemPreferences prefs = getPreferencesSync();
-        try {
-            return DateFormat.valueOf(prefs.getDateFormat());
-        } catch (Exception e) {
-            return DateFormat.DD_MM_YYYY;
-        }
+        return DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY);
     }
 
     public CurrencyFormat getCurrencyFormatSync() {

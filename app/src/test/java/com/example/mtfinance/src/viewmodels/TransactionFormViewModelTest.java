@@ -78,7 +78,7 @@ public class TransactionFormViewModelTest {
 
         viewModel.setName("Double Category");
         viewModel.setAmount(BigDecimal.TEN);
-        viewModel.setType(TrackingType.EXPENSE);
+        viewModel.setTypeSync(TrackingType.EXPENSE);
         viewModel.addCategoryId(1L);
         viewModel.addCategoryId(2L);
 
@@ -229,7 +229,7 @@ public class TransactionFormViewModelTest {
         viewModel.addCategoryId(1L);
         assertEquals(1, viewModel.getCategoryIds().getValue().size());
 
-        viewModel.setType(TrackingType.INCOME);
+        viewModel.setTypeSync(TrackingType.INCOME);
         assertTrue(viewModel.getCategoryIds().getValue().isEmpty());
     }
 

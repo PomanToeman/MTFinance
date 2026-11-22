@@ -12,9 +12,12 @@ public enum TransactionMessages implements MessageCli {
     TRANSACTION_DELETE_NONE("No transaction to delete."),
     TRANSACTION_DELETE_FAILED("Failed to delete transaction: %s"),
     TRANSACTION_NAME_EMPTY("Name cannot be empty."),
+    TRANSACTION_DATE_EMPTY("Date cannot be empty."),
+    TRANSACTION_DATE_INVALID("Invalid date format. Accepted formats: yyyy-MM-dd or dd/MM/yyyy"),
     TRANSACTION_CATEGORY_EMPTY("Category cannot be empty."),
     TRANSACTION_CATEGORIES_NOT_EXIST("Some Categories do not exist."),
     TRANSACTION_DUPLICATE("Identical transaction already exists."),
+
     TRANSACTION_MIN_CATEGORY("Transaction must have at least one category"),
     TRANSACTION_TYPE_MISMATCH("Transaction and category types do not match.");
 

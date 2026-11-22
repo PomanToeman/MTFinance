@@ -170,7 +170,8 @@ public class TrackingRepository {
             if (!helper.isRoot(cat)) {
                 try {
                     categoryRepository.deleteCategory(cat);
-                } catch (Exception ignored) {
+                } catch (CategoryViolationException e) {
+                    System.err.println("Category deletion notice during wipe: " + e.getMessage());
                 }
             }
         }

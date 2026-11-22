@@ -1,17 +1,15 @@
 package com.example.mtfinance.src.viewmodels;
 
-import android.os.Looper;
-
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.DateFormat;
+import com.example.mtfinance.src.messages.ErrorMessages;
 import com.example.mtfinance.src.repositories.SystemRepository;
 import com.example.mtfinance.src.repositories.SystemService;
 import com.example.mtfinance.src.repositories.TrackingRepository;
-import com.example.mtfinance.src.messages.GeneralMessages;
 import com.example.mtfinance.src.trackingengine.DefaultSettings;
 import com.example.mtfinance.src.trackingengine.SettingsPreferenceViolationException;
 import com.example.mtfinance.src.trackingengine.SystemPreferences;
@@ -42,6 +40,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     private final MutableLiveData<Boolean> changesMade = new MutableLiveData<>(false);
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> saveStatusColor = new MutableLiveData<>("GRAY");
+    private final MutableLiveData<SettingsSaveState> saveState = new MutableLiveData<>(SettingsSaveState.UNCHANGED);
     private final MutableLiveData<String> genericErrorMessage = new MutableLiveData<>("");
     private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
 
@@ -68,7 +67,8 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 trackingRepository.deleteAllAppData();
                 updateLiveData(successMessage, "All app data deleted successfully.");
             } catch (Exception e) {
-                updateLiveData(genericErrorMessage, "Failed to delete app data: " + e.getMessage());
+                System.err.println("Failed to delete all app data: " + e.getMessage());
+                updateLiveData(genericErrorMessage, ErrorMessages.FAILED_DELETE_APP_DATA.getMessage(e.getMessage()));
             } finally {
                 updateLiveData(isLoading, false);
             }
@@ -82,7 +82,8 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 trackingRepository.deleteAllTransactions();
                 updateLiveData(successMessage, "All transactions deleted successfully (categories retained).");
             } catch (Exception e) {
-                updateLiveData(genericErrorMessage, "Failed to delete transactions: " + e.getMessage());
+                System.err.println("Failed to delete transactions: " + e.getMessage());
+                updateLiveData(genericErrorMessage, ErrorMessages.FAILED_DELETE_TRANSACTIONS.getMessage(e.getMessage()));
             } finally {
                 updateLiveData(isLoading, false);
             }
@@ -102,7 +103,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
             SystemPreferences prefs = systemService.getPreferencesSync();
             if (prefs != null) {
                 updateLiveData(provisionalThemeMode, prefs.getThemeMode());
-                updateLiveData(provisionalDateFormat, DateFormat.valueOf(prefs.getDateFormat()));
+                updateLiveData(provisionalDateFormat, DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY));
                 updateLiveData(provisionalCurrencyFormat, CurrencyFormat.fromString(prefs.getCurrencyFormat()));
                 updateLiveData(provisionalStartDayOfMonthInput, String.valueOf(prefs.getStartDayOfMonth()));
                 updateLiveData(provisionalIncludeProvisional, prefs.isIncludeProvisional());
@@ -110,6 +111,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         }
         updateLiveData(changesMade, false);
         updateLiveData(saveStatusColor, "GRAY");
+        updateLiveData(saveState, SettingsSaveState.UNCHANGED);
         resetFieldErrors();
     }
 
@@ -172,15 +174,15 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     public void setProvisionalThemeMode(String themeMode) {
         if (themeMode != null) {
             updateLiveData(provisionalThemeMode, themeMode);
-            setFieldError(SystemPreferenceErrorFields.THEME_MODE, "");
+            resetFieldError(SystemPreferenceErrorFields.THEME_MODE);
             reevaluateState();
         }
     }
 
     public void setProvisionalDateFormat(DateFormat format) {
-        if (format != null ) {
+        if (format != null) {
             updateLiveData(provisionalDateFormat, format);
-            setFieldError(SystemPreferenceErrorFields.DATE_FORMAT, "");
+            resetFieldError(SystemPreferenceErrorFields.DATE_FORMAT);
             reevaluateState();
         }
     }
@@ -188,7 +190,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     public void setProvisionalCurrencyFormat(CurrencyFormat currencyFormat) {
         if (currencyFormat != null) {
             updateLiveData(provisionalCurrencyFormat, currencyFormat);
-            setFieldError(SystemPreferenceErrorFields.CURRENCY_FORMAT, "");
+            resetFieldError(SystemPreferenceErrorFields.CURRENCY_FORMAT);
             reevaluateState();
         }
     }
@@ -198,17 +200,17 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         updateLiveData(provisionalStartDayOfMonthInput, val);
 
         if (val.isEmpty()) {
-            setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day of month cannot be empty");
+            setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_EMPTY.getMessage());
         } else {
             try {
                 int day = Integer.parseInt(val);
                 if (day < DefaultSettings.MIN_START_DAY || day > DefaultSettings.MAX_START_DAY) {
-                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be between " + DefaultSettings.MIN_START_DAY + " and " + DefaultSettings.MAX_START_DAY);
+                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_RANGE.getMessage());
                 } else {
-                    setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "");
+                    resetFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH);
                 }
-            } catch (Exception e) {
-                setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be a valid number between " + DefaultSettings.MIN_START_DAY + " and " + DefaultSettings.MAX_START_DAY);
+            } catch (NumberFormatException e) {
+                setFieldError(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_RANGE.getMessage());
             }
         }
         reevaluateState();
@@ -234,15 +236,15 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
 
         String dayStr = provisionalStartDayOfMonthInput.getValue();
         if (dayStr == null || dayStr.trim().isEmpty()) {
-            errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day of month cannot be empty");
+            errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_EMPTY.getMessage());
         } else {
             try {
                 int day = Integer.parseInt(dayStr.trim());
                 if (day < DefaultSettings.MIN_START_DAY || day > DefaultSettings.MAX_START_DAY) {
-                    errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be between " + DefaultSettings.MIN_START_DAY + " and " + DefaultSettings.MAX_START_DAY);
+                    errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_RANGE.getMessage());
                 }
-            } catch (Exception e) {
-                errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, "Start day must be a valid number between " + DefaultSettings.MIN_START_DAY + " and " + DefaultSettings.MAX_START_DAY);
+            } catch (NumberFormatException e) {
+                errors.put(SystemPreferenceErrorFields.START_DAY_OF_MONTH, ErrorMessages.START_DAY_RANGE.getMessage());
             }
         }
 
@@ -269,6 +271,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         if (persisted == null) {
             updateLiveData(changesMade, false);
             updateLiveData(saveStatusColor, hasFieldErrors() ? "RED" : "GRAY");
+            updateLiveData(saveState, hasFieldErrors() ? SettingsSaveState.ERROR : SettingsSaveState.UNCHANGED);
             return;
         }
 
@@ -276,7 +279,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         int parsedDay = 1;
         try {
             parsedDay = Integer.parseInt(currentDayStr.trim());
-        } catch (Exception e) {
+        } catch (NumberFormatException ignored) {
         }
 
         boolean changed = !persisted.getThemeMode().equalsIgnoreCase(provisionalThemeMode.getValue())
@@ -289,10 +292,13 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
 
         if (hasFieldErrors()) {
             updateLiveData(saveStatusColor, "RED");
+            updateLiveData(saveState, SettingsSaveState.ERROR);
         } else if (changed) {
             updateLiveData(saveStatusColor, "ORANGE");
+            updateLiveData(saveState, SettingsSaveState.PROVISIONAL);
         } else {
             updateLiveData(saveStatusColor, "GRAY");
+            updateLiveData(saveState, SettingsSaveState.UNCHANGED);
         }
     }
 
@@ -303,6 +309,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 Map<SystemPreferenceErrorFields, String> errors = validateSettingsConfigurations();
                 if (hasFieldErrors(errors) || hasFieldErrors()) {
                     updateLiveData(saveStatusColor, "RED");
+                    updateLiveData(saveState, SettingsSaveState.ERROR);
                     updateLiveData(isLoading, false);
                     return;
                 }
@@ -310,8 +317,8 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 int parsedStartDay = 1;
                 try {
                     parsedStartDay = Integer.parseInt(provisionalStartDayOfMonthInput.getValue());
-                } catch (Exception e) {
-                    throw new SettingsPreferenceViolationException("Invalid start day of month value: " + provisionalStartDayOfMonthInput.getValue());
+                } catch (NumberFormatException e) {
+                    throw new SettingsPreferenceViolationException(ErrorMessages.INVALID_START_DAY.getMessage(provisionalStartDayOfMonthInput.getValue()));
                 }
 
                 SystemPreferences prefs = new SystemPreferences();
@@ -327,17 +334,22 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                     systemRepository.updatePreferences(prefs);
                 }
 
-                reevaluateState();
+                initializeFromPersistedSync();
+                updateLiveData(saveState, SettingsSaveState.SAVED);
+                updateLiveData(saveStatusColor, "GREEN");
                 updateLiveData(successMessage, "Settings saved successfully!");
                 updateLiveData(genericErrorMessage, "");
             } catch (SettingsPreferenceViolationException e) {
                 rollbackProvisionalChanges();
-                updateLiveData(genericErrorMessage, "Preference configuration violation occurred. Changes rolled back.");
+                updateLiveData(genericErrorMessage, ErrorMessages.PREFERENCE_VIOLATION.getMessage(e.getMessage()));
                 updateLiveData(saveStatusColor, "RED");
+                updateLiveData(saveState, SettingsSaveState.ERROR);
             } catch (Exception e) {
+                System.err.println("Failed to save settings: " + e.getMessage());
                 rollbackProvisionalChanges();
-                updateLiveData(genericErrorMessage, "Failed to save settings: " + e.getMessage());
+                updateLiveData(genericErrorMessage, ErrorMessages.FAILED_SAVE_SETTINGS.getMessage(e.getMessage()));
                 updateLiveData(saveStatusColor, "RED");
+                updateLiveData(saveState, SettingsSaveState.ERROR);
             } finally {
                 updateLiveData(isLoading, false);
             }
@@ -362,8 +374,6 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
         initializeFromPersisted();
     }
 
-
-
     public LiveData<SystemPreferences> getSystemPreferences() {
         return systemService.getPreferencesLive();
     }
@@ -382,6 +392,10 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
 
     public LiveData<String> getSaveStatusColor() {
         return saveStatusColor;
+    }
+
+    public LiveData<SettingsSaveState> getSaveState() {
+        return saveState;
     }
 
     public LiveData<String> getGenericErrorMessage() {

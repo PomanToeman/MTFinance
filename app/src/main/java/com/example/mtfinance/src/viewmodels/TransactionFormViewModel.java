@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.DateFormat;
+import com.example.mtfinance.src.messages.ErrorMessages;
 import com.example.mtfinance.src.messages.TransactionMessages;
 import com.example.mtfinance.src.messages.GeneralMessages;
 import com.example.mtfinance.src.repositories.CategoryService;
@@ -233,7 +234,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             if (fields.name.trim().isEmpty()) {
                 setFieldError(TransactionErrorFields.NAME, TransactionMessages.TRANSACTION_NAME_EMPTY.getMessage());
             } else {
-                setFieldError(TransactionErrorFields.NAME, "");
+                resetFieldError(TransactionErrorFields.NAME);
             }
         }
     }
@@ -247,7 +248,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         if (fields != null) {
             fields.description = description;
             updateFields(fields);
-            setFieldError(TransactionErrorFields.DESCRIPTION, "");
+            resetFieldError(TransactionErrorFields.DESCRIPTION);
         }
     }
 
@@ -260,7 +261,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         if (fields != null) {
             fields.categoryIds.add(categoryId);
             updateFields(fields);
-            setFieldError(TransactionErrorFields.CATEGORY_IDS, "");
+            resetFieldError(TransactionErrorFields.CATEGORY_IDS);
         }
     }
 
@@ -291,47 +292,53 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
                 setFieldError(TransactionErrorFields.AMOUNT, GeneralMessages.INVALID_AMOUNT.getMessage(amount));
             } else {
-                setFieldError(TransactionErrorFields.AMOUNT, "");
+                resetFieldError(TransactionErrorFields.AMOUNT);
             }
         }
     }
 
-    public void setType(TrackingType type) {
+    public void setTypeSync(TrackingType type) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
             TrackingType oldType = fields.type;
             fields.type = type;
             if (oldType != type) {
                 fields.categoryIds.clear();
-                updateLiveData(cachedCategories, new HashSet<>());
                 if (type != null && type != TrackingType.EXPENSE && type != TrackingType.OTHER) {
                     try {
                         Category rootCat = categoryService.getRootCategoryByType(type);
                         if (rootCat != null) {
                             fields.categoryIds.add(rootCat.getCategoryId());
-                            updateLiveData(cachedCategories, new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(fields.categoryIds)));
                         }
-                    } catch (Exception ignored) {
+                    } catch (Exception e) {
+                        System.err.println("Root category resolution notice: " + e.getMessage());
                     }
                 }
+                updateLiveData(cachedCategories, new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(fields.categoryIds)));
             }
             updateFields(fields);
-            if (type == null || type == TrackingType.OTHER) {
-                setFieldError(TransactionErrorFields.TYPE, "Type cannot be empty or invalid.");
+            if (type == null) {
+                setFieldError(TransactionErrorFields.TYPE, GeneralMessages.INVALID_TYPE_ERROR_MESSAGE.getMessage());
             } else {
-                setFieldError(TransactionErrorFields.TYPE, "");
+                resetFieldError(TransactionErrorFields.TYPE);
             }
         }
     }
 
+    public void setType(TrackingType type) {
+        executor.execute(() -> {
+            setTypeSync(type);
+        });
+    }
+
     public void setTypeText(String typeStr) {
         if (typeStr == null || typeStr.trim().isEmpty()) {
-            setFieldError(TransactionErrorFields.TYPE, "Type cannot be empty.");
+            setFieldError(TransactionErrorFields.TYPE, ErrorMessages.TYPE_CANNOT_BE_EMPTY.getMessage());
             return;
         }
         TrackingType parsed = TrackingType.fromString(typeStr);
         if (parsed == TrackingType.OTHER && !typeStr.trim().equalsIgnoreCase("other")) {
-            setFieldError(TransactionErrorFields.TYPE, "Invalid type. Valid types are EXPENSE, INCOME, ACCOUNT_TRANSFERS.");
+            setFieldError(TransactionErrorFields.TYPE, ErrorMessages.INVALID_TRANSACTION_TYPE.getMessage());
             TransactionFormFields fields = formFields.getValue();
             if (fields != null) {
                 fields.type = TrackingType.OTHER;
@@ -340,8 +347,8 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
                 updateFields(fields);
             }
         } else {
-            setFieldError(TransactionErrorFields.TYPE, "");
-            setType(parsed);
+            resetFieldError(TransactionErrorFields.TYPE);
+            setTypeSync(parsed);
         }
     }
 
@@ -355,18 +362,18 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             if (dateStr == null || dateStr.trim().isEmpty()) {
                 fields.date = null;
                 updateFields(fields);
-                setFieldError(TransactionErrorFields.DATE, "Date cannot be empty.");
+                setFieldError(TransactionErrorFields.DATE, TransactionMessages.TRANSACTION_DATE_EMPTY.getMessage());
                 return;
             }
             LocalDateTime parsed = DateFormat.parseSimple(dateStr);
             if (parsed != null) {
                 fields.date = parsed;
                 updateFields(fields);
-                setFieldError(TransactionErrorFields.DATE, "");
+                resetFieldError(TransactionErrorFields.DATE);
             } else {
                 fields.date = null;
                 updateFields(fields);
-                setFieldError(TransactionErrorFields.DATE, "Invalid date format. Accepted formats: yyyy-MM-dd or dd/MM/yyyy");
+                setFieldError(TransactionErrorFields.DATE, TransactionMessages.TRANSACTION_DATE_INVALID.getMessage());
             }
         }
     }
@@ -381,9 +388,9 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             fields.date = date;
             updateFields(fields);
             if (date == null) {
-                setFieldError(TransactionErrorFields.DATE, "Date cannot be empty.");
+                setFieldError(TransactionErrorFields.DATE, TransactionMessages.TRANSACTION_DATE_EMPTY.getMessage());
             } else {
-                setFieldError(TransactionErrorFields.DATE, "");
+                resetFieldError(TransactionErrorFields.DATE);
             }
         }
     }

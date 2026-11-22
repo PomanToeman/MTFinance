@@ -53,6 +53,7 @@ import com.example.mtfinance.screens.theme.getSaveStatusThemeColor
 import com.example.mtfinance.screens.theme.ThemeState
 import com.example.mtfinance.src.CurrencyFormat
 import com.example.mtfinance.src.DateFormat
+import com.example.mtfinance.src.viewmodels.SettingsSaveState
 import com.example.mtfinance.src.viewmodels.SettingsViewModel
 
 /**
@@ -65,6 +66,7 @@ fun SettingsScreen(
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val changesMade by settingsViewModel.changesMade.observeAsState(false)
+    val saveState by settingsViewModel.saveState.observeAsState(SettingsSaveState.UNCHANGED)
     val isLoading by settingsViewModel.isLoading.observeAsState(false)
     val genericErrorMessage by settingsViewModel.genericErrorMessage.observeAsState("")
     val successMessage by settingsViewModel.successMessage.observeAsState("")
@@ -82,10 +84,7 @@ fun SettingsScreen(
     // Sync Room persisted theme to Compose ThemeState
     LaunchedEffect(systemPreferences) {
         systemPreferences?.let { prefs ->
-            try {
-                ThemeState.currentThemeMode = ThemeMode.valueOf(prefs.themeMode)
-            } catch (_: Exception) {
-            }
+            ThemeState.currentThemeMode = ThemeMode.fromNameOrDefault(prefs.themeMode, ThemeMode.SYSTEM)
         }
     }
 
@@ -104,7 +103,7 @@ fun SettingsScreen(
         Header("Settings & Configurations")
 
         // Top Provisional Warning Banner
-        if (changesMade) {
+        if (saveState == SettingsSaveState.PROVISIONAL || changesMade) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -225,11 +224,8 @@ fun SettingsScreen(
                     options = DateFormat.entries.map { it.getString() },
                     selectedOption = provDateFormat.getString(),
                     onOptionSelected = { selectedPattern ->
-                        try {
-                            val matched = DateFormat.fromString(selectedPattern)
-                            settingsViewModel.setProvisionalDateFormat(matched)
-                        } catch (_: Exception) {
-                        }
+                        val matched = DateFormat.fromStringOrDefault(selectedPattern, DateFormat.DD_MM_YYYY)
+                        settingsViewModel.setProvisionalDateFormat(matched)
                     }
                 )
             }

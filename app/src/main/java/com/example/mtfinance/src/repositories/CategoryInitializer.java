@@ -33,7 +33,8 @@ public class CategoryInitializer {
         executor.execute(() -> {
             try {
                 categoryTreeHelper.populateDefaultCategories();
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                System.err.println("Default category initialization notice: " + e.getMessage());
             }
         });
     }
