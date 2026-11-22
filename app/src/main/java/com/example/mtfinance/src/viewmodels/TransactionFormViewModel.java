@@ -296,7 +296,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
             TrackingType oldType = fields.type;
             fields.type = type;
-            if (oldType != type) {
+            if (oldType != type || fields.categoryIds.isEmpty()) {
                 fields.categoryIds.clear();
                 if (type != null) {
                     try {
@@ -308,7 +308,8 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
                         logger.log(Level.WARNING, ErrorMessages.ROOT_CATEGORY_RESOLUTION_NOTICE.getMessage(e.getMessage()), e);
                     }
                 }
-                updateLiveData(cachedCategories, new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(fields.categoryIds)));
+                updateCachedCategories(fields.categoryIds);
+                resetFieldError(TransactionErrorFields.CATEGORY_IDS);
             }
             updateFields(fields);
             if (type == null) {

@@ -63,7 +63,7 @@ fun CategoryListScreen(
                         Text(text = "No categories found", color = MaterialTheme.colorScheme.primary)
                     }
                 } else {
-                    FullCategoryDashBoard(categoryDashboardViewModel = categoryDashboardViewModel)
+                    FullCategoryDashBoard(navHostController = navHostController, categoryDashboardViewModel = categoryDashboardViewModel)
                 }
             }
         },

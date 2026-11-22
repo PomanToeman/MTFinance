@@ -1,7 +1,7 @@
 /**
  * @file CategoryDashboard.kt
  * @scope Category dashboard views and budgeting charts (pie chart, budget usage stacked bars).
- * @purpose Renders detailed analytics, proportional budget breakdown, sub-category distributions, search, and time-filtered transactions.
+ * @purpose Renders detailed analytics, proportional budget breakdown, sub-category distributions, search, and time-filtered transactions with pagination.
  */
 package com.example.mtfinance.screens.lists
 
@@ -17,12 +17,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.IconButton
@@ -49,10 +46,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.example.mtfinance.screens.Header
-import com.example.mtfinance.screens.MiniHeader
+import com.example.mtfinance.screens.Routes
 import com.example.mtfinance.screens.displayAmount
 import com.example.mtfinance.src.DateFormat
+import com.example.mtfinance.src.trackingengine.DefaultSettings
 import com.example.mtfinance.src.viewmodels.CategoryDashboardViewModel
 import com.example.mtfinance.src.viewmodels.SettingsViewModel
 import com.patrykandpatrick.vico.compose.common.Fill
@@ -68,10 +67,11 @@ import java.math.RoundingMode
 import java.time.LocalDate
 
 /**
- * Displays the polished Category Dashboard including proportional budget stacked bar, charts, details, subcategories, and search.
+ * Displays the polished Category Dashboard including proportional budget stacked bar, charts, details, subcategories, search, and pagination.
  */
 @Composable
 fun FullCategoryDashBoard(
+    navHostController: NavHostController,
     categoryDashboardViewModel: CategoryDashboardViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -97,22 +97,35 @@ fun FullCategoryDashBoard(
         Header(text = "Category Dashboard")
 
         if (selectedCategory != null) {
-            // 1. Category Name Header Card
+            // 1. Category Name Header Card with Edit Button
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = selectedCategory!!.category.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Type: ${selectedCategory!!.category.type}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = selectedCategory!!.category.name,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Type: ${selectedCategory!!.category.type}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Button(
+                            onClick = { navHostController.navigate(Routes.CATEGORY_FORM.route + "/${selectedCategory!!.category.categoryId}") }
+                        ) {
+                            Text("Edit Category")
+                        }
+                    }
                 }
             }
 
@@ -153,7 +166,7 @@ fun FullCategoryDashBoard(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Budget Statistics & Spending Trend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     CategoryStackedBar(categoryDashboardViewModel = categoryDashboardViewModel, settingsViewModel = settingsViewModel)
-                    CategoryOverTimeChart(categoryDashboardViewModel = categoryDashboardViewModel)
+                    CategoryOverTimeChart(categoryDashboardViewModel = categoryDashboardViewModel, settingsViewModel = settingsViewModel)
                 }
             }
 
@@ -163,15 +176,18 @@ fun FullCategoryDashBoard(
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
+                    val currencySymbol = systemPreferences?.currencySymbol ?: "$"
+
                     Text("Category Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text("Description: ${selectedCategory!!.category.description?.ifEmpty { "None" } ?: "None"}")
-                    Text("Monthly Budget: ${selectedCategory!!.category.monthlyBudget}")
+                    Text("Minimum Budget: ${displayAmount(selectedCategory!!.category.determineMinimumBudget(), currencySymbol)}")
                     val parent = selectedCategory!!.category.parent
                     Text("Parent / Root: ${parent?.name ?: "Root Category"}")
                 }
             }
 
-            // 4. Sub-Category Card (Dynamic size, count, search with clear button, show more, pie chart)
+            // 4. Sub-Category Card (Dynamic size, count, search with clear button, show more, pagination, pie chart)
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
@@ -180,6 +196,13 @@ fun FullCategoryDashBoard(
                     val subcategories = selectedCategory!!.category.getChildren(false).toList()
                     val subQuery by categoryDashboardViewModel.getSubcategorySearchQuery().observeAsState("")
                     val filteredSubs = subcategories.filter { it.name.contains(subQuery, ignoreCase = true) }
+                    val systemPrefs by settingsViewModel.systemPreferences.observeAsState()
+                    val pageSize = systemPrefs?.pageSize ?: DefaultSettings.DEFAULT_PAGE_COUNT
+                    var subPage by remember { mutableStateOf(1) }
+
+                    val totalSubs = filteredSubs.size
+                    val totalSubPages = (totalSubs + pageSize - 1) / pageSize
+                    val paginatedSubs = filteredSubs.drop((subPage - 1) * pageSize).take(pageSize)
 
                     Text("Sub-Categories (${subcategories.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
@@ -188,22 +211,27 @@ fun FullCategoryDashBoard(
                     } else {
                         Search(search = subQuery, setSearch = { categoryDashboardViewModel.setSubcategorySearchQuery(it) })
 
-                        var showAllSubs by remember { mutableStateOf(false) }
-                        val displayedSubs = if (showAllSubs) filteredSubs else filteredSubs.take(3)
-
-                        if (displayedSubs.isEmpty()) {
+                        if (paginatedSubs.isEmpty()) {
                             Text("No matching sub-categories found.", style = MaterialTheme.typography.bodySmall)
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                displayedSubs.forEach { sub ->
-                                    CategoryListItem(categoryItem = sub, actionOne = { catId -> categoryDashboardViewModel.setSelectedCategory(catId) })
+                                paginatedSubs.forEach { sub ->
+                                    CategoryListItem(
+                                        categoryItem = sub,
+                                        actionOne = { catId -> categoryDashboardViewModel.setSelectedCategory(catId) },
+                                        actionOneLabel = "Show More",
+                                        actionTwo = { catId -> navHostController.navigate(Routes.CATEGORY_FORM.route + "/$catId") },
+                                        actionTwoLabel = "Edit"
+                                    )
                                 }
                             }
-                            if (filteredSubs.size > 3) {
-                                TextButton(onClick = { showAllSubs = !showAllSubs }) {
-                                    Text(if (showAllSubs) "Show Less" else "Show More (${filteredSubs.size - 3} more)")
-                                }
-                            }
+                            PaginationBar(
+                                currentPage = subPage,
+                                totalPages = totalSubPages,
+                                totalItems = totalSubs,
+                                shownCount = paginatedSubs.size,
+                                onPageChanged = { subPage = it }
+                            )
                         }
 
                         CategoryPieChart(categoryDashboardViewModel = categoryDashboardViewModel)
@@ -211,7 +239,7 @@ fun FullCategoryDashBoard(
                 }
             }
 
-            // 5. Transaction Card (Search + Time Period Filter Switch)
+            // 5. Transaction Card (Search + Time Period Filter Switch + Pagination + Compact Items)
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
@@ -221,6 +249,9 @@ fun FullCategoryDashBoard(
                     val filterPeriod by categoryDashboardViewModel.getFilterTransactionsByPeriod().observeAsState(true)
                     val startDate by categoryDashboardViewModel.getStartDate().observeAsState()
                     val endDate by categoryDashboardViewModel.getEndDate().observeAsState()
+                    val systemPrefs by settingsViewModel.systemPreferences.observeAsState()
+                    val pageSize = systemPrefs?.pageSize ?: DefaultSettings.DEFAULT_PAGE_COUNT
+                    var txPage by remember { mutableStateOf(1) }
 
                     Text("Transactions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Search(search = txQuery, setSearch = { categoryDashboardViewModel.setTransactionSearchQuery(it) })
@@ -244,20 +275,37 @@ fun FullCategoryDashBoard(
                         matchesQuery && matchesPeriod
                     }
 
+                    val totalTxs = filteredTxs.size
+                    val totalTxPages = (totalTxs + pageSize - 1) / pageSize
+                    val paginatedTxs = filteredTxs.drop((txPage - 1) * pageSize).take(pageSize)
+
                     if (filteredTxs.isEmpty()) {
                         Text("No matching transactions found.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 8.dp))
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            filteredTxs.forEach { tx ->
-                                TransactionDetails(transaction = tx)
+                            paginatedTxs.forEach { tx ->
+                                TransactionCompactListItem(
+                                    transaction = tx,
+                                    onEdit = { navHostController.navigate(Routes.TRANSACTION_FORM_EDIT.route + "/${tx.transactionId}") }
+                                )
                             }
                         }
+                        PaginationBar(
+                            currentPage = txPage,
+                            totalPages = totalTxPages,
+                            totalItems = totalTxs,
+                            shownCount = paginatedTxs.size,
+                            onPageChanged = { txPage = it }
+                        )
                     }
                 }
             }
 
-            Button(onClick = { categoryDashboardViewModel.resetSelectedCategory() }) {
-                Text(text = "Back to Category List", color = MaterialTheme.colorScheme.onPrimary)
+            TextButton(
+                onClick = { categoryDashboardViewModel.resetSelectedCategory() },
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Text(text = "Back to Category List", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         } else {
             Text(text = "No category selected", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(16.dp))
