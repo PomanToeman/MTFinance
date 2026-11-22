@@ -16,7 +16,9 @@ public enum ButtonMessages implements MessageCli {
     CLOSE("Close"),
     CHOOSE_CATEGORY("Choose Category"),
     SET_PARENT("Set Parent"),
-    RESET_TO_ROOT("Reset to Root");
+    RESET_TO_ROOT("Reset to Root"),
+    PREV("<"),
+    NEXT(">");
 
     private final String message;
 

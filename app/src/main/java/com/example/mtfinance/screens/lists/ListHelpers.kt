@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -45,6 +44,7 @@ import com.example.mtfinance.src.trackingengine.Category
 import com.example.mtfinance.src.trackingengine.DefaultSettings
 import com.example.mtfinance.src.trackingengine.Transaction
 import com.example.mtfinance.src.trackingengine.TrackingType
+import com.example.mtfinance.src.messages.ButtonMessages
 import com.example.mtfinance.src.utlis.PaginationHelper
 import com.example.mtfinance.src.viewmodels.SettingsViewModel
 
@@ -106,7 +106,7 @@ fun PaginationBar(
                     onClick = { if (currentPage > 1) onPageChanged(currentPage - 1) },
                     enabled = currentPage > 1
                 ) {
-                    Text("< Prev")
+                    Text(ButtonMessages.PREV.getMessage())
                 }
                 Text(
                     text = "Page $currentPage of ${Math.max(1, totalPages)}",
@@ -117,7 +117,7 @@ fun PaginationBar(
                     onClick = { if (currentPage < totalPages) onPageChanged(currentPage + 1) },
                     enabled = currentPage < totalPages
                 ) {
-                    Text("Next >")
+                    Text(ButtonMessages.NEXT.getMessage())
                 }
             }
         }
@@ -194,11 +194,14 @@ fun CategoryList(
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val effectivePageSize = pageSize ?: (systemPreferences?.pageSize ?: DefaultSettings.DEFAULT_PAGE_COUNT)
-    var currentPage by remember { mutableStateOf(1) }
+    var currentPage by remember(effectivePageSize) { mutableStateOf(1) }
 
     val itemList = categories.toList()
     val totalItems = itemList.size
     val totalPages = PaginationHelper.calculateTotalPages(totalItems, effectivePageSize)
+    if (currentPage > totalPages) {
+        currentPage = Math.max(1, totalPages)
+    }
     val pageItems = PaginationHelper.getPageSlice(itemList, currentPage, effectivePageSize)
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -211,7 +214,7 @@ fun CategoryList(
         ) {
             items(
                 pageItems.size,
-                key = { index -> "${pageItems[index].category.categoryId}_${updateTrigger}" }
+                key = { index -> "${pageItems[index].category.categoryId}_${updateTrigger}_${currentPage}" }
             ) { index ->
                 CategoryListItem(
                     pageItems[index],
@@ -248,11 +251,14 @@ fun CategoryListBasic(
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val effectivePageSize = pageSize ?: (systemPreferences?.pageSize ?: DefaultSettings.DEFAULT_PAGE_COUNT)
-    var currentPage by remember { mutableStateOf(1) }
+    var currentPage by remember(effectivePageSize) { mutableStateOf(1) }
 
     val itemList = categories.toList()
     val totalItems = itemList.size
     val totalPages = PaginationHelper.calculateTotalPages(totalItems, effectivePageSize)
+    if (currentPage > totalPages) {
+        currentPage = Math.max(1, totalPages)
+    }
     val pageItems = PaginationHelper.getPageSlice(itemList, currentPage, effectivePageSize)
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -283,20 +289,23 @@ fun TransactionList(
     transactions: Collection<Transaction>,
     modifier: Modifier = Modifier,
     actionOne: ((Long) -> Unit)? = null,
-    actionOneLabel: String = "Delete",
+    actionOneLabel: String = ButtonMessages.DELETE.getMessage(),
     actionTwo: ((Long) -> Unit)? = null,
-    actionTwoLabel: String = "Edit",
+    actionTwoLabel: String = ButtonMessages.EDIT.getMessage(),
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     pageSize: Int? = null,
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val systemPreferences by settingsViewModel.systemPreferences.observeAsState()
     val effectivePageSize = pageSize ?: (systemPreferences?.pageSize ?: DefaultSettings.DEFAULT_PAGE_COUNT)
-    var currentPage by remember { mutableStateOf(1) }
+    var currentPage by remember(effectivePageSize) { mutableStateOf(1) }
 
     val itemList = transactions.toList()
     val totalItems = itemList.size
     val totalPages = PaginationHelper.calculateTotalPages(totalItems, effectivePageSize)
+    if (currentPage > totalPages) {
+        currentPage = Math.max(1, totalPages)
+    }
     val pageItems = PaginationHelper.getPageSlice(itemList, currentPage, effectivePageSize)
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -307,7 +316,10 @@ fun TransactionList(
                 .padding(8.dp)
                 .border(width = 2.dp, color = MaterialTheme.colorScheme.outline, shape = RectangleShape)
         ) {
-            items(pageItems.size) { index ->
+            items(
+                pageItems.size,
+                key = { index -> "${pageItems[index].transactionId}_${currentPage}" }
+            ) { index ->
                 TransactionListItem(
                     pageItems[index],
                     actionOne = actionOne,

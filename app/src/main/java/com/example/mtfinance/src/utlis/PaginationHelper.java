@@ -4,12 +4,18 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Static independent utility class for pagination calculations and sublist slicing.
+ * Utility class for pagination calculations and sublist slicing.
  */
-public final class PaginationHelper {
+public class PaginationHelper {
 
-    private PaginationHelper() {
-        // Private constructor to prevent instantiation
+    private int pageSize;
+    private int currentPage;
+    private int totalItems;
+
+    public PaginationHelper(int pageSize) {
+        this.pageSize = pageSize > 0 ? pageSize : 10;
+        this.currentPage = 1;
+        this.totalItems = 0;
     }
 
     public static int calculateTotalPages(int totalItems, int pageSize) {
@@ -30,5 +36,64 @@ public final class PaginationHelper {
         }
         int toIndex = Math.min(fromIndex + size, items.size());
         return items.subList(fromIndex, toIndex);
+    }
+
+    public int getCurrentPage() {
+        return currentPage;
+    }
+
+    public void setCurrentPage(int page) {
+        this.currentPage = Math.max(1, Math.min(page, Math.max(1, calculateTotalPages())));
+    }
+
+    public int getPageSize() {
+        return pageSize;
+    }
+
+    public void setPageSize(int pageSize) {
+        this.pageSize = pageSize > 0 ? pageSize : 10;
+        setCurrentPage(this.currentPage);
+    }
+
+    public int getTotalItems() {
+        return totalItems;
+    }
+
+    public void setTotalItems(int totalItems) {
+        this.totalItems = Math.max(0, totalItems);
+        setCurrentPage(this.currentPage);
+    }
+
+    public int calculateTotalPages() {
+        return calculateTotalPages(totalItems, pageSize);
+    }
+
+    public boolean canNavigateForward() {
+        return currentPage < calculateTotalPages();
+    }
+
+    public boolean canNavigateBackward() {
+        return currentPage > 1;
+    }
+
+    public void navigateForward() {
+        if (canNavigateForward()) {
+            currentPage++;
+        }
+    }
+
+    public void navigateBackward() {
+        if (canNavigateBackward()) {
+            currentPage--;
+        }
+    }
+
+    public <T> List<T> getPageSlice(List<T> items) {
+        if (items == null) {
+            this.totalItems = 0;
+            return Collections.emptyList();
+        }
+        this.totalItems = items.size();
+        return getPageSlice(items, currentPage, pageSize);
     }
 }
