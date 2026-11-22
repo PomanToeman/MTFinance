@@ -8,7 +8,7 @@ import com.example.mtfinance.src.trackingengine.Category;
 import com.example.mtfinance.src.trackingengine.SystemPreferences;
 import com.example.mtfinance.src.trackingengine.Transaction;
 
-@Database(entities = {Category.class, Transaction.class, CategoryTransactionCrossRef.class, SystemPreferences.class}, version = 4)
+@Database(entities = {Category.class, Transaction.class, CategoryTransactionCrossRef.class, SystemPreferences.class}, version = 5)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     public abstract CategoryDao categoryDao();
