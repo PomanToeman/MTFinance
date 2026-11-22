@@ -5,6 +5,7 @@
  */
 package com.example.mtfinance.screens.lists
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,6 +68,7 @@ fun CategoryListItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .animateContentSize()
                 .clickable { expanded.value = !expanded.value }
                 .background(color = backgroundColor, shape = RectangleShape)
         ) {
@@ -214,6 +216,7 @@ fun TransactionListItem(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .animateContentSize()
             .clickable { expandedState.value = !expandedState.value }
             .background(color = backgroundColor, shape = RectangleShape),
         content = {

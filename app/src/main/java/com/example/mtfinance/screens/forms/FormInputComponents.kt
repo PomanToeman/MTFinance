@@ -38,6 +38,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.mtfinance.src.DateFormat
@@ -88,6 +90,17 @@ fun DatePickerField(
         initialSelectedDateMillis = initialMillis
     )
 
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    val openCalendar = {
+        if (enabled) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+            showDialog = true
+        }
+    }
+
     Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = formattedSystemText,
@@ -134,7 +147,7 @@ fun DatePickerField(
                         )
                     }
                     IconButton(
-                        onClick = { if (enabled) showDialog = true },
+                        onClick = openCalendar,
                         enabled = enabled
                     ) {
                         Icon(
@@ -151,7 +164,7 @@ fun DatePickerField(
                 modifier = Modifier
                     .matchParentSize()
                     .padding(end = 96.dp)
-                    .clickable { showDialog = true }
+                    .clickable { openCalendar() }
             )
         }
     }
