@@ -2,6 +2,15 @@
 
 A finance-tracking Android app for managing personal finances, tracking budgets, and analysing spending across custom categories and accounts.
 
+## Disclaimer
+
+MTFinance is a personal portfolio project. It is provided "as is", without
+warranty of any kind. It is not financial, tax, or accounting advice, and I
+make no guarantee that calculations, budget figures, or imported data are
+accurate or complete. Use it at your own risk and keep your own backups.
+This project is not affiliated with or endorsed by any bank or financial
+institution.
+
 ## Key Features
 
 ### Categories & Tracking Engine
