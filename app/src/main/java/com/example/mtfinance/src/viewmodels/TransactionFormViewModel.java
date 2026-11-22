@@ -259,6 +259,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         if (fields != null) {
             fields.categoryIds.remove(categoryId);
             updateFields(fields);
+            updateLiveData(cachedCategories, new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(fields.categoryIds)));
             if (fields.categoryIds.isEmpty()) {
                 setFieldError(TransactionErrorFields.CATEGORY_IDS, TransactionMessages.TRANSACTION_CATEGORY_EMPTY.getMessage());
             }
