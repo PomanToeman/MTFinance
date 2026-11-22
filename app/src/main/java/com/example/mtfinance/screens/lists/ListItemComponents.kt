@@ -64,74 +64,64 @@ fun CategoryListItem(
     val expanded = remember { mutableStateOf(false) }
 
     if (categoryItem != null) {
-        OutlinedCard(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp)
-                .clickable { expanded.value = !expanded.value },
-            shape = RoundedCornerShape(6.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            colors = CardDefaults.cardColors(containerColor = backgroundColor)
+                .clickable { expanded.value = !expanded.value }
+                .background(color = backgroundColor, shape = RectangleShape)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        categoryItem.name,
-                        modifier = Modifier.weight(1f),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        displayAmount(categoryItem.monthlyBudget, currencySymbol),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                Text("Type: ${categoryItem.type}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                if (expanded.value) {
-                    if (!categoryItem.description.isNullOrBlank()) {
+                    .padding(3.dp),
+                content = {
+                    Row {
                         Text(
-                            "Description: ${categoryItem.description}",
-                            style = MaterialTheme.typography.bodySmall,
+                            categoryItem.name,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Left,
+                            minLines = 1,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            displayAmount(categoryItem.monthlyBudget, currencySymbol),
+                            textAlign = TextAlign.Right,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (actionOne != null) {
-                            OutlinedButton(
-                                onClick = { actionOne(categoryItem.categoryId) },
-                                modifier = Modifier.height(32.dp).padding(horizontal = 4.dp)
-                            ) {
-                                Text(actionOneLabel ?: "Show more", style = MaterialTheme.typography.bodySmall)
+                    Text(categoryItem.type.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                    if (expanded.value) {
+                        Text(
+                            CategoryMessages.CATEGORY_DESCRIPTION.getMessage(categoryItem.description),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            minLines = 1,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Row {
+                            if (actionOne != null) {
+                                TextButton(onClick = { actionOne(categoryItem.categoryId) }) {
+                                    Text(
+                                        actionOneLabel ?: "Show more",
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
-                        }
-                        if (actionTwo != null) {
-                            OutlinedButton(
-                                onClick = { actionTwo(categoryItem.categoryId) },
-                                modifier = Modifier.height(32.dp).padding(horizontal = 4.dp)
-                            ) {
-                                Text(actionTwoLabel ?: "Edit", style = MaterialTheme.typography.bodySmall)
+                            if (actionTwo != null) {
+                                TextButton(onClick = { actionTwo(categoryItem.categoryId) }) {
+                                    Text(
+                                        actionTwoLabel ?: "Show more",
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
+            )
         }
     }
 }

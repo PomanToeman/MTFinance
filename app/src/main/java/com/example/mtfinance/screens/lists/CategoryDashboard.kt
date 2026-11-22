@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -495,21 +496,48 @@ fun CategoryOverTimeChart(
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .height(200.dp)
                     .padding(8.dp)
             ) {
                 val width = size.width
                 val height = size.height
-                val padding = 24f
+                val leftPadding = 64f
+                val bottomPadding = 32f
 
-                val chartWidth = width - padding * 2
-                val chartHeight = height - padding * 2
+                val chartWidth = width - leftPadding - 16f
+                val chartHeight = height - bottomPadding - 16f
 
-                val budgetY = height - padding - (budget.toFloat() / maxY).coerceIn(0f, 1f) * chartHeight
+                val textPaint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.GRAY
+                    textSize = 26f
+                    isAntiAlias = true
+                }
+
+                // Draw X and Y axis lines
+                drawLine(
+                    color = Color.Gray,
+                    start = Offset(leftPadding, 16f),
+                    end = Offset(leftPadding, height - bottomPadding),
+                    strokeWidth = 2f
+                )
+                drawLine(
+                    color = Color.Gray,
+                    start = Offset(leftPadding, height - bottomPadding),
+                    end = Offset(width - 16f, height - bottomPadding),
+                    strokeWidth = 2f
+                )
+
+                // Draw Y axis labels
+                drawContext.canvas.nativeCanvas.drawText(displayAmount(BigDecimal.ZERO, currencySymbol), 4f, height - bottomPadding + 8f, textPaint)
+                drawContext.canvas.nativeCanvas.drawText(displayAmount(BigDecimal.valueOf((maxY / 2f).toDouble()), currencySymbol), 4f, height - bottomPadding - chartHeight / 2f, textPaint)
+                drawContext.canvas.nativeCanvas.drawText(displayAmount(BigDecimal.valueOf(maxY.toDouble()), currencySymbol), 4f, 24f, textPaint)
+
+                // Draw budget reference line (horizontal)
+                val budgetY = height - bottomPadding - (budget.toFloat() / maxY).coerceIn(0f, 1f) * chartHeight
                 drawLine(
                     color = errorColor,
-                    start = Offset(padding, budgetY),
-                    end = Offset(width - padding, budgetY),
+                    start = Offset(leftPadding, budgetY),
+                    end = Offset(width - 16f, budgetY),
                     strokeWidth = 3f,
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
                 )
@@ -518,11 +546,17 @@ fun CategoryOverTimeChart(
                     val path = Path()
                     val pointCount = cumulativePoints.size
                     for (i in cumulativePoints.indices) {
-                        val x = padding + (if (pointCount > 1) i.toFloat() / (pointCount - 1) * chartWidth else 0f)
-                        val y = height - padding - (cumulativePoints[i].second.toFloat() / maxY).coerceIn(0f, 1f) * chartHeight
+                        val x = leftPadding + (if (pointCount > 1) i.toFloat() / (pointCount - 1) * chartWidth else 0f)
+                        val y = height - bottomPadding - (cumulativePoints[i].second.toFloat() / maxY).coerceIn(0f, 1f) * chartHeight
                         if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
 
                         drawCircle(color = primaryColor, radius = 4f, center = Offset(x, y))
+
+                        // Draw X-axis day number labels
+                        if (i == 0 || i == pointCount - 1 || i % Math.max(1, pointCount / 5) == 0) {
+                            val dayNum = cumulativePoints[i].first.dayOfMonth.toString()
+                            drawContext.canvas.nativeCanvas.drawText(dayNum, x - 10f, height - bottomPadding + 24f, textPaint)
+                        }
                     }
                     drawPath(path = path, color = primaryColor, style = Stroke(width = 4f))
                 }
