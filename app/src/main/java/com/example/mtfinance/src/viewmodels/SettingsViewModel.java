@@ -19,6 +19,8 @@ import com.example.mtfinance.src.viewmodels.interfaces.SaveableFormViewModel;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
@@ -35,6 +37,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     private final SystemRepository systemRepository;
     private final TrackingRepository trackingRepository;
     private final Executor executor;
+    private final Logger logger;
 
     private final MutableLiveData<Map<SystemPreferenceErrorFields, String>> fieldErrors = new MutableLiveData<>(new EnumMap<>(SystemPreferenceErrorFields.class));
     private final MutableLiveData<Boolean> changesMade = new MutableLiveData<>(false);
@@ -51,11 +54,12 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
     private final MutableLiveData<Boolean> provisionalIncludeProvisional = new MutableLiveData<>(true);
 
     @Inject
-    public SettingsViewModel(SystemService systemService, SystemRepository systemRepository, TrackingRepository trackingRepository, Executor executor) {
+    public SettingsViewModel(SystemService systemService, SystemRepository systemRepository, TrackingRepository trackingRepository, Executor executor, Logger logger) {
         this.systemService = systemService;
         this.systemRepository = systemRepository;
         this.trackingRepository = trackingRepository;
         this.executor = executor;
+        this.logger = logger;
         resetFieldErrors();
         initializeFromPersisted();
     }
@@ -67,7 +71,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 trackingRepository.deleteAllAppData();
                 updateLiveData(successMessage, "All app data deleted successfully.");
             } catch (Exception e) {
-                System.err.println("Failed to delete all app data: " + e.getMessage());
+                logger.log(Level.SEVERE, ErrorMessages.FAILED_DELETE_APP_DATA.getMessage(e.getMessage()), e);
                 updateLiveData(genericErrorMessage, ErrorMessages.FAILED_DELETE_APP_DATA.getMessage(e.getMessage()));
             } finally {
                 updateLiveData(isLoading, false);
@@ -82,7 +86,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 trackingRepository.deleteAllTransactions();
                 updateLiveData(successMessage, "All transactions deleted successfully (categories retained).");
             } catch (Exception e) {
-                System.err.println("Failed to delete transactions: " + e.getMessage());
+                logger.log(Level.SEVERE, ErrorMessages.FAILED_DELETE_TRANSACTIONS.getMessage(e.getMessage()), e);
                 updateLiveData(genericErrorMessage, ErrorMessages.FAILED_DELETE_TRANSACTIONS.getMessage(e.getMessage()));
             } finally {
                 updateLiveData(isLoading, false);
@@ -345,7 +349,7 @@ public class SettingsViewModel extends ViewModel implements SaveableFormViewMode
                 updateLiveData(saveStatusColor, "RED");
                 updateLiveData(saveState, SettingsSaveState.ERROR);
             } catch (Exception e) {
-                System.err.println("Failed to save settings: " + e.getMessage());
+                logger.log(Level.SEVERE, ErrorMessages.FAILED_SAVE_SETTINGS.getMessage(e.getMessage()), e);
                 rollbackProvisionalChanges();
                 updateLiveData(genericErrorMessage, ErrorMessages.FAILED_SAVE_SETTINGS.getMessage(e.getMessage()));
                 updateLiveData(saveStatusColor, "RED");

@@ -50,6 +50,9 @@ public class TransactionFormViewModelTest {
     @Mock
     private TrackingRepository trackingWriteRepository;
 
+    @Mock
+    private java.util.logging.Logger logger;
+
     private TransactionFormViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
@@ -63,7 +66,7 @@ public class TransactionFormViewModelTest {
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        viewModel = new TransactionFormViewModel(trackingService, categoryService, transactionService, trackingWriteRepository, synchronousExecutor);
+        viewModel = new TransactionFormViewModel(trackingService, categoryService, transactionService, trackingWriteRepository, null, synchronousExecutor, logger);
 
         viewModel.getName().observeForever(s -> {});
         viewModel.getAmount().observeForever(a -> {});

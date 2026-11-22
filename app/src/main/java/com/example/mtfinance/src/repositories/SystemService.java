@@ -5,10 +5,13 @@ import androidx.lifecycle.Transformations;
 
 import com.example.mtfinance.src.CurrencyFormat;
 import com.example.mtfinance.src.DateFormat;
+import com.example.mtfinance.src.messages.ErrorMessages;
 import com.example.mtfinance.src.repositories.roomdatabase.SystemPreferencesDao;
 import com.example.mtfinance.src.trackingengine.SystemPreferences;
 
 import java.util.concurrent.Executor;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -21,11 +24,13 @@ public class SystemService {
 
     private final SystemPreferencesDao systemPreferencesDao;
     private final Executor executor;
+    private final Logger logger;
 
     @Inject
-    public SystemService(SystemPreferencesDao systemPreferencesDao, Executor executor) {
+    public SystemService(SystemPreferencesDao systemPreferencesDao, Executor executor, Logger logger) {
         this.systemPreferencesDao = systemPreferencesDao;
         this.executor = executor;
+        this.logger = logger;
         ensureDefaultPreferences();
     }
 
@@ -37,7 +42,7 @@ public class SystemService {
                     systemPreferencesDao.savePreferences(new SystemPreferences("SYSTEM"));
                 }
             } catch (Exception e) {
-                System.err.println("Default system preference initialization notice: " + e.getMessage());
+                logger.log(Level.WARNING, ErrorMessages.DEFAULT_SYSTEM_PREFERENCE_NOTICE.getMessage(e.getMessage()), e);
             }
         });
     }

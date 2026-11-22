@@ -31,26 +31,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
 /**
- * Meant to manually enter transactions, Will also be used for the import feature.
+ * Modernized, robust ViewModel managing create, edit, delete, and validation lifecycles for Transactions.
  */
 @HiltViewModel
 public class TransactionFormViewModel extends ViewModel implements DeletableFormViewModel<TransactionFormViewModel.TransactionErrorFields> {
 
     public enum TransactionErrorFields {
-        NAME, DESCRIPTION, CATEGORY_IDS, AMOUNT, TYPE, DATE
+        NAME, DESCRIPTION, AMOUNT, DATE, TYPE, CATEGORY_IDS
     }
 
-    /**
-     * Outcome of {@link #saveNewTransaction}. Returned directly to the caller so batch callers
-     * (such as the CSV import) never have to read the LiveData messages.
-     */
-    public static final class SaveResult {
+    public static class SaveResult {
         private final boolean success;
         private final String message;
 
@@ -76,28 +74,38 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
+    public static class TransactionFormFields {
+        public Long transactionId = null;
+        public String name = "";
+        public String description = "";
+        public BigDecimal amount = null;
+        public TrackingType type = TrackingType.EXPENSE;
+        public LocalDateTime date = LocalDateTime.now();
+        public Set<Long> categoryIds = new HashSet<>();
+        public Boolean editMode = false;
+    }
+
     private final TrackingService trackingService;
     private final CategoryService categoryService;
     private final TransactionService transactionService;
     private final TrackingRepository trackingRepository;
     private final SystemService systemService;
     private final Executor executor;
+    private final Logger logger;
 
     private final MutableLiveData<TransactionFormFields> formFields = new MutableLiveData<>(new TransactionFormFields());
     private final MutableLiveData<Map<TransactionErrorFields, String>> fieldErrors = new MutableLiveData<>(new EnumMap<>(TransactionErrorFields.class));
+    private final MutableLiveData<String> errorMessage = new MutableLiveData<>("");
+    private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
+    private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
 
     private final LiveData<String> name = Transformations.map(formFields, fields -> fields.name);
     private final LiveData<String> description = Transformations.map(formFields, fields -> fields.description);
-    private final LiveData<Set<Long>> categoryIds = Transformations.map(formFields, fields -> fields.categoryIds);
     private final LiveData<BigDecimal> amount = Transformations.map(formFields, fields -> fields.amount);
     private final LiveData<TrackingType> type = Transformations.map(formFields, fields -> fields.type);
     private final LiveData<LocalDateTime> date = Transformations.map(formFields, fields -> fields.date);
-    private final LiveData<Long> transactionId = Transformations.map(formFields, fields -> fields.transactionId);
+    private final LiveData<Set<Long>> categoryIds = Transformations.map(formFields, fields -> fields.categoryIds);
     private final LiveData<Boolean> editMode = Transformations.map(formFields, fields -> fields.editMode);
-
-    private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(false);
-    private final MutableLiveData<String> errorMessage = new MutableLiveData<>("");
-    private final MutableLiveData<String> successMessage = new MutableLiveData<>("");
 
     private final MutableLiveData<Set<CategoryWithTransactions>> cachedCategories = new MutableLiveData<>(new HashSet<>());
     private final LiveData<List<CategoryWithTransactions>> categorySelection;
@@ -110,24 +118,22 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
                                     TransactionService transactionService,
                                     TrackingRepository trackingRepository,
                                     SystemService systemService,
-                                    Executor executor) {
+                                    Executor executor,
+                                    Logger logger) {
         this.trackingService = trackingService;
         this.categoryService = categoryService;
         this.transactionService = transactionService;
         this.trackingRepository = trackingRepository;
         this.systemService = systemService;
         this.executor = executor;
+        this.logger = logger;
 
         if (systemService != null) {
             this.systemDateFormat = Transformations.map(systemService.getPreferencesLive(), prefs -> {
                 if (prefs == null || prefs.getDateFormat() == null) {
                     return DateFormat.DD_MM_YYYY;
                 }
-                try {
-                    return DateFormat.valueOf(prefs.getDateFormat());
-                } catch (Exception e) {
-                    return DateFormat.DD_MM_YYYY;
-                }
+                return DateFormat.fromStringOrDefault(prefs.getDateFormat(), DateFormat.DD_MM_YYYY);
             });
             this.currencyFormat = Transformations.map(systemService.getPreferencesLive(), prefs -> {
                 if (prefs == null || prefs.getCurrencyFormat() == null) {
@@ -142,30 +148,17 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
 
         categorySelection = Transformations.switchMap(type, t -> {
             if (t == null) {
-                return trackingService.getAllCategoriesWithTransactions();
+                return new MutableLiveData<>(java.util.Collections.emptyList());
             }
             return trackingService.searchCategoriesWithType("", t);
         });
 
+        resetFieldErrors();
         clearSync();
     }
 
-    /**
-     * Overloaded constructor for callers and tests without SystemService.
-     */
-    public TransactionFormViewModel(TrackingService trackingService,
-                                    CategoryService categoryService,
-                                    TransactionService transactionService,
-                                    TrackingRepository trackingRepository,
-                                    Executor executor) {
-        this(trackingService, categoryService, transactionService, trackingRepository, null, executor);
-    }
-
-    /**
-     * Resets all field-specific error messages in the map.
-     */
     public void resetFieldErrors() {
-        updateLiveData(this.fieldErrors, new EnumMap<>(TransactionErrorFields.class));
+        updateLiveData(fieldErrors, new EnumMap<>(TransactionErrorFields.class));
     }
 
     @Override
@@ -174,7 +167,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         if (currentMap != null && currentMap.containsKey(field)) {
             Map<TransactionErrorFields, String> newMap = new EnumMap<>(currentMap);
             newMap.remove(field);
-            updateLiveData(this.fieldErrors, newMap);
+            updateLiveData(fieldErrors, newMap);
         }
     }
 
@@ -194,19 +187,26 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         deleteTransaction();
     }
 
-    /**
-     * Checks if any field error exists in the current LiveData error map.
-     * @return true if at least one field has a non-empty error message
-     */
+    private void updateFields(TransactionFormFields fields) {
+        formFields.postValue(fields);
+    }
+
+    private void setErrorMessage(String errorMessage) {
+        updateLiveData(this.errorMessage, errorMessage);
+    }
+
+    private void setSuccessMessage(String successMessage) {
+        updateLiveData(this.successMessage, successMessage);
+    }
+
+    private void setIsLoading(Boolean isLoading) {
+        updateLiveData(this.isLoading, isLoading);
+    }
+
     public boolean hasFieldErrors() {
         return hasFieldErrors(fieldErrors.getValue());
     }
 
-    /**
-     * Checks if any field error exists in the given error map.
-     * @param errors the error map to check
-     * @return true if at least one field has a non-empty error message
-     */
     public boolean hasFieldErrors(Map<TransactionErrorFields, String> errors) {
         return errors != null && !errors.isEmpty();
     }
@@ -219,13 +219,9 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         } else {
             newMap.put(field, message);
         }
-        updateLiveData(this.fieldErrors, newMap);
+        updateLiveData(fieldErrors, newMap);
     }
 
-    /**
-     * Sets transaction name field.
-     * @param name - transaction name
-     */
     public void setName(String name) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
@@ -239,10 +235,6 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    /**
-     * Sets transaction description field.
-     * @param description - transaction description
-     */
     public void setDescription(String description) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null) {
@@ -252,10 +244,6 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    /**
-     * Adds a category association to the transaction.
-     * @param categoryId - category ID
-     */
     public void addCategoryId(Long categoryId) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null) {
@@ -265,10 +253,6 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    /**
-     * Removes a category association from the transaction.
-     * @param categoryId - category ID
-     */
     public void removeCategoryId(Long categoryId) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null) {
@@ -280,10 +264,6 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    /**
-     * Sets the transaction monetary amount.
-     * @param amount - amount
-     */
     public void setAmount(BigDecimal amount) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
@@ -311,7 +291,7 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
                             fields.categoryIds.add(rootCat.getCategoryId());
                         }
                     } catch (Exception e) {
-                        System.err.println("Root category resolution notice: " + e.getMessage());
+                        logger.log(Level.WARNING, ErrorMessages.ROOT_CATEGORY_RESOLUTION_NOTICE.getMessage(e.getMessage()), e);
                     }
                 }
                 updateLiveData(cachedCategories, new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(fields.categoryIds)));
@@ -352,10 +332,6 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    /**
-     * Sets transaction date from text input, checking strictly against ISO (yyyy-MM-dd) and dd/MM/yyyy formats.
-     * @param dateStr raw date string input
-     */
     public void setDateText(String dateStr) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
@@ -378,10 +354,6 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    /**
-     * Sets transaction date and time.
-     * @param date - date and time
-     */
     public void setDate(LocalDateTime date) {
         TransactionFormFields fields = formFields.getValue();
         if (fields != null && Boolean.FALSE.equals(fields.editMode)) {
@@ -395,55 +367,26 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    /**
-     * Sets transaction date (start of day).
-     * @param date - date
-     */
     public void setDate(LocalDate date) {
-        setDate(date.atStartOfDay());
-    }
-
-    /**
-     * Sets the transaction ID for editing mode.
-     * @param transactionId - transaction ID
-     */
-    public void setTransactionId(Long transactionId) {
-        TransactionFormFields fields = formFields.getValue();
-        if (fields != null) {
-            fields.transactionId = transactionId;
-            formFields.setValue(fields);
-            if (transactionId != null) {
-                loadTransactionForEditing();
-            }
+        if (date != null) {
+            setDate(date.atStartOfDay());
         }
     }
 
-    private void setIsLoading(boolean isLoading) {
-        this.isLoading.postValue(isLoading);
+    public void setTransactionId(Long transactionId) {
+        executor.execute(() -> setTransactionIdSync(transactionId));
     }
 
-    private void setErrorMessage(String errorMessage) {
-        this.errorMessage.postValue(errorMessage);
-    }
-
-    private void setSuccessMessage(String successMessage) {
-        this.successMessage.postValue(successMessage);
-    }
-
-    /**
-     * Loads transaction details for editing asynchronously.
-     */
-    public void loadTransactionForEditing() {
-        executor.execute(this::loadTransactionForEditingSync);
-    }
-
-    /**
-     * Loads transaction details for editing synchronously.
-     */
-    public void loadTransactionForEditingSync() {
+    public void setTransactionIdSync(Long transactionId) {
         TransactionFormFields fields = formFields.getValue();
-        if (fields == null || fields.transactionId == null) return;
+        if (fields == null) fields = new TransactionFormFields();
 
+        if (transactionId == null) {
+            clearSync();
+            return;
+        }
+
+        fields.transactionId = transactionId;
         if (transactionService.transactionExists(fields.transactionId)) {
             Transaction transaction = transactionService.getById(fields.transactionId);
             fields.name = transaction.getName();
@@ -464,16 +407,10 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    /**
-     * Resets form fields asynchronously.
-     */
     public void clear() {
         executor.execute(this::clearSync);
     }
 
-    /**
-     * Resets form fields synchronously.
-     */
     public void clearSync() {
         TransactionFormFields fields = new TransactionFormFields();
         formFields.postValue(fields);
@@ -484,16 +421,10 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         setIsLoading(false);
     }
 
-    /**
-     * Saves transaction form asynchronously.
-     */
     public void saveTransaction() {
         executor.execute(this::saveTransactionSync);
     }
 
-    /**
-     * Saves transaction form synchronously.
-     */
     public void saveTransactionSync() {
         TransactionFormFields fields = formFields.getValue();
         if (fields == null) return;
@@ -524,23 +455,23 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
                         trackingRepository.insertRelationship(fields.transactionId, catId);
                     }
                 }
-
                 for (Long catId : oldCategoryIds) {
                     if (!newCategoryIds.contains(catId)) {
                         trackingRepository.deleteRelationship(fields.transactionId, catId);
                     }
                 }
 
-                setErrorMessage("");
                 setSuccessMessage(TransactionMessages.TRANSACTION_UPDATED.getMessage());
             } else {
                 persistNewTransaction(fields.name, fields.description, fields.amount,
                         fields.type, fields.date, fields.categoryIds);
-
-                setErrorMessage("");
+                clearSync();
                 setSuccessMessage(TransactionMessages.TRANSACTION_SAVED.getMessage());
             }
         } catch (Exception e) {
+            if (logger != null) {
+                logger.log(Level.SEVERE, TransactionMessages.TRANSACTION_SAVE_FAILED.getMessage(e.getMessage()), e);
+            }
             setErrorMessage(TransactionMessages.TRANSACTION_SAVE_FAILED.getMessage(e.getMessage()));
             setSuccessMessage("");
         } finally {
@@ -548,13 +479,6 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    /**
-     * Validates and saves one new transaction without reading or writing any form state or LiveData.
-     * The outcome is the return value, so it is safe to call repeatedly from a background thread
-     * (for example the CSV import) with no polling and no stale reads.
-     *
-     * @return a successful result, or a failure carrying the reason
-     */
     public SaveResult saveNewTransaction(String name,
                                          BigDecimal amount,
                                          TrackingType type,
@@ -563,17 +487,6 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         return saveNewTransaction(name, "", amount, type, date, categoryIds);
     }
 
-    /**
-     * Validates and saves one new transaction with an explicit description string.
-     *
-     * @param name transaction name
-     * @param description transaction description/memo
-     * @param amount transaction amount
-     * @param type transaction tracking type
-     * @param date transaction timestamp
-     * @param categoryIds linked category IDs
-     * @return a successful result, or a failure carrying the reason
-     */
     public SaveResult saveNewTransaction(String name,
                                          String description,
                                          BigDecimal amount,
@@ -589,20 +502,17 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             persistNewTransaction(name, description != null ? description : "", amount, type, date, categoryIds);
             return SaveResult.success(TransactionMessages.TRANSACTION_SAVED.getMessage());
         } catch (Exception e) {
+            if (logger != null) {
+                logger.log(Level.SEVERE, TransactionMessages.TRANSACTION_SAVE_FAILED.getMessage(e.getMessage()), e);
+            }
             return SaveResult.failure(TransactionMessages.TRANSACTION_SAVE_FAILED.getMessage(e.getMessage()));
         }
     }
 
-    /**
-     * Deletes selected transaction asynchronously.
-     */
     public void deleteTransaction() {
         executor.execute(this::deleteTransactionSync);
     }
 
-    /**
-     * Deletes selected transaction synchronously.
-     */
     public void deleteTransactionSync() {
         TransactionFormFields fields = formFields.getValue();
         if (fields == null || fields.transactionId == null) {
@@ -615,6 +525,9 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
             clearSync();
             setSuccessMessage(TransactionMessages.TRANSACTION_DELETED.getMessage());
         } catch (Exception e) {
+            if (logger != null) {
+                logger.log(Level.SEVERE, TransactionMessages.TRANSACTION_DELETE_FAILED.getMessage(e.getMessage()), e);
+            }
             setErrorMessage(TransactionMessages.TRANSACTION_DELETE_FAILED.getMessage(e.getMessage()));
         } finally {
             setIsLoading(false);
@@ -622,15 +535,11 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
     }
 
     private Map<TransactionErrorFields, String> validateFormSync(TransactionFormFields fields) {
-        Map<TransactionErrorFields, String> errors =
-                collectErrors(fields.name, fields.amount, fields.categoryIds, fields.date, fields.type);
-        updateLiveData(this.fieldErrors, errors);
+        Map<TransactionErrorFields, String> errors = collectErrors(fields.name, fields.amount, fields.categoryIds, fields.date, fields.type);
+        updateLiveData(fieldErrors, errors);
         return errors;
     }
 
-    /**
-     * Pure validation: returns the field errors for the given values and touches no LiveData.
-     */
     private Map<TransactionErrorFields, String> collectErrors(String name,
                                                               BigDecimal amount,
                                                               Set<Long> categoryIds,
@@ -641,31 +550,24 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         if (name == null || name.trim().isEmpty()) {
             errors.put(TransactionErrorFields.NAME, TransactionMessages.TRANSACTION_NAME_EMPTY.getMessage());
         }
-
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             errors.put(TransactionErrorFields.AMOUNT, GeneralMessages.INVALID_AMOUNT.getMessage(amount));
         }
-
         if (categoryIds == null || categoryIds.isEmpty()) {
             errors.put(TransactionErrorFields.CATEGORY_IDS, TransactionMessages.TRANSACTION_CATEGORY_EMPTY.getMessage());
         } else if (!categoryService.verifyExistingIds(categoryIds)) {
             errors.put(TransactionErrorFields.CATEGORY_IDS, TransactionMessages.TRANSACTION_CATEGORIES_NOT_EXIST.getMessage());
         }
-
         if (date == null) {
-            errors.put(TransactionErrorFields.DATE, "Date cannot be empty or invalid.");
+            errors.put(TransactionErrorFields.DATE, TransactionMessages.TRANSACTION_DATE_EMPTY.getMessage());
         }
-
         if (type == null) {
-            errors.put(TransactionErrorFields.TYPE, "Type cannot be empty.");
+            errors.put(TransactionErrorFields.TYPE, GeneralMessages.INVALID_TYPE_ERROR_MESSAGE.getMessage());
         }
 
         return errors;
     }
 
-    /**
-     * Writes a new transaction and its category links. Shared by the form save and the import.
-     */
     private void persistNewTransaction(String name,
                                        String description,
                                        BigDecimal amount,
@@ -689,55 +591,19 @@ public class TransactionFormViewModel extends ViewModel implements DeletableForm
         }
     }
 
-    private static class TransactionFormFields {
-        String name = "";
-        String description = "";
-        Set<Long> categoryIds = new HashSet<>();
-        BigDecimal amount = BigDecimal.ZERO;
-        TrackingType type = TrackingType.EXPENSE;
-        LocalDateTime date = LocalDateTime.now();
-        Long transactionId = null;
-        Boolean editMode = false;
-    }
-
-    private void updateFields(TransactionFormFields fields) {
-        updateLiveData(formFields, fields);
-        if (executor != null) {
-            executor.execute(() -> {
-                Set<Long> ids = fields.categoryIds;
-                Set<CategoryWithTransactions> categories;
-                if (ids == null || ids.isEmpty()) {
-                    categories = new HashSet<>();
-                } else {
-                    categories = new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(ids));
-                }
-                updateLiveData(cachedCategories, categories);
-            });
-        } else {
-            Set<Long> ids = fields.categoryIds;
-            Set<CategoryWithTransactions> categories;
-            if (ids == null || ids.isEmpty()) {
-                categories = new HashSet<>();
-            } else {
-                categories = new HashSet<>(trackingService.getCategoriesWithTransactionsByIds(ids));
-            }
-            updateLiveData(cachedCategories, categories);
-        }
-    }
-
     public LiveData<String> getName() { return name; }
     public LiveData<String> getDescription() { return description; }
-    public LiveData<Set<Long>> getCategoryIds() { return categoryIds; }
     public LiveData<BigDecimal> getAmount() { return amount; }
     public LiveData<TrackingType> getType() { return type; }
     public LiveData<LocalDateTime> getDate() { return date; }
-    public LiveData<DateFormat> getSystemDateFormat() { return systemDateFormat; }
-    public LiveData<CurrencyFormat> getCurrencyFormat() { return currencyFormat; }
-    public LiveData<Boolean> getIsLoading() { return isLoading; }
-    public LiveData<String> getErrorMessage() { return errorMessage; }
-    public LiveData<String> getSuccessMessage() { return successMessage; }
+    public LiveData<Set<Long>> getCategoryIds() { return categoryIds; }
     public LiveData<Boolean> getEditMode() { return editMode; }
+    public LiveData<Map<TransactionErrorFields, String>> getFieldErrors() { return fieldErrors; }
     public LiveData<Set<CategoryWithTransactions>> getCachedCategories() { return cachedCategories; }
     public LiveData<List<CategoryWithTransactions>> getCategorySelection() { return categorySelection; }
-    public LiveData<Map<TransactionErrorFields, String>> getFieldErrors() { return fieldErrors; }
+    public LiveData<DateFormat> getSystemDateFormat() { return systemDateFormat; }
+    public LiveData<CurrencyFormat> getCurrencyFormat() { return currencyFormat; }
+    public LiveData<String> getErrorMessage() { return errorMessage; }
+    public LiveData<String> getSuccessMessage() { return successMessage; }
+    public LiveData<Boolean> getIsLoading() { return isLoading; }
 }

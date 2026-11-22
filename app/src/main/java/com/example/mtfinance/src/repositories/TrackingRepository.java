@@ -3,6 +3,7 @@ package com.example.mtfinance.src.repositories;
 import androidx.annotation.NonNull;
 
 import com.example.mtfinance.src.messages.CategoryMessages;
+import com.example.mtfinance.src.messages.ErrorMessages;
 import com.example.mtfinance.src.messages.TransactionMessages;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryDao;
 import com.example.mtfinance.src.repositories.roomdatabase.CategoryTransactionCrossRef;
@@ -14,6 +15,8 @@ import com.example.mtfinance.src.trackingengine.Transaction;
 import com.example.mtfinance.src.trackingengine.TransactionViolationException;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
@@ -28,15 +31,17 @@ public class TrackingRepository {
     private final CategoryDao categoryDao;
     private final TransactionDao transactionDao;
     private final CategoryTreeHelper helper;
+    private final Logger logger;
 
     /**
-     * Constructs a TrackingRepository with required repositories, DAOs, and helper.
+     * Constructs a TrackingRepository with required repositories, DAOs, helper, and Logger.
      * @param categoryRepository the category write repository
      * @param transactionRepository the transaction write repository
      * @param categoryWithTransactionsDao the cross-ref DAO
      * @param categoryDao the category DAO
      * @param transactionDao the transaction DAO
      * @param helper the category tree helper
+     * @param logger injected logger instance
      */
     @Inject
     public TrackingRepository(CategoryRepository categoryRepository,
@@ -44,13 +49,15 @@ public class TrackingRepository {
                               CategoryTransactionDao categoryWithTransactionsDao,
                               CategoryDao categoryDao,
                               TransactionDao transactionDao,
-                              CategoryTreeHelper helper) {
+                              CategoryTreeHelper helper,
+                              Logger logger) {
         this.categoryRepository = categoryRepository;
         this.transactionRepository = transactionRepository;
         this.categoryWithTransactionsDao = categoryWithTransactionsDao;
         this.categoryDao = categoryDao;
         this.transactionDao = transactionDao;
         this.helper = helper;
+        this.logger = logger;
     }
 
     /**
@@ -171,7 +178,7 @@ public class TrackingRepository {
                 try {
                     categoryRepository.deleteCategory(cat);
                 } catch (CategoryViolationException e) {
-                    System.err.println("Category deletion notice during wipe: " + e.getMessage());
+                    logger.log(Level.WARNING, ErrorMessages.CATEGORY_DELETION_WIPE_NOTICE.getMessage(e.getMessage()), e);
                 }
             }
         }

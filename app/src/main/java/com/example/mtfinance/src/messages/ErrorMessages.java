@@ -17,7 +17,12 @@ public enum ErrorMessages implements MessageCli {
     HEADER_DOES_NOT_EXIST("Header '%s' does not exist in CSV file."),
     MIN_REQUIRED_COLUMNS("CSV file must contain at least %s columns (Name, Amount, Date)."),
     DEFAULT_CATEGORY_INIT_FAILED("Default category initialization note: %s"),
-    PREFERENCES_READ_FALLBACK("DAO preferences read fallback: %s");
+    PREFERENCES_READ_FALLBACK("DAO preferences read fallback: %s"),
+    DEFAULT_CATEGORY_INIT_NOTICE("Default category initialization notice: %s"),
+    DEFAULT_SYSTEM_PREFERENCE_NOTICE("Default system preference initialization notice: %s"),
+    CATEGORY_DELETION_WIPE_NOTICE("Category deletion notice during wipe: %s"),
+    ROOT_CATEGORY_RESOLUTION_NOTICE("Root category resolution notice: %s"),
+    IMPORT_ROW_FAILED_NOTICE("Failed to import CSV record '%s': %s");
 
     private final String message;
 

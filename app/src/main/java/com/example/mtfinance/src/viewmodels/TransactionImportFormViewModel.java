@@ -44,6 +44,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.inject.Inject;
 
@@ -77,6 +79,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
     private final TrackingRepository trackingRepository;
     private final Executor executor;
     private final Application application;
+    private final Logger logger;
 
     private final MutableLiveData<String> filePath = new MutableLiveData<>();
     private final MutableLiveData<Uri> fileUri = new MutableLiveData<>();
@@ -106,13 +109,15 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
                                           TransactionService transactionService,
                                           TrackingRepository trackingRepository,
                                           Executor executor,
-                                          Application application) {
+                                          Application application,
+                                          Logger logger) {
         this.categoryService = categoryService;
         this.trackingService = trackingService;
         this.transactionService = transactionService;
         this.trackingRepository = trackingRepository;
         this.executor = executor;
         this.application = application;
+        this.logger = logger;
         clear();
     }
 
@@ -282,13 +287,13 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
     public void setDateFormatter(DateFormat format) {
         updateLiveData(this.dateFormatter, format);
         resetMessages();
-        setFieldError(TransactionImportErrorFields.DATE_FORMATTER, "");
+        resetFieldError(TransactionImportErrorFields.DATE_FORMATTER);
     }
 
     public void setDateFormatter(String format) {
-        try {
-            setDateFormatter(DateFormat.valueOf(format));
-        } catch (Exception ignored) {
+        if (format != null && !format.trim().isEmpty()) {
+            DateFormat matched = DateFormat.fromStringOrDefault(format, DateFormat.DD_MM_YYYY);
+            setDateFormatter(matched);
         }
     }
 
@@ -374,7 +379,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
         try (CSVParser parser = openParser()) {
             List<String> headers = parser.getHeaderNames();
             if (headers == null || headers.size() < MIN_REQUIRED_COLUMNS) {
-                String errorMsg = "CSV file must contain at least " + MIN_REQUIRED_COLUMNS + " columns (Name, Amount, Date).";
+                String errorMsg = ErrorMessages.MIN_REQUIRED_COLUMNS.getMessage(MIN_REQUIRED_COLUMNS);
                 setFieldError(TransactionImportErrorFields.FILE_SOURCE, errorMsg);
                 setErrorMessage(errorMsg);
                 setCsvHeaders(new ArrayList<>());
@@ -404,7 +409,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
             updateLiveData(this.previewRows, sampleRows);
 
             autoDetectHeaders(headers, sampleRows);
-            setFieldError(TransactionImportErrorFields.FILE_SOURCE, "");
+            resetFieldError(TransactionImportErrorFields.FILE_SOURCE);
         } catch (IOException e) {
             setFieldError(TransactionImportErrorFields.FILE_SOURCE, ImportMessages.IMPORT_FILE_INVALID.getMessage(e.getMessage()));
             setErrorMessage(ImportMessages.IMPORT_FILE_INVALID.getMessage(e.getMessage()));
@@ -504,7 +509,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
                 for (String dateStr : sampleDates) {
                     try {
                         parseDate(dateStr, formatter);
-                    } catch (Exception e) {
+                    } catch (DateTimeParseException e) {
                         allParsed = false;
                         break;
                     }
@@ -513,7 +518,8 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
                     setDateFormatter(fmt);
                     return;
                 }
-            } catch (Exception ignored) {
+            } catch (IllegalArgumentException e) {
+                // Candidate format formatter creation failed; continue to next candidate
             }
         }
     }
@@ -535,7 +541,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
                 return;
             }
 
-            TransactionFormViewModel transactionForm = new TransactionFormViewModel(this.trackingService, this.categoryService, this.transactionService, this.trackingRepository, Runnable::run);
+            TransactionFormViewModel transactionForm = new TransactionFormViewModel(this.trackingService, this.categoryService, this.transactionService, this.trackingRepository, null, Runnable::run, this.logger);
             String nameHeader = this.nameHeader.getValue();
             String descriptionHeader = this.descriptionHeader.getValue();
             String dateHeader = this.dateHeader.getValue();
@@ -565,7 +571,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
                         }
                         successfulImports.add(record.toString());
                     } catch (Exception e) {
-                        System.err.println(e.getMessage() + " " + record.toString());
+                        logger.log(Level.WARNING, ErrorMessages.IMPORT_ROW_FAILED_NOTICE.getMessage(record.toString(), e.getMessage()), e);
                         failedImports.add(record.toString());
                     }
                 }
@@ -631,7 +637,7 @@ public class TransactionImportFormViewModel extends ViewModel implements Saveabl
                 errors.put(field, missingMessage);
             }
         } else if (availableHeaders != null && !availableHeaders.isEmpty() && availableHeaders.stream().noneMatch(h -> h.equalsIgnoreCase(value.trim()))) {
-            errors.put(field, "Header '" + value.trim() + "' does not exist in CSV file.");
+            errors.put(field, ErrorMessages.HEADER_DOES_NOT_EXIST.getMessage(value.trim()));
         }
     }
 

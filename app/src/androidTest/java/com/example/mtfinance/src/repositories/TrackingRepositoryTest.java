@@ -60,7 +60,7 @@ public class TrackingRepositoryTest {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).build();
         CategoryTreeHelper helper = new CategoryTreeHelper(database.categoryDao());
-        CategoryInitializer initializer = new CategoryInitializer(helper, java.util.concurrent.Executors.newSingleThreadExecutor());
+        CategoryInitializer initializer = new CategoryInitializer(helper, java.util.concurrent.Executors.newSingleThreadExecutor(), java.util.logging.Logger.getLogger("TestLogger"));
         initializer.populateDefaultCategoriesSync();
         categoryService = new CategoryService(database.categoryDao(), helper);
         transactionService = new TransactionService(database.transactionDao());
@@ -68,7 +68,7 @@ public class TrackingRepositoryTest {
 
         categoryRepository = new CategoryRepository(database, database.categoryDao(), helper, initializer);
         transactionRepository = new TransactionRepository(database.transactionDao());
-        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao(), database.categoryDao(), database.transactionDao(), helper);
+        trackingRepository = new TrackingRepository(categoryRepository, transactionRepository, database.categoryTransactionDao(), database.categoryDao(), database.transactionDao(), helper, java.util.logging.Logger.getLogger("TestLogger"));
     }
 
     @After

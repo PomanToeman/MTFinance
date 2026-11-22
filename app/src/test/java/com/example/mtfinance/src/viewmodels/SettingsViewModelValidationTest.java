@@ -44,6 +44,9 @@ public class SettingsViewModelValidationTest {
     @Mock
     private TrackingRepository trackingRepository;
 
+    @Mock
+    private java.util.logging.Logger logger;
+
     private SettingsViewModel viewModel;
     private final Executor synchronousExecutor = Runnable::run;
 
@@ -54,7 +57,7 @@ public class SettingsViewModelValidationTest {
         when(systemService.getPreferencesLive()).thenReturn(new MutableLiveData<>(prefs));
         when(systemService.getPreferencesSync()).thenReturn(prefs);
 
-        viewModel = new SettingsViewModel(systemService, systemRepository, trackingRepository, synchronousExecutor);
+        viewModel = new SettingsViewModel(systemService, systemRepository, trackingRepository, synchronousExecutor, logger);
         viewModel.getFieldErrors().observeForever(e -> {});
         viewModel.getChangesMade().observeForever(c -> {});
         viewModel.getSaveStatusColor().observeForever(s -> {});

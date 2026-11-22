@@ -35,6 +35,9 @@ public class SettingsViewModelTest {
     @Mock
     private TrackingRepository trackingRepository;
 
+    @Mock
+    private java.util.logging.Logger logger;
+
     private SettingsViewModel viewModel;
     private MutableLiveData<SystemPreferences> preferencesLiveData;
     private final Executor synchronousExecutor = Runnable::run;
@@ -46,7 +49,7 @@ public class SettingsViewModelTest {
         when(systemService.getPreferencesLive()).thenReturn(preferencesLiveData);
         when(systemService.getPreferencesSync()).thenReturn(new SystemPreferences("SYSTEM"));
 
-        viewModel = new SettingsViewModel(systemService, systemRepository, trackingRepository, synchronousExecutor);
+        viewModel = new SettingsViewModel(systemService, systemRepository, trackingRepository, synchronousExecutor, logger);
     }
 
     @Test
