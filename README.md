@@ -1,11 +1,11 @@
 # MTFinance
 
-A finance-tracking Android app for managing personal finances, tracking budgets, and analyzing spending across custom categories and accounts.
+A finance-tracking Android app for managing personal finances, tracking budgets, and analysing spending across custom categories and accounts.
 
 ## Key Features
 
 ### Categories & Tracking Engine
-- **Hierarchical Categories**: Organize expenses and income across multi-level category trees (up to 5 levels of depth) with parent category spending rollups and monthly budget limits.
+- **Hierarchical Categories**: Organise expenses and income across multi-level category trees (up to 5 levels of depth) with parent category spending rollups and monthly budget limits.
 - **Default System Categories**: Pre-configured root categories for General Expenses, Groceries & Utilities, Income, Account Transfers, and Other fallback transactions.
 
 ### Transactions & CSV Import
@@ -18,7 +18,7 @@ A finance-tracking Android app for managing personal finances, tracking budgets,
 
 ### Forms, Dashboards & UI Polish
 - **Interactive Forms**: Streamlined category and transaction forms equipped with global focus management, IME action navigation (`Next` / `Done`), keyboard dismissal on tap, and hybrid calendar date pickers.
-- **Dashboards & Visualizations**: Category and transaction dashboards featuring custom canvas spending trend charts and summary metrics.
+- **Dashboards & Visualisations**: Category and transaction dashboards featuring custom canvas spending trend charts and summary metrics.
 
 ## Tech Stack & Architecture
 
